@@ -93,6 +93,8 @@ export default async function ZonePage(props: PageProps<"/zones/[slug]">) {
     postIntervalSeconds: 120,
     replyIntervalSeconds: 3,
     allowedPostTypes: DEFAULT_ALLOWED_POST_TYPES,
+    allowUserPost: zone.allowUserPost ?? true,
+    allowUserReply: zone.allowUserReply ?? true,
     minViewPoints: zone.minViewPoints ?? 0,
     minViewLevel: zone.minViewLevel ?? 0,
     minPostPoints: 0,

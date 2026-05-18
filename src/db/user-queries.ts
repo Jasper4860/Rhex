@@ -6,6 +6,7 @@ import type { TimestampCursorPayload } from "@/lib/cursor-pagination"
 export const userProfileSelect = {
   id: true,
   createdAt: true,
+  lastLoginIp: true,
   username: true,
   nickname: true,
   signature: true,

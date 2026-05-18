@@ -131,6 +131,7 @@ export function UserProfilePreviewCardTrigger({
       }}
     >
       <PopoverTrigger
+        data-user-profile-preview-trigger="true"
         className={cn(
           "cursor-pointer rounded-xl transition-transform hover:-translate-y-0.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/60",
           triggerClassName,

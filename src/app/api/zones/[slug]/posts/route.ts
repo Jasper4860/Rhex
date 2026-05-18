@@ -42,6 +42,8 @@ export const GET = createRouteHandler(async ({ request, routeContext }) => {
     postIntervalSeconds: 120,
     replyIntervalSeconds: 3,
     allowedPostTypes: DEFAULT_ALLOWED_POST_TYPES,
+    allowUserPost: zone.allowUserPost ?? true,
+    allowUserReply: zone.allowUserReply ?? true,
     minViewPoints: zone.minViewPoints ?? 0,
     minViewLevel: zone.minViewLevel ?? 0,
     minPostPoints: 0,

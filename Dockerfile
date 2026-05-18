@@ -1,3 +1,5 @@
+ARG NEXT_ASSET_PREFIX="https://rhex-runtime-asset-prefix.invalid"
+
 FROM node:20-bookworm-slim AS base
 
 ENV PNPM_HOME=/pnpm
@@ -13,6 +15,9 @@ RUN corepack enable \
 WORKDIR /app
 
 FROM base AS builder
+
+ARG NEXT_ASSET_PREFIX
+ENV NEXT_ASSET_PREFIX=${NEXT_ASSET_PREFIX}
 
 RUN mkdir -p addons
 
@@ -48,6 +53,9 @@ COPY --from=builder /app/src ./src
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/write-guard.config.ts ./write-guard.config.ts
 
+RUN chmod +x ./scripts/docker-entrypoint.sh
+
 EXPOSE 3000
 
+ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
 CMD ["pnpm", "run", "start"]

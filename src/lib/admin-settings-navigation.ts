@@ -67,6 +67,7 @@ const adminSettingsSectionDetails: Record<
     defaultSubTab: "comments",
     subTabs: [
       { key: "comments", label: "评论展示" },
+      { key: "chat", label: "全站聊天室" },
       { key: "content-limits", label: "内容限制" },
       { key: "anonymous-post", label: "匿名发帖" },
       { key: "tipping", label: "打赏送礼" },
@@ -75,6 +76,11 @@ const adminSettingsSectionDetails: Record<
       { key: "heat", label: "热度算法" },
       { key: "preview", label: "热度预览" },
     ],
+  },
+  messages: {
+    label: "私信",
+    defaultSubTab: "general",
+    subTabs: [{ key: "general", label: "私信配置" }],
   },
   "friend-links": {
     label: "友情链接",
@@ -108,6 +114,8 @@ const legacySectionAliases: Partial<Record<AdminSettingsSectionKey, { section: k
 const subTabAliases: Partial<Record<keyof typeof adminSettingsSectionDetails, Record<string, string>>> = {
   interaction: {
     "comment-tip": "comments",
+    messages: "chat",
+    "site-chat": "chat",
   },
   upload: {
     upload: "storage",

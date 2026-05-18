@@ -181,7 +181,7 @@ export function UserProfileOverviewCard({
                 </div>
 
                 {metaRow ? (
-                  <div className="flex min-w-0 flex-nowrap items-center gap-x-2 overflow-x-auto text-[10px] leading-4.5 text-muted-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:gap-x-3 sm:overflow-visible sm:text-[13px] sm:leading-5">
+                  <div className="flex min-w-0 flex-nowrap items-center gap-x-1.5 overflow-x-auto text-[10px] leading-4.5 text-muted-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:gap-x-2 sm:overflow-visible sm:text-[13px] sm:leading-5">
                     {metaRow}
                   </div>
                 ) : null}

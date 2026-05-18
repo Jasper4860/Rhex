@@ -8,6 +8,8 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd"
 import { Button } from "@/components/ui/rbutton"
 import { toast } from "@/components/ui/toast"
 import { getClientPlatform, type ClientPlatform } from "@/lib/client-platform"
+import { COMMENT_LOAD_MODE_INFINITE, COMMENT_LOAD_MODE_PAGINATION, type CommentLoadMode } from "@/lib/comment-load-mode"
+import { buildCommentNavigationUrl } from "@/lib/comment-navigation"
 import type { MarkdownEmojiItem } from "@/lib/markdown-emoji"
 import { dispatchPostReplyCreated } from "@/lib/post-discussion-events"
 import { cn } from "@/lib/utils"
@@ -30,9 +32,10 @@ interface CommentFormProps {
   anonymousIdentitySwitchVisible?: boolean
   markdownEmojiMap?: MarkdownEmojiItem[]
   embedded?: boolean
+  commentLoadMode?: CommentLoadMode
 }
 
-export function CommentForm({ postId, commentId, initialContent = "", mode = "create", editWindowMinutes = 5, parentId, replyToUserName, replyToCommentId, compact = false, onCancel, disabledMessage, commentsVisibleToAuthorOnly = false, anonymousIdentityEnabled = false, anonymousIdentityDefaultChecked = false, anonymousIdentitySwitchVisible = false, markdownEmojiMap, embedded = false }: CommentFormProps) {
+export function CommentForm({ postId, commentId, initialContent = "", mode = "create", editWindowMinutes = 5, parentId, replyToUserName, replyToCommentId, compact = false, onCancel, disabledMessage, commentsVisibleToAuthorOnly = false, anonymousIdentityEnabled = false, anonymousIdentityDefaultChecked = false, anonymousIdentitySwitchVisible = false, markdownEmojiMap, embedded = false, commentLoadMode = COMMENT_LOAD_MODE_PAGINATION }: CommentFormProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -74,10 +77,10 @@ export function CommentForm({ postId, commentId, initialContent = "", mode = "cr
     : "可使用 @用户名 提及他人。"
   const primaryShortcutKey = shortcutPlatform === "mac" ? "Cmd" : "Ctrl"
   const formClassName = compact
-    ? "min-w-0 w-full flex flex-col gap-3 rounded-[18px] border border-border bg-card p-4"
+    ? "min-w-0 w-full max-w-full flex flex-col gap-3 overflow-x-hidden rounded-[18px] border border-border bg-card p-4"
     : embedded
-      ? "min-w-0 w-full flex flex-col gap-3 pb-4 pt-3"
-      : "min-w-0 w-full flex flex-col gap-4"
+      ? "min-w-0 w-full max-w-full flex flex-col gap-3 overflow-x-hidden pb-4 pt-3"
+      : "min-w-0 w-full max-w-full flex flex-col gap-4 overflow-x-hidden"
 
   function handleSubmitShortcut(event: React.KeyboardEvent<HTMLFormElement>) {
     if (loading || disabledMessage) {
@@ -141,20 +144,15 @@ export function CommentForm({ postId, commentId, initialContent = "", mode = "cr
 
     const successMessage = mode === "edit" ? "评论修改成功" : parentId ? "回复提交成功" : "评论提交成功"
     const navigation = result.data?.navigation as { page?: number; sort?: string; view?: string; anchor?: string } | undefined
-    const nextSearchParams = new URLSearchParams(searchParams.toString())
-
-    if (navigation?.page) {
-      nextSearchParams.set("page", String(navigation.page))
-    }
-    if (navigation?.sort) {
-      nextSearchParams.set("sort", navigation.sort)
-    }
-    if (navigation?.view) {
-      nextSearchParams.set("view", navigation.view)
-    }
-
     const nextUrl = navigation
-      ? `${pathname}?${nextSearchParams.toString()}${navigation.anchor ? `#${navigation.anchor}` : "#comments"}`
+      ? buildCommentNavigationUrl({
+          pathname,
+          searchParams,
+          navigation: commentLoadMode === COMMENT_LOAD_MODE_INFINITE
+            ? { anchor: navigation.anchor }
+            : navigation,
+          commentLoadMode,
+        })
       : null
 
     setMessage(successMessage)

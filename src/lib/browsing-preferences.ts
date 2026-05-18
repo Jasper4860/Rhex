@@ -2,6 +2,7 @@ export interface BrowsingPreferencesSnapshot {
   dimReadPostTitles: boolean
   openPostLinksInNewTab: boolean
   commentThreadDisplayMode: "tree" | "flat"
+  commentThreadSort: "oldest" | "newest"
   rewardPoolIntroAnimationMode: "always" | "once-per-tab" | "never"
 }
 
@@ -13,6 +14,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferencesSnapshot = {
   dimReadPostTitles: false,
   openPostLinksInNewTab: false,
   commentThreadDisplayMode: "tree",
+  commentThreadSort: "oldest",
   rewardPoolIntroAnimationMode: "once-per-tab",
 }
 
@@ -34,6 +36,7 @@ function normalizeBrowsingPreferences(value: unknown): BrowsingPreferencesSnapsh
     dimReadPostTitles: Boolean(candidate.dimReadPostTitles),
     openPostLinksInNewTab: Boolean(candidate.openPostLinksInNewTab),
     commentThreadDisplayMode: candidate.commentThreadDisplayMode === "flat" ? "flat" : "tree",
+    commentThreadSort: candidate.commentThreadSort === "newest" ? "newest" : "oldest",
     rewardPoolIntroAnimationMode: candidate.rewardPoolIntroAnimationMode === "never"
       ? "never"
       : candidate.rewardPoolIntroAnimationMode === "once-per-tab"
@@ -50,6 +53,7 @@ function areBrowsingPreferencesEqual(left: BrowsingPreferencesSnapshot | null, r
   return left.dimReadPostTitles === right.dimReadPostTitles
     && left.openPostLinksInNewTab === right.openPostLinksInNewTab
     && left.commentThreadDisplayMode === right.commentThreadDisplayMode
+    && left.commentThreadSort === right.commentThreadSort
     && left.rewardPoolIntroAnimationMode === right.rewardPoolIntroAnimationMode
 }
 

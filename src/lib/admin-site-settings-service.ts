@@ -4,6 +4,7 @@ import { createSiteSettingsRecordWithFullData, findSiteSettingsRecordForUpdate }
 import { updateBoardApplicationSiteSettingsSection } from "@/lib/admin-site-settings-board-applications"
 import { defaultSiteSettingsCreateInput } from "@/lib/site-settings-defaults"
 import { updateInteractionSiteSettingsSection } from "@/lib/admin-site-settings-interaction"
+import { updateMessageSiteSettingsSection } from "@/lib/admin-site-settings-messages"
 import { updateProfileSiteSettingsSection } from "@/lib/admin-site-settings-profile"
 import { updateRegistrationSiteSettingsSection } from "@/lib/admin-site-settings-registration"
 import { updateUploadSiteSettingsSection } from "@/lib/admin-site-settings-upload"
@@ -28,6 +29,7 @@ export async function updateSiteSettingsBySection(body: JsonObject) {
     updateRegistrationSiteSettingsSection,
     updateBoardApplicationSiteSettingsSection,
     updateInteractionSiteSettingsSection,
+    updateMessageSiteSettingsSection,
     updateVipSiteSettingsSection,
     updateUploadSiteSettingsSection,
   ]

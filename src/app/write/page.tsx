@@ -24,6 +24,7 @@ interface BoardOptionItem {
   label: string
   allowedPostTypes: string[]
   requirePostReview: boolean
+  allowUserPost: boolean
   minPostPoints: number
   minPostLevel: number
   minPostVipLevel: number
@@ -40,6 +41,7 @@ function mapBoardOption(board: SiteBoardItem): BoardOptionItem {
     label: board.name,
     allowedPostTypes: board.allowedPostTypes ?? DEFAULT_ALLOWED_POST_TYPES,
     requirePostReview: board.requirePostReview ?? false,
+    allowUserPost: board.allowUserPost ?? true,
     minPostPoints: board.minPostPoints ?? 0,
     minPostLevel: board.minPostLevel ?? 0,
     minPostVipLevel: board.minPostVipLevel ?? 0,

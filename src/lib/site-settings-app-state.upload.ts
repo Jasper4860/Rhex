@@ -262,6 +262,7 @@ export function mergeAttachmentFeatureSettings(
 
 export function resolveMessageMediaSettings(options: {
   appStateJson?: string | null
+  enabledFallback?: boolean
   imageUploadEnabledFallback?: boolean
   fileUploadEnabledFallback?: boolean
   promptAudioPathFallback?: string
@@ -272,6 +273,10 @@ export function resolveMessageMediaSettings(options: {
     : {}
 
   return {
+    enabled:
+      typeof messageMedia.enabled === "boolean"
+        ? messageMedia.enabled
+        : options.enabledFallback ?? true,
     imageUploadEnabled:
       typeof messageMedia.imageUploadEnabled === "boolean"
         ? messageMedia.imageUploadEnabled
@@ -296,6 +301,7 @@ export function mergeMessageMediaSettings(
   return writeSiteSettingsState(appStateJson, {
     ...siteSettingsState,
     messageMedia: {
+      enabled: Boolean(input.enabled),
       imageUploadEnabled: Boolean(input.imageUploadEnabled),
       fileUploadEnabled: Boolean(input.fileUploadEnabled),
       promptAudioPath: normalizeMessagePromptAudioPath(input.promptAudioPath),

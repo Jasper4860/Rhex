@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { Code2, ExternalLink, FileArchive, FileText, Files, Music4, Video, type LucideIcon } from "lucide-react"
 
 import { MarkdownContent } from "@/components/markdown-content"
@@ -69,12 +70,16 @@ function resolveMessageFilePresentation(extension: string | null): {
 
 interface MessageBubbleContentProps {
   content: string
+  html?: string
+  imageOnly?: boolean
   isMine: boolean
   markdownEmojiMap: MarkdownEmojiItem[]
 }
 
-export function MessageBubbleContent({
+export const MessageBubbleContent = memo(function MessageBubbleContent({
   content,
+  html,
+  imageOnly,
   isMine,
   markdownEmojiMap,
 }: MessageBubbleContentProps) {
@@ -88,8 +93,10 @@ export function MessageBubbleContent({
             <MarkdownContent
               key={`markdown-${index}`}
               content={block.content}
+              html={blocks.length === 1 ? html : undefined}
               markdownEmojiMap={markdownEmojiMap}
               expandImagesWhenImageOnly
+              imageOnly={blocks.length === 1 ? imageOnly : undefined}
               className={cn(
                 "message-markdown [&_p]:!my-0 [&_p]:leading-6 [&_ul]:my-1.5 [&_ol]:my-1.5 [&_li]:my-0 prose-headings:my-0 prose-blockquote:my-2 prose-pre:my-2 prose-p:text-inherit prose-headings:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-blockquote:text-inherit prose-li:text-inherit prose-a:text-inherit",
                 isMine && "text-inherit **:text-inherit [&_.md-list]:text-inherit [&_.md-task-list_.task-list-item_label]:text-inherit [&_.md-task-list_.task-list-item:has(input[type='checkbox']:checked)]:text-inherit [&_.md-callout-title]:text-inherit",
@@ -129,4 +136,4 @@ export function MessageBubbleContent({
       })}
     </div>
   )
-}
+})

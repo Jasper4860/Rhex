@@ -25,6 +25,7 @@ export {
 export {
   executeAddonApi,
   executeAddonPage,
+  executeAddonPageWithInput,
   executeAddonSlot,
   executeAddonSurfaceRender,
   executeAddonSurface,

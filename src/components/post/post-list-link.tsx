@@ -26,18 +26,21 @@ interface PostListLinkProps {
   children: ReactNode
 }
 
-function applyCommentViewPreferenceToHref(href: string, preferredView: "tree" | "flat") {
-  if (preferredView !== "flat") {
-    return href
-  }
-
+function applyCommentPreferencesToHref(href: string, preferences: Pick<typeof DEFAULT_BROWSING_PREFERENCES, "commentThreadDisplayMode" | "commentThreadSort">) {
   try {
     const url = new URL(href, "https://rhex.local")
-    if (!url.pathname.startsWith("/posts/") || url.searchParams.has("view")) {
+    if (!url.pathname.startsWith("/posts/")) {
       return href
     }
 
-    url.searchParams.set("view", preferredView)
+    if (preferences.commentThreadDisplayMode === "flat" && !url.searchParams.has("view")) {
+      url.searchParams.set("view", preferences.commentThreadDisplayMode)
+    }
+
+    if (preferences.commentThreadSort === "newest" && !url.searchParams.has("sort")) {
+      url.searchParams.set("sort", preferences.commentThreadSort)
+    }
+
     return `${url.pathname}${url.search}${url.hash}`
   } catch {
     return href
@@ -60,8 +63,8 @@ export function PostListLink({ href, visitedPath, dimWhenRead = false, className
     [dimWhenRead, preferences.dimReadPostTitles, readingHistory, visitedPath],
   )
   const resolvedHref = useMemo(
-    () => applyCommentViewPreferenceToHref(href, preferences.commentThreadDisplayMode),
-    [href, preferences.commentThreadDisplayMode],
+    () => applyCommentPreferencesToHref(href, preferences),
+    [href, preferences],
   )
 
   return (

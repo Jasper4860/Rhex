@@ -20,12 +20,14 @@ import {
   Sparkles,
   ThumbsUp,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useTransition } from "react"
 
 import { AdminPostActionButton } from "@/components/admin/admin-post-action-button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { buttonVariants } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { showConfirm } from "@/components/ui/alert-dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +52,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tooltip } from "@/components/ui/tooltip"
+import { toast } from "@/components/ui/toast"
 import type { AdminCommentListItem, AdminCommentListResult } from "@/lib/admin-comment-management"
 import { formatDateTime, formatMonthDayTime, formatNumber } from "@/lib/formatters"
 import { getPostCommentPath } from "@/lib/post-links"
@@ -96,6 +99,10 @@ export function AdminCommentList({ data }: AdminCommentListProps) {
     pageSize: String(data.pagination.pageSize),
   })
 
+  const router = useRouter()
+  const [selectedCommentIdsState, setSelectedCommentIds] = useState<string[]>([])
+  const [isBatchPending, startBatchTransition] = useTransition()
+
   const groupedBoardOptions = useMemo(() => {
     const groups = new Map<string, Array<{ value: string; label: string }>>()
 
@@ -108,6 +115,93 @@ export function AdminCommentList({ data }: AdminCommentListProps) {
 
     return Array.from(groups.entries()).map(([zone, items]) => ({ zone, items }))
   }, [data.boardOptions])
+
+  const visibleCommentIds = useMemo(() => new Set(data.comments.map((comment) => comment.id)), [data.comments])
+  const selectedCommentIds = useMemo(
+    () => selectedCommentIdsState.filter((commentId) => visibleCommentIds.has(commentId)),
+    [selectedCommentIdsState, visibleCommentIds],
+  )
+  const selectedCount = selectedCommentIds.length
+  const allCurrentPageSelected = data.comments.length > 0 && selectedCount === data.comments.length
+  const someCurrentPageSelected = selectedCount > 0 && !allCurrentPageSelected
+
+  function toggleSelectComment(commentId: string, checked: boolean) {
+    setSelectedCommentIds((current) => {
+      if (checked) {
+        return current.includes(commentId) ? current : [...current, commentId]
+      }
+
+      return current.filter((item) => item !== commentId)
+    })
+  }
+
+  function toggleSelectCurrentPage(checked: boolean) {
+    const currentPageIds = data.comments.map((comment) => comment.id)
+    setSelectedCommentIds((current) => {
+      if (checked) {
+        return [...new Set([...current, ...currentPageIds])]
+      }
+
+      return current.filter((commentId) => !visibleCommentIds.has(commentId))
+    })
+  }
+
+  async function confirmBatchAction(action: string, title: string, description: string, confirmText: string, danger = false) {
+    if (selectedCount === 0) {
+      toast.warning("请先选择要处理的评论", "批量操作")
+      return
+    }
+
+    const confirmed = await showConfirm({
+      title,
+      description,
+      confirmText,
+      cancelText: "取消",
+      variant: danger ? "danger" : "default",
+    })
+
+    if (!confirmed) {
+      return
+    }
+
+    submitBatchAction(action)
+  }
+
+  function submitBatchAction(action: string) {
+    if (selectedCount === 0) {
+      toast.warning("请先选择要处理的评论", "批量操作")
+      return
+    }
+
+    startBatchTransition(async () => {
+      try {
+        const response = await fetch("/api/admin/comments/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action,
+            commentIds: selectedCommentIds,
+          }),
+        })
+        const result = await response.json().catch(() => null) as { message?: string; data?: { failedCount?: number } } | null
+
+        if (!response.ok) {
+          throw new Error(result?.message ?? "批量操作失败")
+        }
+
+        if (result?.data?.failedCount && result.data.failedCount > 0) {
+          toast.warning(result.message ?? "部分评论处理失败", "批量操作完成")
+        } else {
+          toast.success(result?.message ?? "批量操作已完成", "操作成功")
+        }
+
+        setSelectedCommentIds([])
+        router.refresh()
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "批量操作失败", "操作失败")
+      }
+    })
+  }
 
   const statCards = useMemo(
     () => [
@@ -276,6 +370,33 @@ export function AdminCommentList({ data }: AdminCommentListProps) {
             <OverviewActionLink href="/admin?tab=comments&status=PENDING" label="查看待审核" />
           </CardAction>
         </CardHeader>
+        {data.comments.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <label className="flex items-center gap-2">
+                <Checkbox
+                  checked={allCurrentPageSelected || someCurrentPageSelected}
+                  onCheckedChange={(checked) => toggleSelectCurrentPage(checked === true)}
+                  aria-label="全选本页评论"
+                />
+                <span>全选本页</span>
+              </label>
+              <span>已选 {selectedCount} 条</span>
+              {selectedCount > 0 ? (
+                <Button type="button" variant="ghost" size="sm" className="rounded-full px-3 text-xs" disabled={isBatchPending} onClick={() => setSelectedCommentIds([])}>
+                  清空选择
+                </Button>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" className="rounded-full px-3 text-xs" disabled={selectedCount === 0 || isBatchPending} onClick={() => void confirmBatchAction("comment.approve", "批量通过评论", `确认通过已选中的 ${selectedCount} 条评论吗？`, "批量通过")}>批量通过</Button>
+              <Button type="button" variant="outline" size="sm" className="rounded-full px-3 text-xs" disabled={selectedCount === 0 || isBatchPending} onClick={() => void confirmBatchAction("comment.show", "批量恢复评论", `确认恢复已选中的 ${selectedCount} 条评论吗？`, "批量恢复")}>批量恢复</Button>
+              <Button type="button" variant="outline" size="sm" className="rounded-full border-rose-200 px-3 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700" disabled={selectedCount === 0 || isBatchPending} onClick={() => void confirmBatchAction("comment.reject", "批量驳回评论", `确认驳回已选中的 ${selectedCount} 条评论吗？驳回后将下线评论。`, "批量驳回", true)}>批量驳回</Button>
+              <Button type="button" variant="outline" size="sm" className="rounded-full border-rose-200 px-3 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700" disabled={selectedCount === 0 || isBatchPending} onClick={() => void confirmBatchAction("comment.hide", "批量隐藏评论", `确认隐藏已选中的 ${selectedCount} 条评论吗？隐藏后前台不再展示。`, "批量隐藏", true)}>批量隐藏</Button>
+              <Button type="button" variant="outline" size="sm" className="rounded-full border-rose-200 px-3 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700" disabled={selectedCount === 0 || isBatchPending} onClick={() => void confirmBatchAction("comment.delete", "批量删除评论", `确认删除已选中的 ${selectedCount} 条评论吗？此操作不可撤销。`, "批量删除", true)}>批量删除</Button>
+            </div>
+          </div>
+        ) : null}
         <CardContent className="px-0 py-0">
           {data.comments.length === 0 ? (
             <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
@@ -289,6 +410,13 @@ export function AdminCommentList({ data }: AdminCommentListProps) {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-[52px]">
+                    <Checkbox
+                      checked={allCurrentPageSelected || someCurrentPageSelected}
+                      onCheckedChange={(checked) => toggleSelectCurrentPage(checked === true)}
+                      aria-label="全选本页评论"
+                    />
+                  </TableHead>
                   <TableHead>评论</TableHead>
                   <TableHead className="w-[220px]">帖子</TableHead>
                   <TableHead className="w-[150px]">作者</TableHead>
@@ -301,7 +429,14 @@ export function AdminCommentList({ data }: AdminCommentListProps) {
               </TableHeader>
               <TableBody>
                 {data.comments.map((comment) => (
-                  <TableRow key={comment.id}>
+                  <TableRow key={comment.id} data-state={selectedCommentIds.includes(comment.id) ? "selected" : undefined}>
+                    <TableCell className="align-top">
+                      <Checkbox
+                        checked={selectedCommentIds.includes(comment.id)}
+                        onCheckedChange={(checked) => toggleSelectComment(comment.id, checked === true)}
+                        aria-label={`选择评论 ${comment.content.slice(0, 24)}`}
+                      />
+                    </TableCell>
                     <TableCell className="align-top">
                       <CommentContentCell comment={comment} />
                     </TableCell>

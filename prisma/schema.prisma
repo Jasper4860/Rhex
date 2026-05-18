@@ -738,6 +738,8 @@ model Zone {
   sortOrder            Int                  @default(0)
   hiddenFromSidebar    Boolean              @default(false)
   showInHomeFeed       Boolean              @default(true)
+  allowUserPost        Boolean              @default(true)
+  allowUserReply       Boolean              @default(true)
   requirePostReview    Boolean              @default(false)
   requireCommentReview Boolean              @default(false)
   postPointDelta       Int                  @default(0)
@@ -777,6 +779,8 @@ model Board {
   sortOrder                       Int                      @default(0)
   status                          BoardStatus              @default(ACTIVE)
   allowPost                       Boolean                  @default(true)
+  allowUserPost                   Boolean?
+  allowUserReply                  Boolean?
   showInHomeFeed                  Boolean?
   requirePostReview               Boolean?
   requireCommentReview            Boolean?

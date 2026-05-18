@@ -71,7 +71,7 @@ export function findUserUsername(userId: number) {
 export function findUserStatus(userId: number) {
   return prisma.user.findUnique({
     where: { id: userId },
-    select: { status: true },
+    select: { role: true, status: true },
   })
 }
 

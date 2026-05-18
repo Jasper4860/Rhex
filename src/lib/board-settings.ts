@@ -1,4 +1,4 @@
-import type { Board, User, Zone } from "@/db/types"
+import type { Board, Zone } from "@/db/types"
 
 import { normalizePostTypes, type LocalPostType } from "@/lib/post-types"
 import { isVipActive } from "@/lib/vip-status"
@@ -9,6 +9,8 @@ export interface EffectiveBoardSettings {
   postIntervalSeconds: number
   replyIntervalSeconds: number
   allowedPostTypes: LocalPostType[]
+  allowUserPost: boolean
+  allowUserReply: boolean
   requirePostReview: boolean
   requireCommentReview: boolean
   minViewPoints: number
@@ -32,6 +34,8 @@ export function resolveBoardSettings(zone?: Partial<Zone> | null, board?: Partia
     postIntervalSeconds?: number | null
     replyIntervalSeconds?: number | null
     allowedPostTypes?: string | null
+    allowUserPost?: boolean | null
+    allowUserReply?: boolean | null
     minViewPoints?: number | null
     minViewLevel?: number | null
     minPostPoints?: number | null
@@ -54,6 +58,8 @@ export function resolveBoardSettings(zone?: Partial<Zone> | null, board?: Partia
     postIntervalSeconds: board?.postIntervalSeconds ?? zoneAdvanced?.postIntervalSeconds ?? 120,
     replyIntervalSeconds: board?.replyIntervalSeconds ?? zoneAdvanced?.replyIntervalSeconds ?? 3,
     allowedPostTypes: normalizePostTypes(board?.allowedPostTypes ?? zoneAdvanced?.allowedPostTypes),
+    allowUserPost: board?.allowUserPost ?? zoneAdvanced?.allowUserPost ?? true,
+    allowUserReply: board?.allowUserReply ?? zoneAdvanced?.allowUserReply ?? true,
 
     requirePostReview: board?.requirePostReview ?? zone?.requirePostReview ?? false,
     requireCommentReview: board?.requireCommentReview ?? zone?.requireCommentReview ?? false,
@@ -77,7 +83,27 @@ export function resolveBoardSettings(zone?: Partial<Zone> | null, board?: Partia
   }
 }
 
-export function canUserAccess(user: Pick<User, "points" | "level" | "vipLevel" | "vipExpiresAt"> | null, settings: EffectiveBoardSettings, action: "view" | "post" | "reply") {
+type BoardPermissionUser = {
+  points: number
+  level: number
+  vipLevel?: number | null
+  vipExpiresAt?: Date | string | null
+  role?: "USER" | "MODERATOR" | "ADMIN" | null
+}
+
+function isStaffUser(user: Pick<BoardPermissionUser, "role"> | null) {
+  return user?.role === "ADMIN" || user?.role === "MODERATOR"
+}
+
+export function canUserAccess(user: BoardPermissionUser | null, settings: EffectiveBoardSettings, action: "view" | "post" | "reply") {
+  if (action === "post" && !settings.allowUserPost && !isStaffUser(user)) {
+    return { allowed: false, message: "当前仅管理员和版主可发帖" }
+  }
+
+  if (action === "reply" && !settings.allowUserReply && !isStaffUser(user)) {
+    return { allowed: false, message: "当前仅管理员和版主可回复" }
+  }
+
   const minPoints = action === "view" ? settings.minViewPoints : action === "post" ? settings.minPostPoints : settings.minReplyPoints
   const minLevel = action === "view" ? settings.minViewLevel : action === "post" ? settings.minPostLevel : settings.minReplyLevel
   const minVipLevel = action === "view" ? settings.minViewVipLevel : action === "post" ? settings.minPostVipLevel : settings.minReplyVipLevel

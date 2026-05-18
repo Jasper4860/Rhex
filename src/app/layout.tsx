@@ -159,7 +159,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         ))}
         <ThemeProvider settings={themeRuntime}>
           <CurrentUserProvider>
-            <CurrentUserInboxProvider messagePromptAudioPath={settings.messagePromptAudioPath}>
+            <CurrentUserInboxProvider messageEnabled={settings.messageEnabled} messagePromptAudioPath={settings.messagePromptAudioPath}>
             <SiteSettingsProvider
               markdownEmojiMap={settings.markdownEmojiMap}
               markdownImageUploadEnabled={settings.markdownImageUploadEnabled}

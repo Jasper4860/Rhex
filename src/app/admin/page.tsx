@@ -89,7 +89,7 @@ export default async function AdminPage(props: PageProps<"/admin">) {
   const currentPostTypeValue = readSearchParam(searchParams?.type)
   const currentPostType = isLocalPostType(currentPostTypeValue) ? currentPostTypeValue : "ALL"
   const currentPostStatusValue = readSearchParam(searchParams?.status)
-  const currentPostStatus = currentPostStatusValue === "PENDING" || currentPostStatusValue === "NORMAL" || currentPostStatusValue === "OFFLINE" ? currentPostStatusValue : "ALL"
+  const currentPostStatus = currentPostStatusValue === "PENDING" || currentPostStatusValue === "NORMAL" || currentPostStatusValue === "OFFLINE" || currentPostStatusValue === "LOCKED" ? currentPostStatusValue : "ALL"
   const currentBoardSlug = readSearchParam(searchParams?.board) ?? ""
   const currentKeyword = readSearchParam(searchParams?.keyword) ?? ""
   const currentPostSort = readSearchParam(searchParams?.sort) ?? "newest"

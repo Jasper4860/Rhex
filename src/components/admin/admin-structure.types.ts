@@ -99,6 +99,8 @@ export interface StructureFormState {
   postIntervalSeconds: string
   replyIntervalSeconds: string
   allowedPostTypes: string[]
+  allowUserPost: string
+  allowUserReply: string
   minViewPoints: string
   minViewLevel: string
   minPostPoints: string
@@ -117,7 +119,7 @@ export interface StructureFormState {
   feedbackTone: "error" | "success"
 }
 
-export type StructureFormTab = "basic" | "content" | "policy" | "access"
+export type StructureFormTab = "basic" | "content" | "policy" | "access" | "moderators"
 
 export interface SelectFieldOption {
   value: string

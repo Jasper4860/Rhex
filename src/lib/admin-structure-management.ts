@@ -10,6 +10,8 @@ export interface ZoneItem {
   boardCount: number
   postCount: number
   followerCount: number
+  allowUserPost: boolean
+  allowUserReply: boolean
   requirePostReview: boolean
   requireCommentReview: boolean
   postPointDelta: number
@@ -29,7 +31,19 @@ export interface ZoneItem {
   minReplyVipLevel: number
   postListDisplayMode: string | null
   postListLoadMode: string | null
+  moderators: StructureModeratorItem[]
   canEditSettings: boolean
+}
+
+export interface StructureModeratorItem {
+  id: number
+  username: string
+  displayName: string
+  role: "MODERATOR" | "ADMIN" | "USER"
+  status: string
+  canEditSettings: boolean
+  canWithdrawTreasury: boolean
+  source: "zone" | "board"
 }
 
 export interface BoardItem {
@@ -51,6 +65,10 @@ export interface BoardItem {
   zoneName: string | null
   status: string
   allowPost: boolean
+  allowUserPost: boolean | null
+  allowUserReply: boolean | null
+  effectiveAllowUserPost: boolean
+  effectiveAllowUserReply: boolean
   postCount: number
   followerCount: number
   todayPostCount: number
@@ -76,6 +94,8 @@ export interface BoardItem {
   minReplyVipLevel: number | null
   postListDisplayMode: string | null
   postListLoadMode: string | null
+  moderators: StructureModeratorItem[]
+  inheritedModerators: StructureModeratorItem[]
   canEditSettings: boolean
 }
 

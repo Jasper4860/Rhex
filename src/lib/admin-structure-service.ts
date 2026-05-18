@@ -144,6 +144,8 @@ function buildBoardAdvancedPayload(body: Record<string, unknown>, currentConfig?
     postIntervalSeconds: parseNullableNumber(body.postIntervalSeconds),
     replyIntervalSeconds: parseNullableNumber(body.replyIntervalSeconds),
     allowedPostTypes: Array.isArray(body.allowedPostTypes) && body.allowedPostTypes.length > 0 ? (body.allowedPostTypes as string[]).join(",") : undefined,
+    allowUserPost: parseNullableBoolean(body.allowUserPost),
+    allowUserReply: parseNullableBoolean(body.allowUserReply),
     minViewPoints: parseNullableNumber(body.minViewPoints),
     minViewLevel: parseNullableNumber(body.minViewLevel),
     minPostPoints: parseNullableNumber(body.minPostPoints),
@@ -184,6 +186,8 @@ function buildZonePayload(
   description: string,
   icon: string,
   currentShowInHomeFeed?: boolean,
+  currentAllowUserPost?: boolean,
+  currentAllowUserReply?: boolean,
 ) {
   const showInHomeFeed = parseNullableBoolean(body.showInHomeFeed)
 
@@ -195,6 +199,8 @@ function buildZonePayload(
     sortOrder,
     hiddenFromSidebar: parseBoolean(body.hiddenFromSidebar),
     showInHomeFeed: typeof showInHomeFeed === "boolean" ? showInHomeFeed : currentShowInHomeFeed ?? true,
+    allowUserPost: parseNullableBoolean(body.allowUserPost) ?? currentAllowUserPost ?? true,
+    allowUserReply: parseNullableBoolean(body.allowUserReply) ?? currentAllowUserReply ?? true,
     postPointDelta: parseNullableNumber(body.postPointDelta) ?? 0,
     replyPointDelta: parseNullableNumber(body.replyPointDelta) ?? 0,
     postIntervalSeconds: parseNullableNumber(body.postIntervalSeconds) ?? 120,
@@ -326,7 +332,17 @@ export async function updateStructureItem(params: {
     try {
       const currentZone = await ensureCanEditZone(params.actor, id)
       const icon = readOptionalStringField(rawBody, "icon") || "📚"
-      await updateZone(id, buildZonePayload(rawBody, sortOrder, name, slug, description, icon, currentZone.showInHomeFeed))
+      await updateZone(id, buildZonePayload(
+        rawBody,
+        sortOrder,
+        name,
+        slug,
+        description,
+        icon,
+        currentZone.showInHomeFeed,
+        currentZone.allowUserPost,
+        currentZone.allowUserReply,
+      ))
 
       return { message: "分区已更新", action: "zone.update", targetType: "ZONE", targetId: id, detail: `更新分区 ${name}` }
     } catch (error) {

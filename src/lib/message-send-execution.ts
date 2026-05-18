@@ -4,7 +4,7 @@ import { executeAddonActionHook, executeAddonWaterfallHook } from "@/addons-host
 import { resolveHookedStringValue } from "@/lib/addon-hook-values"
 import { logError } from "@/lib/logger"
 import { summarizeMessagePreview } from "@/lib/message-media"
-import { sendDirectMessage } from "@/lib/messages"
+import { assertMessageFeatureEnabled, sendDirectMessage } from "@/lib/messages"
 import { logRouteWriteSuccess } from "@/lib/route-metadata"
 import { isSiteChatConversationId } from "@/lib/site-chat"
 import { enqueueUserNotificationDeliveries } from "@/lib/user-notification-delivery"
@@ -79,6 +79,7 @@ export async function executeDirectMessageSend(
   options: ExecuteDirectMessageSendOptions,
 ) {
   assertMessageSenderStatus(options.sender)
+  await assertMessageFeatureEnabled()
   const requestUrl = new URL(options.request.url)
 
   return runMessageWriteGuard(input, options.sender.id, options.request, async () => {

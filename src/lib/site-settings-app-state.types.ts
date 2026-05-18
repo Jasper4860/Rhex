@@ -1,12 +1,16 @@
 import { parseNonNegativeSafeInteger } from "@/lib/shared/safe-integer"
 import type { RegistrationEmailTemplateSettings } from "@/lib/email-template-settings"
 import type { ThemeCustomizationSettings } from "@/lib/theme"
+import type { CommentLoadMode } from "@/lib/comment-load-mode"
 import type { PostListLoadMode } from "@/lib/post-list-load-mode"
 import type { CheckInRewardRange, CheckInRewardSettings } from "@/lib/check-in-reward"
 import type { VipNameColors } from "@/lib/vip-name-colors"
 import type { VipLevelIcons } from "@/lib/vip-level-icons"
 import type { SiteTippingGiftItem } from "@/lib/tipping-gifts"
 import type { VipTierPricing } from "@/lib/vip-tier-pricing"
+import type { PasswordPolicySettings, PasswordStrength } from "@/lib/password-policy"
+
+export type { PasswordStrength }
 
 export const SITE_SETTINGS_STATE_KEY = "__siteSettings"
 
@@ -141,6 +145,7 @@ export interface AttachmentFeatureSettings {
 }
 
 export interface MessageMediaSettings {
+  enabled: boolean
   imageUploadEnabled: boolean
   fileUploadEnabled: boolean
   promptAudioPath: string
@@ -163,12 +168,18 @@ export interface SiteBrandingSettings {
   iconPath: string
 }
 
+export interface UserProfileDisplaySettings {
+  ipLocationEnabled: boolean
+}
+
 export type SiteThemeCustomizationSettings = ThemeCustomizationSettings
 
 export interface RegisterNicknameLengthSettings {
   minLength: number
   maxLength: number
 }
+
+export type RegisterPasswordPolicySettings = PasswordPolicySettings
 
 export interface RegisterEmailWhitelistSettings {
   enabled: boolean
@@ -216,6 +227,7 @@ export interface PostPageSizeSettings {
 export interface CommentAccessSettings {
   guestCanView: boolean
   initialVisibleReplies: number
+  loadMode: CommentLoadMode
 }
 
 export interface SiteChatSettings {

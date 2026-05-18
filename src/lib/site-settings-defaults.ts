@@ -105,6 +105,10 @@ export const defaultSiteSettingsCreateInput = {
         minLength: 1,
         maxLength: 20,
       },
+      passwordPolicy: {
+        minLength: 6,
+        strength: "LOW",
+      },
       registerEmailWhitelist: {
         enabled: false,
         domains: [],
@@ -124,6 +128,9 @@ export const defaultSiteSettingsCreateInput = {
       },
       siteBranding: {
         iconPath: "",
+      },
+      userProfile: {
+        ipLocationEnabled: false,
       },
       footerCopyright: {
         text: defaultFooterCopyrightText,
@@ -182,12 +189,18 @@ export const defaultSiteSettingsCreateInput = {
         maxFileSizeMb: 20,
       },
       messageMedia: {
+        enabled: true,
         imageUploadEnabled: false,
         fileUploadEnabled: false,
         promptAudioPath: DEFAULT_MESSAGE_PROMPT_AUDIO_PATH,
       },
       siteChat: {
         enabled: false,
+      },
+      commentAccess: {
+        guestCanView: true,
+        initialVisibleReplies: 10,
+        loadMode: "PAGINATION",
       },
     },
   }),

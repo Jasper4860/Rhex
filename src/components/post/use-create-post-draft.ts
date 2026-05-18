@@ -244,10 +244,13 @@ export function useCreatePostDraft({
     [availablePostTypes, draft.postType],
   )
   const minPostVipLevel = selectedBoard?.minPostVipLevel ?? 0
+  const staffCanBypassUserPostingGate = currentUser.role === "ADMIN" || currentUser.role === "MODERATOR"
+  const userPostingAllowed = selectedBoard?.allowUserPost !== false || staffCanBypassUserPostingGate
   const canPostInBoard =
     autoBoardPendingSelection
       ? true
-      : currentUser.points >= (selectedBoard?.minPostPoints ?? 0)
+      : userPostingAllowed
+        && currentUser.points >= (selectedBoard?.minPostPoints ?? 0)
         && currentUser.level >= (selectedBoard?.minPostLevel ?? 0)
         && currentVipLevel >= minPostVipLevel
 

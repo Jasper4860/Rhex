@@ -24,6 +24,7 @@ import {
   StructureAccessTab,
   StructureBasicTab,
   StructureContentTab,
+  StructureModeratorsTab,
   StructurePolicyTab,
 } from "@/components/admin/admin-structure-form-tabs"
 import {
@@ -304,6 +305,8 @@ export function StructureManager({
                       <div className="flex flex-wrap gap-1.5">
                         <Badge variant="outline">帖 {formatNumber(zone.postCount)}</Badge>
                         <Badge variant="outline">关注 {formatNumber(zone.followerCount)}</Badge>
+                        <Badge variant="outline">{zone.allowUserPost ? "用户可发帖" : "仅管理员/版主发帖"}</Badge>
+                        <Badge variant="outline">{zone.allowUserReply ? "用户可回帖" : "仅管理员/版主回帖"}</Badge>
                         <Badge variant="outline">{zone.requirePostReview ? "发帖审核" : "帖子直发"}</Badge>
                         <Badge variant="outline">{zone.requireCommentReview ? "回帖审核" : "回帖直发"}</Badge>
                         <Badge variant="outline">{getZoneHomeFeedVisibilityLabel(zone)}</Badge>
@@ -441,6 +444,8 @@ function BoardRow({
         <div className="flex flex-wrap gap-1.5">
           <Badge className={getBoardStatusBadgeClassName(board.status)}>{board.status}</Badge>
           <Badge variant="outline">{board.allowPost ? "允许发帖" : "暂停发帖"}</Badge>
+          <Badge variant="outline">{getBoardUserPermissionLabel(board.allowUserPost, board.effectiveAllowUserPost, "发帖")}</Badge>
+          <Badge variant="outline">{getBoardUserPermissionLabel(board.allowUserReply, board.effectiveAllowUserReply, "回帖")}</Badge>
           <Badge variant="outline">{board.requirePostReview ? "发帖审核" : "帖子直发"}</Badge>
           <Badge variant="outline">{board.requireCommentReview ? "回帖审核" : "回帖直发"}</Badge>
         </div>
@@ -492,6 +497,14 @@ function BoardRow({
   )
 }
 
+function getBoardUserPermissionLabel(value: boolean | null, effectiveValue: boolean, action: "发帖" | "回帖") {
+  if (value == null) {
+    return effectiveValue ? `用户可${action}(继承)` : `仅管理员/版主${action}(继承)`
+  }
+
+  return value ? `用户可${action}` : `仅管理员/版主${action}`
+}
+
 function StructureModal({
   modal,
   zones,
@@ -538,11 +551,13 @@ function StructureModalForm({
         { key: "content", label: "内容展示", hint: "描述、侧栏链接、节点规则" },
         { key: "policy", label: "策略设置", hint: "积分、频率、列表呈现" },
         { key: "access", label: "权限审核", hint: "访问门槛与审核策略" },
+        { key: "moderators", label: "版主设置", hint: "查看节点版主并配置节点授权" },
       ]
     : [
         { key: "basic", label: "基础信息", hint: "名称、slug、图标、描述" },
         { key: "policy", label: "策略设置", hint: "积分、频率、帖子列表" },
         { key: "access", label: "权限审核", hint: "访问门槛与审核策略" },
+        { key: "moderators", label: "版主设置", hint: "查看分区版主并配置分区授权" },
       ]
   const activeTabMeta = formTabs.find((tab) => tab.key === activeTab) ?? formTabs[0]
 
@@ -619,6 +634,8 @@ function StructureModalForm({
       hiddenFromSidebar: isBoard ? undefined : form.hiddenFromSidebar,
       zoneId: isBoard ? form.zoneId : undefined,
       id: editingItemId,
+      allowUserPost: form.allowUserPost,
+      allowUserReply: form.allowUserReply,
       postPointDelta: form.postPointDelta === "" ? undefined : Number(form.postPointDelta),
       replyPointDelta: form.replyPointDelta === "" ? undefined : Number(form.replyPointDelta),
       postIntervalSeconds: form.postIntervalSeconds === "" ? undefined : Number(form.postIntervalSeconds),
@@ -691,13 +708,15 @@ function StructureModalForm({
           <p className="px-2 pt-3 text-xs leading-6 text-muted-foreground">{activeTabMeta.hint}</p>
         </div>
 
-        {activeTab === "basic" ? <StructureBasicTab modal={modal} zones={zones} form={form} isBoard={isBoard} isModeratorBoardEdit={isModeratorBoardEdit} updateField={updateField} togglePostType={togglePostType} updateSidebarLink={updateSidebarLink} addSidebarLink={addSidebarLink} removeSidebarLink={removeSidebarLink} /> : null}
+        {activeTab === "basic" ? <StructureBasicTab modal={modal} zones={zones} form={form} isBoard={isBoard} isModeratorBoardEdit={isModeratorBoardEdit} isSiteAdmin={isSiteAdmin} onModeratorChanged={() => router.refresh()} updateField={updateField} togglePostType={togglePostType} updateSidebarLink={updateSidebarLink} addSidebarLink={addSidebarLink} removeSidebarLink={removeSidebarLink} /> : null}
 
-        {isBoard && activeTab === "content" ? <StructureContentTab modal={modal} zones={zones} form={form} isBoard={isBoard} isModeratorBoardEdit={isModeratorBoardEdit} updateField={updateField} togglePostType={togglePostType} updateSidebarLink={updateSidebarLink} addSidebarLink={addSidebarLink} removeSidebarLink={removeSidebarLink} /> : null}
+        {isBoard && activeTab === "content" ? <StructureContentTab modal={modal} zones={zones} form={form} isBoard={isBoard} isModeratorBoardEdit={isModeratorBoardEdit} isSiteAdmin={isSiteAdmin} onModeratorChanged={() => router.refresh()} updateField={updateField} togglePostType={togglePostType} updateSidebarLink={updateSidebarLink} addSidebarLink={addSidebarLink} removeSidebarLink={removeSidebarLink} /> : null}
 
-        {activeTab === "policy" ? <StructurePolicyTab modal={modal} zones={zones} form={form} isBoard={isBoard} isModeratorBoardEdit={isModeratorBoardEdit} updateField={updateField} togglePostType={togglePostType} updateSidebarLink={updateSidebarLink} addSidebarLink={addSidebarLink} removeSidebarLink={removeSidebarLink} /> : null}
+        {activeTab === "policy" ? <StructurePolicyTab modal={modal} zones={zones} form={form} isBoard={isBoard} isModeratorBoardEdit={isModeratorBoardEdit} isSiteAdmin={isSiteAdmin} onModeratorChanged={() => router.refresh()} updateField={updateField} togglePostType={togglePostType} updateSidebarLink={updateSidebarLink} addSidebarLink={addSidebarLink} removeSidebarLink={removeSidebarLink} /> : null}
 
-        {activeTab === "access" ? <StructureAccessTab modal={modal} zones={zones} form={form} isBoard={isBoard} isModeratorBoardEdit={isModeratorBoardEdit} updateField={updateField} togglePostType={togglePostType} updateSidebarLink={updateSidebarLink} addSidebarLink={addSidebarLink} removeSidebarLink={removeSidebarLink} /> : null}
+        {activeTab === "access" ? <StructureAccessTab modal={modal} zones={zones} form={form} isBoard={isBoard} isModeratorBoardEdit={isModeratorBoardEdit} isSiteAdmin={isSiteAdmin} onModeratorChanged={() => router.refresh()} updateField={updateField} togglePostType={togglePostType} updateSidebarLink={updateSidebarLink} addSidebarLink={addSidebarLink} removeSidebarLink={removeSidebarLink} /> : null}
+
+        {activeTab === "moderators" ? <StructureModeratorsTab modal={modal} zones={zones} form={form} isBoard={isBoard} isModeratorBoardEdit={isModeratorBoardEdit} isSiteAdmin={isSiteAdmin} onModeratorChanged={() => router.refresh()} updateField={updateField} togglePostType={togglePostType} updateSidebarLink={updateSidebarLink} addSidebarLink={addSidebarLink} removeSidebarLink={removeSidebarLink} /> : null}
 
         <div className="space-y-3">
           {form.feedback ? (
@@ -736,6 +755,8 @@ function getInitialStructureFormState(modal: Exclude<ModalMode, null>, zones: Zo
       postIntervalSeconds: "120",
       replyIntervalSeconds: "3",
       allowedPostTypes: DEFAULT_ALLOWED_POST_TYPES,
+      allowUserPost: "true",
+      allowUserReply: "true",
       minViewPoints: "0",
       minViewLevel: "0",
       minPostPoints: "0",
@@ -772,6 +793,8 @@ function getInitialStructureFormState(modal: Exclude<ModalMode, null>, zones: Zo
       postIntervalSeconds: "",
       replyIntervalSeconds: "",
       allowedPostTypes: DEFAULT_ALLOWED_POST_TYPES,
+      allowUserPost: "",
+      allowUserReply: "",
       minViewPoints: "",
       minViewLevel: "",
       minPostPoints: "",
@@ -808,6 +831,8 @@ function getInitialStructureFormState(modal: Exclude<ModalMode, null>, zones: Zo
       postIntervalSeconds: String(modal.item.postIntervalSeconds),
       replyIntervalSeconds: String(modal.item.replyIntervalSeconds),
       allowedPostTypes: normalizePostTypes(modal.item.allowedPostTypes),
+      allowUserPost: String(modal.item.allowUserPost),
+      allowUserReply: String(modal.item.allowUserReply),
       minViewPoints: String(modal.item.minViewPoints),
       minViewLevel: String(modal.item.minViewLevel),
       minPostPoints: String(modal.item.minPostPoints),
@@ -843,6 +868,8 @@ function getInitialStructureFormState(modal: Exclude<ModalMode, null>, zones: Zo
     postIntervalSeconds: modal.item.postIntervalSeconds == null ? "" : String(modal.item.postIntervalSeconds),
     replyIntervalSeconds: modal.item.replyIntervalSeconds == null ? "" : String(modal.item.replyIntervalSeconds),
     allowedPostTypes: normalizePostTypes(modal.item.allowedPostTypes),
+    allowUserPost: modal.item.allowUserPost == null ? "" : String(modal.item.allowUserPost),
+    allowUserReply: modal.item.allowUserReply == null ? "" : String(modal.item.allowUserReply),
     minViewPoints: modal.item.minViewPoints == null ? "" : String(modal.item.minViewPoints),
     minViewLevel: modal.item.minViewLevel == null ? "" : String(modal.item.minViewLevel),
     minPostPoints: modal.item.minPostPoints == null ? "" : String(modal.item.minPostPoints),

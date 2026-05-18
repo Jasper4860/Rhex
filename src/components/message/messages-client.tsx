@@ -602,8 +602,9 @@ export function MessagesClient({
           createdAt: payload.createdAtLabel,
           occurredAt: payload.occurredAt,
           senderId: payload.senderId,
-          senderName: isOwnMessage ? "我" : payload.senderDisplayName ?? fallbackParticipant?.displayName ?? "新消息",
-          senderAvatarPath: isOwnMessage ? null : payload.senderAvatarPath ?? fallbackParticipant?.avatarPath ?? null,
+          senderUsername: payload.senderUsername ?? fallbackParticipant?.username ?? "",
+          senderName: isOwnMessage && !isSiteChatConversation ? "我" : payload.senderDisplayName ?? fallbackParticipant?.displayName ?? "新消息",
+          senderAvatarPath: payload.senderAvatarPath ?? fallbackParticipant?.avatarPath ?? null,
           isMine: isOwnMessage,
         }
 

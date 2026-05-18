@@ -1,6 +1,7 @@
 import { findUploadById } from "@/db/upload-queries"
 import { apiError, createUserRouteHandler } from "@/lib/api-route"
 import { MESSAGE_FILE_UPLOAD_FOLDER } from "@/lib/message-media"
+import { assertMessageFeatureEnabled } from "@/lib/messages"
 import { createDownloadResponseFromStoredUpload } from "@/lib/upload"
 
 export const runtime = "nodejs"
@@ -29,6 +30,8 @@ async function readMessageFileResponse(uploadId: string) {
 }
 
 export const GET = createUserRouteHandler(async ({ routeContext }) => {
+  await assertMessageFeatureEnabled()
+
   const params = await (routeContext as MessageFileRouteProps | undefined)?.params
   const uploadId = params?.uploadId?.trim() ?? ""
   const filename = params?.filename?.trim() ?? ""

@@ -10,6 +10,7 @@ import { MessageBubbleContent } from "@/components/message/message-bubble-conten
 import { useMarkdownEmojiMap } from "@/components/site-settings-provider"
 import { Button } from "@/components/ui/rbutton"
 import { UserAvatar } from "@/components/user/user-avatar"
+import { UserProfilePreviewCardTrigger } from "@/components/user/user-profile-preview-card-trigger"
 import { createSiteChatParticipant } from "@/lib/site-chat"
 import { cn } from "@/lib/utils"
 import type { MessageBubbleItem, MessageConversationDetail, MessageSendResult } from "@/lib/message-types"
@@ -268,8 +269,9 @@ function MessageThreadPanelContent({
           createdAt: result.createdAt,
           occurredAt: result.occurredAt,
           senderId: currentUserId,
-          senderName: "我",
-          senderAvatarPath: null,
+          senderUsername: result.senderUsername ?? "",
+          senderName: conversation.kind === "SITE_CHAT" ? result.senderDisplayName ?? "我" : "我",
+          senderAvatarPath: result.senderAvatarPath ?? null,
           isMine: true,
         },
       })
@@ -474,25 +476,47 @@ function MessageThreadPanelContent({
           </div>
         ) : null}
 
-        {conversation.messages.map((message) => (
-          <div key={message.id} className={cn("flex gap-3", message.isMine ? "justify-end" : "justify-start")}>
-            {!message.isMine ? <UserAvatar name={message.senderName} avatarPath={message.senderAvatarPath} size="sm" /> : null}
-            <div className={cn("min-w-0 max-w-[86%] sm:max-w-[76%]", message.isMine ? "items-end" : "items-start")}>
-              <div
-                className={cn(
-                  "inline-block max-w-full min-w-0 rounded-xl px-3.5 py-2 text-sm leading-6 shadow-xs",
-                  message.isMine
-                    ? "rounded-br-md bg-foreground text-background dark:bg-primary dark:text-primary-foreground"
-                    : "rounded-bl-md border border-border bg-card text-foreground dark:bg-secondary/70 dark:text-foreground",
-                )}
-              >
-                <MessageBubbleContent content={message.body} markdownEmojiMap={markdownEmojiMap} isMine={message.isMine} />
+        {conversation.messages.map((message) => {
+          const shouldShowSenderName = conversation.kind === "SITE_CHAT"
+          const senderAvatar = (
+            <ChatMessageAvatar
+              message={message}
+              profilePreviewEnabled={conversation.kind === "SITE_CHAT"}
+              side={message.isMine ? "right" : "left"}
+            />
+          )
+
+          return (
+            <div key={message.id} className={cn("flex gap-3", message.isMine ? "justify-end" : "justify-start")}>
+              {!message.isMine ? senderAvatar : null}
+              <div className={cn("flex min-w-0 max-w-[86%] flex-col sm:max-w-[76%]", message.isMine ? "items-end" : "items-start")}>
+                {shouldShowSenderName ? (
+                  <p className={cn("mb-1 truncate text-xs font-medium text-muted-foreground", message.isMine ? "text-right" : "text-left")}>
+                    {message.senderName}
+                  </p>
+                ) : null}
+                <div
+                  className={cn(
+                    "inline-block max-w-full min-w-0 rounded-xl px-3.5 py-2 text-sm leading-6 shadow-xs",
+                    message.isMine
+                      ? "rounded-br-md bg-foreground text-background dark:bg-primary dark:text-primary-foreground"
+                      : "rounded-bl-md border border-border bg-card text-foreground dark:bg-secondary/70 dark:text-foreground",
+                  )}
+                >
+                  <MessageBubbleContent
+                    content={message.body}
+                    html={message.bodyHtml}
+                    imageOnly={message.bodyImageOnly}
+                    markdownEmojiMap={markdownEmojiMap}
+                    isMine={message.isMine}
+                  />
+                </div>
+                <p className={cn("mt-2 text-xs text-muted-foreground", message.isMine ? "text-right" : "text-left")}>{message.createdAt}</p>
               </div>
-              <p className={cn("mt-2 text-xs text-muted-foreground", message.isMine ? "text-right" : "text-left")}>{message.createdAt}</p>
+              {message.isMine ? senderAvatar : null}
             </div>
-            {message.isMine ? <UserAvatar name={message.senderName} avatarPath={message.senderAvatarPath} size="sm" /> : null}
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="border-t border-border px-4 py-3 sm:px-5 sm:py-3.5 max-sm:pb-[calc(env(safe-area-inset-bottom)+12px)]">
@@ -569,6 +593,35 @@ function MessageThreadPanelContent({
         </div>
       </div>
     </div>
+  )
+}
+
+function ChatMessageAvatar({
+  message,
+  profilePreviewEnabled,
+  side,
+}: {
+  message: MessageBubbleItem
+  profilePreviewEnabled: boolean
+  side: "left" | "right"
+}) {
+  const avatar = <UserAvatar name={message.senderName} avatarPath={message.senderAvatarPath} size="sm" />
+
+  if (!profilePreviewEnabled || !message.senderUsername) {
+    return avatar
+  }
+
+  return (
+    <UserProfilePreviewCardTrigger
+      username={message.senderUsername}
+      displayName={message.senderName}
+      avatarPath={message.senderAvatarPath}
+      side="top"
+      align={side === "right" ? "end" : "start"}
+      triggerClassName="shrink-0"
+    >
+      {avatar}
+    </UserProfilePreviewCardTrigger>
   )
 }
 

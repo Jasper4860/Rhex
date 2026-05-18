@@ -1,6 +1,7 @@
 import { normalizePostAuctionMode, normalizePostAuctionPricingRule, type LocalPostAuctionMode, type LocalPostAuctionPricingRule } from "@/lib/post-auction-types"
 import { normalizePostType, type LocalPostType } from "@/lib/post-types"
 import { normalizeEmailAddress } from "@/lib/email"
+import { DEFAULT_PASSWORD_MIN_LENGTH, DEFAULT_PASSWORD_STRENGTH, validatePasswordPolicy, type PasswordStrength } from "@/lib/password-policy"
 import { nicknameContainsWhitespace, normalizeNickname } from "@/lib/nickname"
 import { resolveUserNotificationPreferences, type UserNotificationPreferences } from "@/lib/user-notification-preferences"
 import { parseNonNegativeSafeInteger, parsePositiveSafeInteger } from "@/lib/shared/safe-integer"
@@ -28,6 +29,8 @@ interface CommentPayloadValidationOptions {
 interface NicknameValidationOptions {
   nicknameMinLength?: number
   nicknameMaxLength?: number
+  passwordMinLength?: number
+  passwordStrength?: PasswordStrength
 }
 
 function getField(body: unknown, key: string): unknown {
@@ -110,8 +113,13 @@ export function validateAuthPayload(body: unknown, options: NicknameValidationOp
     return { success: false, message: "邀请人用户名需为 3-20 位字母、数字或下划线" }
   }
 
-  if (password.length < 6 || password.length > 64) {
-    return { success: false, message: "密码长度需为 6-64 位" }
+  const passwordPolicyResult = validatePasswordPolicy(password, {
+    minLength: options.passwordMinLength ?? DEFAULT_PASSWORD_MIN_LENGTH,
+    strength: options.passwordStrength ?? DEFAULT_PASSWORD_STRENGTH,
+  })
+
+  if (!passwordPolicyResult.success) {
+    return { success: false, message: passwordPolicyResult.message }
   }
 
   const { nicknameMinLength, nicknameMaxLength } = resolveNicknameLengthRange(options)

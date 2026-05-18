@@ -384,7 +384,7 @@ function CommentAdminActionMenu({
         side="top"
         align="end"
         sideOffset={8}
-        className="w-auto max-w-[min(22rem,calc(100vw-1.5rem))] flex-row flex-wrap justify-end gap-1.5 rounded-2xl p-1.5"
+        className="w-max max-w-[min(30rem,calc(100vw-1.5rem))] flex-row flex-wrap items-center justify-start gap-1.5 rounded-2xl p-1.5"
       >
         {actions.map((action) => (
           <Button
@@ -536,6 +536,16 @@ export function CommentThreadReplyItem({
 
               <div className={cn("flex w-full items-center gap-2 text-[11px] text-muted-foreground", editingCommentId === reply.id && "border-t border-border/50 pt-2")}>
                 <CommentLikeButton commentId={reply.id} initialCount={reply.likes} initialLiked={reply.viewerLiked} />
+                {currentUserId && currentUserId !== reply.authorId ? (
+                  <ReportDialog
+                    targetType="COMMENT"
+                    targetId={reply.id}
+                    targetLabel={`回复 · ${reply.author}`}
+                    buttonText="举报"
+                    icon={<Flag data-icon className="h-4 w-4" />}
+                    buttonClassName="h-auto p-0 text-muted-foreground hover:text-foreground"
+                  />
+                ) : null}
                 {tipping && currentUserId !== reply.authorId ? (
                   <PostTipPanel
                     postId={reply.postId}
@@ -578,20 +588,10 @@ export function CommentThreadReplyItem({
                     <button
                       type="button"
                       onClick={() => onEnableReplyBox({ parentId: parentCommentId, replyToUserName: reply.author, replyToCommentId: reply.id })}
-                      className="transition-colors hover:text-foreground"
+                      className="inline-flex h-8 items-center rounded-full px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-foreground"
                     >
                       回复
                     </button>
-                  ) : null}
-                  {currentUserId && currentUserId !== reply.authorId ? (
-                    <ReportDialog
-                      targetType="COMMENT"
-                      targetId={reply.id}
-                      targetLabel={`回复 · ${reply.author}`}
-                      buttonText="举报"
-                      icon={<Flag className="h-4 w-4" />}
-                      buttonClassName="h-auto p-0 text-muted-foreground hover:text-foreground"
-                    />
                   ) : null}
                   {isFlatLayout && reply.flatFloor ? (
                     <button
@@ -725,6 +725,16 @@ export function CommentThreadCommentItem({
 
               <div className={cn("flex w-full items-center gap-2 text-[11px] text-muted-foreground sm:text-xs", editingCommentId === comment.id && "border-t border-border/60 pt-2")}>
                 <CommentLikeButton commentId={comment.id} initialCount={comment.likes} initialLiked={comment.viewerLiked} />
+                {currentUserId && currentUserId !== comment.authorId ? (
+                  <ReportDialog
+                    targetType="COMMENT"
+                    targetId={comment.id}
+                    targetLabel={`评论 #${comment.floor} · ${comment.author}`}
+                    buttonText="举报"
+                    icon={<Flag data-icon className="h-4 w-4" />}
+                    buttonClassName="h-auto p-0 text-muted-foreground hover:text-foreground"
+                  />
+                ) : null}
                 {tipping && currentUserId !== comment.authorId ? (
                   <PostTipPanel
                     postId={comment.postId}
@@ -769,21 +779,11 @@ export function CommentThreadCommentItem({
                       }}
                     />
                   ) : null}
-                  {currentUserId && currentUserId !== comment.authorId ? (
-                    <ReportDialog
-                      targetType="COMMENT"
-                      targetId={comment.id}
-                      targetLabel={`评论 #${comment.floor} · ${comment.author}`}
-                      buttonText="举报"
-                      icon={<Flag className="h-4 w-4" />}
-                      buttonClassName="h-auto p-0 text-muted-foreground hover:text-foreground"
-                    />
-                  ) : null}
                   {canReply ? (
                     <button
                       type="button"
                       onClick={() => onEnableReplyBox({ parentId: comment.id, replyToUserName: comment.author, replyToCommentId: comment.id })}
-                      className="transition-colors hover:text-foreground"
+                      className="inline-flex h-8 items-center rounded-full px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-foreground"
                     >
                       回复
                     </button>

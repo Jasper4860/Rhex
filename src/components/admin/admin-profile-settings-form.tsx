@@ -464,6 +464,13 @@ export function AdminProfileSettingsForm({
                   description="关闭后首页右侧不再展示置顶公告摘要。"
                 />
                 <SettingsToggleField
+                  label="用户主页 IP 归属地"
+                  checked={draft.userProfileIpLocationEnabled}
+                  onChange={(value) =>
+                    updateDraftField("userProfileIpLocationEnabled", value)}
+                  description="开启后在用户主页基础信息行显示最近登录 IP 的省份或国家/地区，不展示原始 IP。"
+                />
+                <SettingsToggleField
                   label="站内搜索"
                   checked={draft.searchEnabled}
                   onChange={(value) => updateDraftField("searchEnabled", value)}

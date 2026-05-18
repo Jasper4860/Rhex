@@ -4,6 +4,8 @@ import Link from "next/link"
 import type { ReactNode } from "react"
 import {
   ArrowRight,
+  Eye,
+  EyeOff,
   LockKeyhole,
   Mail,
   ShieldCheck,
@@ -44,7 +46,50 @@ import { toast } from "@/components/ui/toast"
 import { collectAddonAuthFieldsFromFormData } from "@/lib/addon-auth-fields"
 import type { AddonExternalAuthEntry } from "@/lib/addon-external-auth-providers"
 import { isEmailInWhitelist } from "@/lib/email"
+import { validatePasswordPolicy } from "@/lib/password-policy"
 import type { SiteSettingsData } from "@/lib/site-settings"
+import { findUsernameSensitiveWord } from "@/lib/username-sensitive-words"
+
+function getUsernameValidationMessage(value: string, settings: SiteSettingsData) {
+  const username = value.trim()
+
+  if (!username) {
+    return ""
+  }
+
+  if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+    return "用户名需为 3-20 位字母、数字或下划线"
+  }
+
+  const matchedWord = findUsernameSensitiveWord(username, settings)
+  return matchedWord ? `用户名包含敏感词：${matchedWord}` : ""
+}
+
+function getNicknameValidationMessage(value: string, settings: SiteSettingsData) {
+  if (!settings.registerNicknameEnabled) {
+    return ""
+  }
+
+  const nickname = value.trim()
+  if (!nickname) {
+    return ""
+  }
+
+  if (/\s/.test(value)) {
+    return "昵称不能包含空格"
+  }
+
+  if (nickname.length < settings.registerNicknameMinLength) {
+    return `昵称长度不能少于 ${settings.registerNicknameMinLength} 个字符`
+  }
+
+  if (nickname.length > settings.registerNicknameMaxLength) {
+    return `昵称长度不能超过 ${settings.registerNicknameMaxLength} 个字符`
+  }
+
+  const matchedWord = findUsernameSensitiveWord(nickname, settings)
+  return matchedWord ? `昵称包含敏感词：${matchedWord}` : ""
+}
 
 interface RegisterFormProps {
   settings: SiteSettingsData
@@ -66,6 +111,9 @@ export function RegisterForm({
   const [username, setUsername] = useState("")
   const [nickname, setNickname] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [emailCode, setEmailCode] = useState("")
@@ -117,6 +165,15 @@ export function RegisterForm({
   const hiddenInviteCodeBound = useMemo(() => !settings.registerInviteCodeEnabled && !!inviteCode, [settings.registerInviteCodeEnabled, inviteCode])
   const hasAlternativeAuth = settings.authGithubEnabled || settings.authGoogleEnabled || settings.authPasskeyEnabled || addonExternalAuthEntries.length > 0
   const hasSecurityStep = useTurnstile || useBuiltinCaptcha || usePowCaptcha || Boolean(addonCaptcha)
+  const usernameValidationMessage = getUsernameValidationMessage(username, settings)
+  const usernameInvalid = Boolean(usernameValidationMessage)
+  const nicknameValidationMessage = getNicknameValidationMessage(nickname, settings)
+  const nicknameInvalid = Boolean(nicknameValidationMessage)
+  const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
+  const passwordPolicyResult = password
+    ? validatePasswordPolicy(password, { minLength: settings.registerPasswordMinLength, strength: settings.registerPasswordStrength })
+    : { success: true, message: "" }
+  const passwordPolicyInvalid = password.length > 0 && !passwordPolicyResult.success
 
   function emailPassesWhitelist(value: string) {
     return !settings.registerEmailWhitelistEnabled
@@ -158,6 +215,29 @@ export function RegisterForm({
       new FormData(event.currentTarget),
     )
 
+    if (usernameInvalid) {
+      toast.warning(usernameValidationMessage, "注册校验")
+      setLoading(false)
+      return
+    }
+
+    if (nicknameInvalid) {
+      toast.warning(nicknameValidationMessage, "注册校验")
+      setLoading(false)
+      return
+    }
+
+    if (passwordPolicyInvalid) {
+      toast.warning(passwordPolicyResult.message, "注册校验")
+      setLoading(false)
+      return
+    }
+
+    if (passwordMismatch) {
+      toast.warning("两次输入的密码不一致", "注册校验")
+      setLoading(false)
+      return
+    }
 
     if ((useTurnstile || useBuiltinCaptcha || usePowCaptcha) && !captchaToken) {
       toast.warning("请先完成验证码验证", "注册校验")
@@ -247,7 +327,7 @@ export function RegisterForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <AuthFormSection>
         <AuthField htmlFor="register-username" label="用户名" required>
-          <InputGroup className="h-11 rounded-2xl bg-background/80">
+          <InputGroup className="h-11 rounded-2xl bg-background/80" data-invalid={usernameInvalid || undefined}>
             <InputGroupAddon>
               <UserRound />
             </InputGroupAddon>
@@ -258,9 +338,16 @@ export function RegisterForm({
               onChange={(event) => setUsername(event.target.value)}
               placeholder="设置用户名"
               autoComplete="username"
+              minLength={3}
+              maxLength={20}
+              pattern="[a-zA-Z0-9_]{3,20}"
+              aria-invalid={usernameInvalid || undefined}
               required
             />
           </InputGroup>
+          {usernameValidationMessage ? (
+            <AuthInlineMessage tone="destructive">{usernameValidationMessage}</AuthInlineMessage>
+          ) : null}
         </AuthField>
 
         {settings.registerNicknameEnabled ? (
@@ -269,7 +356,7 @@ export function RegisterForm({
             label="昵称"
             required={settings.registerNicknameRequired}
           >
-            <InputGroup className="h-11 rounded-2xl bg-background/80">
+            <InputGroup className="h-11 rounded-2xl bg-background/80" data-invalid={nicknameInvalid || undefined}>
               <InputGroupAddon>
                 <Sparkles />
               </InputGroupAddon>
@@ -279,14 +366,20 @@ export function RegisterForm({
                 value={nickname}
                 onChange={(event) => setNickname(event.target.value)}
                 placeholder={settings.registerNicknameRequired ? "设置昵称" : "设置昵称（可选）"}
+                minLength={settings.registerNicknameMinLength}
+                maxLength={settings.registerNicknameMaxLength}
+                aria-invalid={nicknameInvalid || undefined}
                 required={settings.registerNicknameRequired}
               />
             </InputGroup>
+            {nicknameValidationMessage ? (
+              <AuthInlineMessage tone="destructive">{nicknameValidationMessage}</AuthInlineMessage>
+            ) : null}
           </AuthField>
         ) : null}
 
         <AuthField htmlFor="register-password" label="密码" required>
-          <InputGroup className="h-11 rounded-2xl bg-background/80">
+          <InputGroup className="h-11 rounded-2xl bg-background/80" data-invalid={passwordPolicyInvalid || undefined}>
             <InputGroupAddon>
               <LockKeyhole />
             </InputGroupAddon>
@@ -296,11 +389,56 @@ export function RegisterForm({
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="设置密码"
-              type="password"
+              type={showPassword ? "text" : "password"}
               autoComplete="new-password"
+              minLength={settings.registerPasswordMinLength}
+              aria-invalid={passwordPolicyInvalid || undefined}
               required
             />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                type="button"
+                aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                onClick={() => setShowPassword((current) => !current)}
+              >
+                {showPassword ? <EyeOff data-icon /> : <Eye data-icon />}
+              </InputGroupButton>
+            </InputGroupAddon>
           </InputGroup>
+          {passwordPolicyInvalid ? (
+            <AuthInlineMessage tone="destructive">{passwordPolicyResult.message}</AuthInlineMessage>
+          ) : null}
+        </AuthField>
+
+        <AuthField htmlFor="register-confirm-password" label="确认密码" required>
+          <InputGroup className="h-11 rounded-2xl bg-background/80" data-invalid={passwordMismatch || undefined}>
+            <InputGroupAddon>
+              <LockKeyhole />
+            </InputGroupAddon>
+            <InputGroupInput
+              id="register-confirm-password"
+              name="confirmPassword"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="再次输入密码"
+              type={showConfirmPassword ? "text" : "password"}
+              autoComplete="new-password"
+              aria-invalid={passwordMismatch || undefined}
+              required
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                type="button"
+                aria-label={showConfirmPassword ? "隐藏确认密码" : "显示确认密码"}
+                onClick={() => setShowConfirmPassword((current) => !current)}
+              >
+                {showConfirmPassword ? <EyeOff data-icon /> : <Eye data-icon />}
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+          {passwordMismatch ? (
+            <AuthInlineMessage tone="destructive">两次输入的密码不一致</AuthInlineMessage>
+          ) : null}
         </AuthField>
 
         {settings.registerGenderEnabled ? (
@@ -462,7 +600,7 @@ export function RegisterForm({
       ) : null}
 
       <div className="flex flex-col gap-3">
-        <Button type="submit" size="lg" className="h-11 w-full" disabled={loading}>
+        <Button type="submit" size="lg" className="h-11 w-full" disabled={loading || usernameInvalid || nicknameInvalid || passwordPolicyInvalid || passwordMismatch}>
           {loading ? (
             <>
               <Spinner data-icon="inline-start" />

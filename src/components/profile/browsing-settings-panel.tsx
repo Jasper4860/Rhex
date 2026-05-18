@@ -1,7 +1,7 @@
 "use client"
 
 import { Palette, Settings2 } from "lucide-react"
-import { Compass, ExternalLink, EyeOff, MessageSquareText, Sparkles, type LucideIcon } from "lucide-react"
+import { ArrowDownUp, Compass, ExternalLink, EyeOff, MessageSquareText, Sparkles, type LucideIcon } from "lucide-react"
 import { useState, useSyncExternalStore } from "react"
 
 import { CustomThemeModal } from "@/components/custom-theme-modal"
@@ -70,6 +70,17 @@ export function BrowsingSettingsPanel() {
               { value: "flat", label: "平铺" },
             ]}
             onChange={(value) => updateBrowsingPreferences({ commentThreadDisplayMode: value })}
+          />
+          <ChoiceRow
+            icon={ArrowDownUp}
+            title="评论排序"
+            description="控制帖子详情页评论区默认按发布时间正序或倒序显示。"
+            value={preferences.commentThreadSort}
+            options={[
+              { value: "oldest", label: "最早" },
+              { value: "newest", label: "最新" },
+            ]}
+            onChange={(value) => updateBrowsingPreferences({ commentThreadSort: value })}
           />
           <ChoiceRow
             icon={Sparkles}

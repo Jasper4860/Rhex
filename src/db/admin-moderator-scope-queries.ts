@@ -1,3 +1,4 @@
+import { UserRole } from "@/db/types"
 import { prisma } from "@/db/client"
 
 export interface ModeratorScopeAssignmentInput {
@@ -64,5 +65,119 @@ export async function replaceModeratorScopes(
         })),
       })
     }
+  })
+}
+
+export function findModeratorUserByUsername(username: string) {
+  return prisma.user.findUnique({
+    where: { username },
+    select: {
+      id: true,
+      username: true,
+      nickname: true,
+      role: true,
+      status: true,
+    },
+  })
+}
+
+export async function findModeratorTargetContext(input: {
+  targetType: "zone" | "board"
+  targetId: string
+}) {
+  if (input.targetType === "zone") {
+    const zone = await prisma.zone.findUnique({
+      where: { id: input.targetId },
+      select: { id: true, name: true },
+    })
+
+    return zone ? { id: zone.id, name: zone.name, type: "zone" as const } : null
+  }
+
+  const board = await prisma.board.findUnique({
+    where: { id: input.targetId },
+    select: { id: true, name: true },
+  })
+
+  return board ? { id: board.id, name: board.name, type: "board" as const } : null
+}
+
+export async function upsertModeratorTargetScope(input: {
+  moderatorId: number
+  targetType: "zone" | "board"
+  targetId: string
+  canEditSettings: boolean
+  canWithdrawTreasury: boolean
+  promoteToModerator?: boolean
+}) {
+  return prisma.$transaction(async (tx) => {
+    if (input.promoteToModerator) {
+      await tx.user.update({
+        where: { id: input.moderatorId },
+        data: { role: UserRole.MODERATOR },
+      })
+    }
+
+    if (input.targetType === "zone") {
+      return tx.moderatorZoneScope.upsert({
+        where: {
+          moderatorId_zoneId: {
+            moderatorId: input.moderatorId,
+            zoneId: input.targetId,
+          },
+        },
+        create: {
+          moderatorId: input.moderatorId,
+          zoneId: input.targetId,
+          canEditSettings: input.canEditSettings,
+          canWithdrawTreasury: input.canWithdrawTreasury,
+        },
+        update: {
+          canEditSettings: input.canEditSettings,
+          canWithdrawTreasury: input.canWithdrawTreasury,
+        },
+      })
+    }
+
+    return tx.moderatorBoardScope.upsert({
+      where: {
+        moderatorId_boardId: {
+          moderatorId: input.moderatorId,
+          boardId: input.targetId,
+        },
+      },
+      create: {
+        moderatorId: input.moderatorId,
+        boardId: input.targetId,
+        canEditSettings: input.canEditSettings,
+        canWithdrawTreasury: input.canWithdrawTreasury,
+      },
+      update: {
+        canEditSettings: input.canEditSettings,
+        canWithdrawTreasury: input.canWithdrawTreasury,
+      },
+    })
+  })
+}
+
+export function deleteModeratorTargetScope(input: {
+  moderatorId: number
+  targetType: "zone" | "board"
+  targetId: string
+}) {
+  if (input.targetType === "zone") {
+    return prisma.moderatorZoneScope.deleteMany({
+      where: {
+        moderatorId: input.moderatorId,
+        zoneId: input.targetId,
+      },
+    })
+  }
+
+  return prisma.moderatorBoardScope.deleteMany({
+    where: {
+      moderatorId: input.moderatorId,
+      boardId: input.targetId,
+    },
   })
 }

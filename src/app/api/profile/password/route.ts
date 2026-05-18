@@ -8,6 +8,7 @@ import { apiError, apiSuccess, createUserRouteHandler, readJsonBody, requireStri
 import { logRouteWriteSuccess } from "@/lib/route-metadata"
 import { getSessionClearedCookieOptions, getSessionCookieName, readSessionTokenFromCookieHeader, revokeSessionToken } from "@/lib/session"
 import { getSiteSettings } from "@/lib/site-settings"
+import { validatePasswordPolicy } from "@/lib/password-policy"
 
 
 export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
@@ -22,10 +23,6 @@ export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
     apiError(400, "缺少必要参数")
   }
 
-  if (newPassword.length < 6 || newPassword.length > 64) {
-    apiError(400, "新密码长度需为 6-64 位")
-  }
-
   const [settings, user] = await Promise.all([
     getSiteSettings(),
     prisma.user.findUnique({
@@ -38,6 +35,15 @@ export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
       },
     }),
   ])
+
+  const passwordPolicyResult = validatePasswordPolicy(newPassword, {
+    minLength: settings.registerPasswordMinLength,
+    strength: settings.registerPasswordStrength,
+  })
+
+  if (!passwordPolicyResult.success) {
+    apiError(400, passwordPolicyResult.message)
+  }
 
   if (!user) {
     apiError(404, "用户不存在")

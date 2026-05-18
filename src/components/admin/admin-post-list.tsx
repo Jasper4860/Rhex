@@ -12,7 +12,7 @@ import {
   Sparkles,
   TrendingUp,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useTransition } from "react"
 
 import { AdminPostActionButton } from "@/components/admin/admin-post-action-button"
 import {
@@ -24,10 +24,13 @@ import {
 } from "@/components/admin/admin-filter-card"
 import { AdminPostPreviewModal } from "@/components/admin/admin-post-preview-modal"
 import { AdminPostMoveBoardButton } from "@/components/admin/admin-post-move-board-button"
+import { BoardSelectField } from "@/components/board/board-select-field"
 import { AdminSummaryStrip } from "@/components/admin/admin-summary-strip"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { buttonVariants } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { showConfirm } from "@/components/ui/alert-dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +50,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Modal } from "@/components/ui/modal"
+import { toast } from "@/components/ui/toast"
 import {
   Table,
   TableBody,
@@ -77,6 +82,7 @@ const statusFilters = [
   { value: "ALL", label: "全部状态" },
   { value: "PENDING", label: "待审核" },
   { value: "NORMAL", label: "正常" },
+  { value: "LOCKED", label: "已关闭" },
   { value: "OFFLINE", label: "已下线" },
 ]
 
@@ -122,6 +128,12 @@ export function AdminPostList({ data }: AdminPostListProps) {
     pageSize: String(data.pagination.pageSize),
   })
 
+  const router = useRouter()
+  const [selectedPostIdsState, setSelectedPostIds] = useState<string[]>([])
+  const [batchMoveDialogOpen, setBatchMoveDialogOpen] = useState(false)
+  const [batchMoveBoardSlug, setBatchMoveBoardSlug] = useState("")
+  const [batchMoveFeedback, setBatchMoveFeedback] = useState("")
+  const [isBatchPending, startBatchTransition] = useTransition()
   const canUseGlobalPin = data.actorRole === "ADMIN"
   const groupedBoardOptions = useMemo(() => {
     const groups = new Map<string, Array<{ value: string; label: string }>>()
@@ -135,6 +147,127 @@ export function AdminPostList({ data }: AdminPostListProps) {
 
     return Array.from(groups.entries()).map(([zone, items]) => ({ zone, items }))
   }, [data.boardOptions])
+
+  const visiblePostIds = useMemo(() => new Set(data.posts.map((post) => post.id)), [data.posts])
+  const selectedPostIds = useMemo(
+    () => selectedPostIdsState.filter((postId) => visiblePostIds.has(postId)),
+    [selectedPostIdsState, visiblePostIds],
+  )
+  const selectedCount = selectedPostIds.length
+  const allCurrentPageSelected = data.posts.length > 0 && selectedCount === data.posts.length
+  const someCurrentPageSelected = selectedCount > 0 && !allCurrentPageSelected
+
+  const batchMoveBoardLabel = useMemo(() => {
+    for (const group of groupedBoardOptions) {
+      const board = group.items.find((item) => item.value === batchMoveBoardSlug)
+      if (board) {
+        return `${group.zone} / ${board.label}`
+      }
+    }
+
+    return batchMoveBoardSlug
+  }, [batchMoveBoardSlug, groupedBoardOptions])
+
+  function toggleSelectPost(postId: string, checked: boolean) {
+    setSelectedPostIds((current) => {
+      if (checked) {
+        return current.includes(postId) ? current : [...current, postId]
+      }
+
+      return current.filter((item) => item !== postId)
+    })
+  }
+
+  function toggleSelectCurrentPage(checked: boolean) {
+    const currentPageIds = data.posts.map((post) => post.id)
+    setSelectedPostIds((current) => {
+      if (checked) {
+        return [...new Set([...current, ...currentPageIds])]
+      }
+
+      return current.filter((postId) => !visiblePostIds.has(postId))
+    })
+  }
+
+  async function confirmBatchAction(action: string, title: string, description: string, confirmText: string, danger = false) {
+    if (selectedCount === 0) {
+      toast.warning("请先选择要处理的帖子", "批量操作")
+      return
+    }
+
+    const confirmed = await showConfirm({
+      title,
+      description,
+      confirmText,
+      cancelText: "取消",
+      variant: danger ? "danger" : "default",
+    })
+
+    if (!confirmed) {
+      return
+    }
+
+    submitBatchAction(action)
+  }
+
+  function submitBatchAction(action: string, extra: Record<string, unknown> = {}) {
+    if (selectedCount === 0) {
+      toast.warning("请先选择要处理的帖子", "批量操作")
+      return
+    }
+
+    startBatchTransition(async () => {
+      try {
+        const response = await fetch("/api/admin/posts/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action,
+            postIds: selectedPostIds,
+            ...extra,
+          }),
+        })
+        const result = await response.json().catch(() => null) as { message?: string; data?: { failedCount?: number } } | null
+
+        if (!response.ok) {
+          throw new Error(result?.message ?? "批量操作失败")
+        }
+
+        if (result?.data?.failedCount && result.data.failedCount > 0) {
+          toast.warning(result.message ?? "部分帖子处理失败", "批量操作完成")
+        } else {
+          toast.success(result?.message ?? "批量操作已完成", "操作成功")
+        }
+
+        setSelectedPostIds([])
+        setBatchMoveDialogOpen(false)
+        setBatchMoveFeedback("")
+        router.refresh()
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "批量操作失败", "操作失败")
+      }
+    })
+  }
+
+  function openBatchMoveDialog() {
+    if (selectedCount === 0) {
+      toast.warning("请先选择要处理的帖子", "批量操作")
+      return
+    }
+
+    setBatchMoveBoardSlug("")
+    setBatchMoveFeedback("")
+    setBatchMoveDialogOpen(true)
+  }
+
+  function confirmBatchMove() {
+    if (!batchMoveBoardSlug) {
+      setBatchMoveFeedback("请选择目标节点")
+      return
+    }
+
+    submitBatchAction("post.moveBoard", { boardSlug: batchMoveBoardSlug })
+  }
 
   const statCards = useMemo(
     () => [
@@ -325,6 +458,34 @@ export function AdminPostList({ data }: AdminPostListProps) {
             <OverviewActionLink href="/admin?tab=posts&status=PENDING" label="查看待审核" />
           </CardAction>
         </CardHeader>
+        {data.posts.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <label className="flex items-center gap-2">
+                <Checkbox
+                  checked={allCurrentPageSelected || someCurrentPageSelected}
+                  onCheckedChange={(checked) => toggleSelectCurrentPage(checked === true)}
+                  aria-label="全选本页帖子"
+                />
+                <span>全选本页</span>
+              </label>
+              <span>已选 {selectedCount} 篇</span>
+              {selectedCount > 0 ? (
+                <Button type="button" variant="ghost" size="sm" className="rounded-full px-3 text-xs" disabled={isBatchPending} onClick={() => setSelectedPostIds([])}>
+                  清空选择
+                </Button>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" className="rounded-full px-3 text-xs" disabled={selectedCount === 0 || isBatchPending} onClick={openBatchMoveDialog}>批量换节点</Button>
+              <Button type="button" variant="outline" size="sm" className="rounded-full px-3 text-xs" disabled={selectedCount === 0 || isBatchPending} onClick={() => void confirmBatchAction("post.lock", "批量关闭帖子", `确认关闭已选中的 ${selectedCount} 篇帖子吗？关闭后将进入已锁定状态。`, "批量关闭")}>批量关闭</Button>
+              <Button type="button" variant="outline" size="sm" className="rounded-full px-3 text-xs" disabled={selectedCount === 0 || isBatchPending} onClick={() => void confirmBatchAction("post.unlock", "批量开放帖子", `确认开放已选中的 ${selectedCount} 篇帖子吗？`, "批量开放")}>批量开放</Button>
+              <Button type="button" variant="outline" size="sm" className="rounded-full px-3 text-xs" disabled={selectedCount === 0 || isBatchPending} onClick={() => void confirmBatchAction("post.show", "批量恢复帖子", `确认恢复已选中的 ${selectedCount} 篇帖子吗？`, "批量恢复")}>批量恢复</Button>
+              <Button type="button" variant="outline" size="sm" className="rounded-full border-rose-200 px-3 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700" disabled={selectedCount === 0 || isBatchPending} onClick={() => void confirmBatchAction("post.hide", "批量隐藏帖子", `确认隐藏已选中的 ${selectedCount} 篇帖子吗？隐藏后前台不再展示。`, "批量隐藏", true)}>批量隐藏</Button>
+              <Button type="button" variant="outline" size="sm" className="rounded-full border-rose-200 px-3 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700" disabled={selectedCount === 0 || isBatchPending} onClick={() => void confirmBatchAction("post.delete", "批量删除帖子", `确认删除已选中的 ${selectedCount} 篇帖子吗？此操作不可撤销。`, "批量删除", true)}>批量删除</Button>
+            </div>
+          </div>
+        ) : null}
         <CardContent className="px-0 py-0">
           {data.posts.length === 0 ? (
             <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
@@ -338,6 +499,13 @@ export function AdminPostList({ data }: AdminPostListProps) {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-[52px]">
+                    <Checkbox
+                      checked={allCurrentPageSelected || someCurrentPageSelected}
+                      onCheckedChange={(checked) => toggleSelectCurrentPage(checked === true)}
+                      aria-label="全选本页帖子"
+                    />
+                  </TableHead>
                   <TableHead>帖子</TableHead>
                   <TableHead className="w-[140px]">节点</TableHead>
                   <TableHead className="w-[130px]">作者</TableHead>
@@ -352,7 +520,14 @@ export function AdminPostList({ data }: AdminPostListProps) {
               </TableHeader>
               <TableBody>
                 {data.posts.map((post) => (
-                  <TableRow key={post.id}>
+                  <TableRow key={post.id} data-state={selectedPostIds.includes(post.id) ? "selected" : undefined}>
+                    <TableCell className="align-top">
+                      <Checkbox
+                        checked={selectedPostIds.includes(post.id)}
+                        onCheckedChange={(checked) => toggleSelectPost(post.id, checked === true)}
+                        aria-label={`选择帖子 ${post.title}`}
+                      />
+                    </TableCell>
                     <TableCell className="align-top">
                       <PostTitleCell post={post} />
                     </TableCell>
@@ -418,6 +593,39 @@ export function AdminPostList({ data }: AdminPostListProps) {
           </div>
         </CardFooter>
       </Card>
+
+      <Modal
+        open={batchMoveDialogOpen}
+        onClose={() => setBatchMoveDialogOpen(false)}
+        title="批量换节点"
+        description={`已选中 ${selectedCount} 篇帖子，确认后将统一移动到目标节点。`}
+        footer={(
+          <div className="flex items-center justify-end gap-2">
+            <Button type="button" variant="ghost" className="h-9 px-4 text-sm" onClick={() => setBatchMoveDialogOpen(false)} disabled={isBatchPending}>
+              取消
+            </Button>
+            <Button type="button" className="h-9 px-4 text-sm" onClick={confirmBatchMove} disabled={isBatchPending || !batchMoveBoardSlug}>
+              {isBatchPending ? "移动中..." : "确认移动"}
+            </Button>
+          </div>
+        )}
+      >
+        <div className="flex flex-col gap-4">
+          <div className="rounded-[18px] border border-border bg-card/60 p-4 text-sm text-muted-foreground">
+            <p>已选帖子：{selectedCount} 篇</p>
+            <p className="mt-1">目标节点：{batchMoveBoardLabel || "请选择目标节点"}</p>
+          </div>
+          <BoardSelectField
+            value={batchMoveBoardSlug}
+            onChange={setBatchMoveBoardSlug}
+            boardOptions={groupedBoardOptions}
+            disabled={isBatchPending}
+            title="选择目标节点"
+            description="确认后将对已选帖子逐一校验权限并移动节点。"
+          />
+          {batchMoveFeedback ? <p className="text-xs text-destructive">{batchMoveFeedback}</p> : null}
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -635,8 +843,23 @@ function PostActionsCell({
                     删除
                   </DropdownMenuItem>
                 </>
+              ) : post.status === "LOCKED" ? (
+                <>
+                  <DropdownMenuItem onClick={() => setActiveAction("unlock")}>
+                    开放
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setActiveAction("hide")} variant="destructive">
+                    下线
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setActiveAction("delete")} variant="destructive">
+                    删除
+                  </DropdownMenuItem>
+                </>
               ) : (
                 <>
+                  <DropdownMenuItem onClick={() => setActiveAction("lock")}>
+                    关闭
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setActiveAction("hide")} variant="destructive">
                     下线
                   </DropdownMenuItem>
@@ -796,8 +1019,65 @@ function PostActionsCell({
                 onOpenChange={(open) => setActiveAction(open ? "delete" : null)}
               />
             </>
+          ) : post.status === "LOCKED" ? (
+            <>
+              <AdminPostActionButton
+                action="post.unlock"
+                targetId={post.id}
+                label="开放"
+                modalTitle="确认开放帖子"
+                modalDescription={`帖子：${post.title}`}
+                placeholder="填写开放说明（可选）"
+                confirmText="确认开放"
+                className="h-7 rounded-full px-2.5 text-xs"
+                hideTrigger
+                open={activeAction === "unlock"}
+                onOpenChange={(open) => setActiveAction(open ? "unlock" : null)}
+              />
+              <AdminPostActionButton
+                action="post.hide"
+                targetId={post.id}
+                label="下线"
+                tone="danger"
+                modalTitle="确认下线帖子"
+                modalDescription={`帖子：${post.title}`}
+                placeholder="填写下线原因（可选）"
+                confirmText="确认下线"
+                className="h-7 rounded-full bg-red-600 px-2.5 text-xs text-white hover:bg-red-500"
+                hideTrigger
+                open={activeAction === "hide"}
+                onOpenChange={(open) => setActiveAction(open ? "hide" : null)}
+              />
+              <AdminPostActionButton
+                action="post.delete"
+                targetId={post.id}
+                label="删除"
+                tone="danger"
+                modalTitle="确认删除帖子"
+                modalDescription={`帖子：${post.title}`}
+                placeholder="填写删除原因（可选）"
+                confirmText="确认删除"
+                className="h-7 rounded-full bg-red-700 px-2.5 text-xs text-white hover:bg-red-600"
+                hideTrigger
+                open={activeAction === "delete"}
+                onOpenChange={(open) => setActiveAction(open ? "delete" : null)}
+              />
+            </>
           ) : (
             <>
+              <AdminPostActionButton
+                action="post.lock"
+                targetId={post.id}
+                label="关闭"
+                modalTitle="确认关闭帖子"
+                modalDescription={`帖子：${post.title}`}
+                placeholder="填写关闭原因（可选）"
+                confirmText="确认关闭"
+                className="h-7 rounded-full px-2.5 text-xs"
+                hideTrigger
+                open={activeAction === "lock"}
+                onOpenChange={(open) => setActiveAction(open ? "lock" : null)}
+              />
               <AdminPostActionButton
                 action="post.hide"
                 targetId={post.id}
@@ -904,6 +1184,10 @@ function getPostStatusBadgeClassName(status: string) {
 
   if (status === "OFFLINE") {
     return "border-transparent bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-200"
+  }
+
+  if (status === "LOCKED") {
+    return "border-transparent bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200"
   }
 
   return "border-transparent bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200"

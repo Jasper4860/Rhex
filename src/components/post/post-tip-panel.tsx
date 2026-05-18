@@ -532,7 +532,7 @@ export function PostTipPanel({
         </Tooltip>
         {open && isClient
           ? createPortal(
-              <div className="pointer-events-none fixed inset-0 z-70 overflow-visible">
+              <div className="pointer-events-none fixed inset-0 z-[225] overflow-visible">
                 {floatingGiftPulses.map((pulse) => {
                   const anchor = giftAnchorPositions[pulse.giftId]
                   if (!anchor) {

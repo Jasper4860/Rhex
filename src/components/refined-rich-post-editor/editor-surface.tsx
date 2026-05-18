@@ -59,9 +59,9 @@ export function EditorHeader({
           </button>
         </div>
       ) : null}
-      <div className="border-b border-border px-5">
-        <div className="flex min-h-10 items-center justify-between gap-4">
-          <div className="flex gap-4">
+      <div className="border-b border-border px-3 sm:px-5">
+        <div className="flex min-h-10 min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 py-2 sm:flex-nowrap sm:py-0">
+          <div className="flex min-w-0 flex-1 gap-3 overflow-x-auto [scrollbar-width:none] sm:gap-4 [&::-webkit-scrollbar]:hidden">
             <button
               type="button"
               onClick={() => onTabChange("write")}
@@ -84,8 +84,8 @@ export function EditorHeader({
               预览
             </button>
           </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <p className="text-xs text-muted-foreground">{valueLength} 字符{uploading ? " · 上传中" : ""}</p>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <p className="hidden text-xs text-muted-foreground sm:block">{valueLength} 字符{uploading ? " · 上传中" : ""}</p>
             {!disabled && !isFullscreen ? (
               <button
                 type="button"
@@ -444,8 +444,8 @@ export function EditorToolbar({
   }
 
   return (
-    <div className={`relative flex flex-col gap-3 border-t border-border ${isFullscreen ? "" : "mt-2 pt-2"} sm:flex-row sm:items-center sm:justify-between`}>
-      <div className="-mx-1 flex w-full items-center gap-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-auto sm:px-0 sm:pb-0">
+    <div className={`relative flex min-w-0 max-w-full flex-col gap-3 border-t border-border ${isFullscreen ? "" : "mt-2 pt-2"} sm:flex-row sm:items-center sm:justify-between`}>
+      <div className="-mx-1 flex min-w-0 max-w-full items-center gap-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-auto sm:px-0 sm:pb-0">
         <HeadingSelect
           disabled={disabled}
           platform={platform}

@@ -1,5 +1,6 @@
 import type { RegistrationEmailTemplateSettings } from "@/lib/site-settings-app-state"
 import type { UsernameSensitiveWordSettings } from "@/lib/username-sensitive-words"
+import type { PasswordStrength } from "@/lib/password-policy"
 
 export interface SiteSettingsRegistrationData extends UsernameSensitiveWordSettings {
   registrationEnabled: boolean
@@ -21,6 +22,8 @@ export interface SiteSettingsRegistrationData extends UsernameSensitiveWordSetti
   sessionIpMismatchLogoutEnabled: boolean
   loginIpChangeEmailAlertEnabled: boolean
   passwordChangeRequireEmailVerification: boolean
+  registerPasswordMinLength: number
+  registerPasswordStrength: PasswordStrength
   registerEmailWhitelistEnabled: boolean
   registerEmailWhitelistDomains: string[]
   registerPhoneEnabled: boolean

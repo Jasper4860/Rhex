@@ -19,6 +19,7 @@ import {
   type MessageStreamCursor,
 } from "@/lib/message-event-bus"
 import { notificationEventBus } from "@/lib/notification-event-bus"
+import { getSiteSettings } from "@/lib/site-settings"
 import { SITE_CHAT_ROOM_DB_ID, isSiteChatConversationId } from "@/lib/site-chat"
 import { getUserDisplayName } from "@/lib/user-display"
 
@@ -34,15 +35,26 @@ interface MessageStreamEventEnvelope {
 }
 
 async function getInboxSnapshot(userId: number) {
-  const [unreadMessageCount, unreadNotificationCount] = await Promise.all([
-    getUnreadConversationCount(userId),
-    countUnreadNotifications(userId),
-  ])
+  const settings = await getSiteSettings()
+  const unreadNotificationCount = await countUnreadNotifications(userId)
+
+  if (!settings.messageEnabled) {
+    return {
+      unreadMessageCount: 0,
+      unreadNotificationCount,
+    }
+  }
+
+  const unreadMessageCount = await getUnreadConversationCount(userId)
 
   return {
     unreadMessageCount,
     unreadNotificationCount,
   }
+}
+
+async function getMessageFeatureEnabled() {
+  return (await getSiteSettings()).messageEnabled
 }
 
 function mapMessageRowToEnvelope(
@@ -184,10 +196,13 @@ export const GET = createUserRouteHandler(async ({ request, currentUser }) => {
   const cursorParam = requestUrl.searchParams.get("cursor")
   const lastEventId = request.headers.get("last-event-id")
   const requestedCursor = parseMessageStreamCursor(cursorParam) ?? parseMessageStreamCursor(lastEventId)
-  const [initialCursor, inboxSnapshot] = await Promise.all([
-    requestedCursor ? Promise.resolve(requestedCursor) : findLatestCursor(currentUser.id),
+  const [messageEnabled, inboxSnapshot] = await Promise.all([
+    getMessageFeatureEnabled(),
     getInboxSnapshot(currentUser.id),
   ])
+  const initialCursor = messageEnabled
+    ? requestedCursor ?? await findLatestCursor(currentUser.id)
+    : null
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
@@ -305,6 +320,10 @@ export const GET = createUserRouteHandler(async ({ request, currentUser }) => {
       }
 
       const drainCatchUp = async () => {
+        if (!messageEnabled) {
+          return
+        }
+
         let hasMore = true
 
         while (!closed && hasMore) {
@@ -327,14 +346,16 @@ export const GET = createUserRouteHandler(async ({ request, currentUser }) => {
         }
       }
 
-      unsubscribeMessageEvents = messageEventBus.subscribe(currentUser.id, (event) => {
-        const nextCursor = getMessageStreamCursorFromEvent(event)
-        if (nextCursor && !isMessageStreamCursorAfter(nextCursor, cursor)) {
-          return
-        }
+      if (messageEnabled) {
+        unsubscribeMessageEvents = messageEventBus.subscribe(currentUser.id, (event) => {
+          const nextCursor = getMessageStreamCursorFromEvent(event)
+          if (nextCursor && !isMessageStreamCursorAfter(nextCursor, cursor)) {
+            return
+          }
 
-        bufferOrDeliverEvent(event)
-      })
+          bufferOrDeliverEvent(event)
+        })
+      }
 
       unsubscribeNotificationEvents = notificationEventBus.subscribe(currentUser.id, (event) => {
         bufferOrDeliverEvent(event)

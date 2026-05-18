@@ -81,7 +81,7 @@ export function MobileHeaderQuickActions({
     }
 
     return null
-  }, [currentBoard?.zone, pathname, zones])
+  }, [currentBoard, pathname, zones])
 
   const [selectedZoneSlug, setSelectedZoneSlug] = useState(currentZone?.slug ?? zones[0]?.slug ?? "")
 

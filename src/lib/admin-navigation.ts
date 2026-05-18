@@ -46,6 +46,7 @@ export type AdminSettingsSectionKey =
   | "registration"
   | "board-applications"
   | "interaction"
+  | "messages"
   | "friend-links"
   | "invite-codes"
   | "redeem-codes"
@@ -104,6 +105,7 @@ export const adminSettingsSections: AdminSettingsSectionKey[] = [
   "registration",
   "board-applications",
   "interaction",
+  "messages",
   "friend-links",
   "invite-codes",
   "redeem-codes",
@@ -119,6 +121,7 @@ export const sectionsRequiringSiteSettings = new Set<AdminSettingsSectionKey>([
   "registration",
   "board-applications",
   "interaction",
+  "messages",
   "vip",
   "upload",
 ])
@@ -166,6 +169,7 @@ export const adminSettingsGroups = [
     defaultSection: "interaction",
     sections: [
       { key: "interaction", label: "互动与热度" },
+      { key: "messages", label: "私信" },
       { key: "board-applications", label: "节点申请" },
       { key: "friend-links", label: "友情链接" },
     ],

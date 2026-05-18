@@ -8,6 +8,7 @@ import {
   mergeAuthProviderSettings,
   mergeRegisterInviteCodeHelpSettings,
   mergeRegisterNicknameLengthSettings,
+  mergeRegisterPasswordPolicySettings,
   mergeRegistrationEmailTemplateSettings,
   mergeRegistrationRewardSettings,
   mergeSiteSecuritySettings,
@@ -16,6 +17,7 @@ import {
   resolveRegisterEmailWhitelistSettings,
   resolveRegistrationEmailTemplateSettings,
   resolveRegisterNicknameLengthSettings,
+  resolveRegisterPasswordPolicySettings,
   resolveRegistrationRewardSettings,
   resolveSiteSecuritySettings,
   resolveUsernameSensitiveWordSettings,
@@ -23,6 +25,7 @@ import {
 import { mergeAuthProviderSensitiveConfig, mergeCaptchaSensitiveConfig } from "@/lib/site-settings-sensitive-state"
 import { normalizeCaptchaMode } from "@/lib/shared/config-parsers"
 import { normalizeUsernameSensitiveWords } from "@/lib/username-sensitive-words"
+import { normalizePasswordMinLength, normalizePasswordStrength } from "@/lib/password-policy"
 
 function isSupportedInviteCodeHelpUrl(value: string) {
   return value.startsWith("/") || /^https?:\/\//i.test(value)
@@ -55,6 +58,11 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
     minLengthFallback: 1,
     maxLengthFallback: 20,
   })
+  const existingRegisterPasswordPolicySettings = resolveRegisterPasswordPolicySettings({
+    appStateJson: existing.appStateJson,
+    minLengthFallback: 6,
+    strengthFallback: "LOW",
+  })
   const registrationEnabled = Boolean(body.registrationEnabled)
   const authPageShowcaseEnabled = "authPageShowcaseEnabled" in body ? Boolean(body.authPageShowcaseEnabled) : true
   const registrationRequireInviteCode = Boolean(body.registrationRequireInviteCode)
@@ -86,6 +94,14 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
   const passwordChangeRequireEmailVerification = "passwordChangeRequireEmailVerification" in body
     ? Boolean(body.passwordChangeRequireEmailVerification)
     : existingSiteSecuritySettings.passwordChangeRequireEmailVerification
+  const registerPasswordMinLength = normalizePasswordMinLength(
+    "registerPasswordMinLength" in body ? body.registerPasswordMinLength : undefined,
+    existingRegisterPasswordPolicySettings.minLength,
+  )
+  const registerPasswordStrength = normalizePasswordStrength(
+    "registerPasswordStrength" in body ? body.registerPasswordStrength : undefined,
+    existingRegisterPasswordPolicySettings.strength,
+  )
   const usernameSensitiveWordsEnabled = "usernameSensitiveWordsEnabled" in body
     ? Boolean(body.usernameSensitiveWordsEnabled)
     : existingUsernameSensitiveWordSettings.usernameSensitiveWordsEnabled
@@ -217,7 +233,11 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
     minLength: registerNicknameMinLength,
     maxLength: registerNicknameMaxLength,
   })
-  const appStateWithRegisterInviteCodeHelp = mergeRegisterInviteCodeHelpSettings(appStateWithRegisterNicknameLengths, {
+  const appStateWithRegisterPasswordPolicy = mergeRegisterPasswordPolicySettings(appStateWithRegisterNicknameLengths, {
+    minLength: registerPasswordMinLength,
+    strength: registerPasswordStrength,
+  })
+  const appStateWithRegisterInviteCodeHelp = mergeRegisterInviteCodeHelpSettings(appStateWithRegisterPasswordPolicy, {
     enabled: registerInviteCodeHelpEnabled,
     title: registerInviteCodeHelpTitle,
     url: registerInviteCodeHelpUrl,

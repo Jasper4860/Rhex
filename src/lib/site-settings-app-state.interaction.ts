@@ -2,6 +2,7 @@ import { parseNonNegativeSafeInteger } from "@/lib/shared/safe-integer"
 import { getDefaultTippingGiftItemsFromAmounts, normalizeTippingGiftItems } from "@/lib/tipping-gifts"
 import { normalizeVipLevelIcons } from "@/lib/vip-level-icons"
 import { normalizeVipNameColors } from "@/lib/vip-name-colors"
+import { normalizeCommentLoadMode, type CommentLoadMode } from "@/lib/comment-load-mode"
 import {
   isRecord,
   normalizeNonNegativeInteger,
@@ -55,6 +56,7 @@ export function resolveCommentAccessSettings(options: {
   appStateJson?: string | null
   guestCanViewFallback?: boolean
   initialVisibleRepliesFallback?: number
+  loadModeFallback?: CommentLoadMode
 } = {}): CommentAccessSettings {
   const siteSettingsState = readSiteSettingsState(options.appStateJson)
   const commentAccess = isRecord(siteSettingsState.commentAccess)
@@ -76,6 +78,7 @@ export function resolveCommentAccessSettings(options: {
         ),
       ),
     ),
+    loadMode: normalizeCommentLoadMode(commentAccess.loadMode, options.loadModeFallback),
   }
 }
 
@@ -90,6 +93,7 @@ export function mergeCommentAccessSettings(
     commentAccess: {
       guestCanView: input.guestCanView,
       initialVisibleReplies: Math.min(100, Math.max(1, normalizeNonNegativeInteger(input.initialVisibleReplies, 10))),
+      loadMode: normalizeCommentLoadMode(input.loadMode),
     },
   })
 }

@@ -51,6 +51,7 @@ interface InboxRealtimeProviderProps {
   currentUserId?: number | null
   initialUnreadMessageCount?: number
   initialUnreadNotificationCount?: number
+  messageEnabled?: boolean
   messagePromptAudioPath?: string
 }
 
@@ -59,6 +60,7 @@ export function InboxRealtimeProvider({
   currentUserId = null,
   initialUnreadMessageCount = 0,
   initialUnreadNotificationCount = 0,
+  messageEnabled = true,
   messagePromptAudioPath = DEFAULT_MESSAGE_PROMPT_AUDIO_PATH,
 }: InboxRealtimeProviderProps) {
   const pathname = usePathname()
@@ -350,15 +352,18 @@ export function InboxRealtimeProvider({
     const applyEventState = (event: InboxStreamEvent) => {
       const previousCounts = unreadCountsRef.current
       const nextCounts = applyInboxStreamEvent(previousCounts, event, currentUserIdRef.current)
+      const visibleNextCounts = messageEnabled
+        ? nextCounts
+        : { ...nextCounts, unreadMessageCount: 0 }
 
-      unreadCountsRef.current = nextCounts
+      unreadCountsRef.current = visibleNextCounts
 
-      if (nextCounts.unreadMessageCount !== previousCounts.unreadMessageCount) {
-        setUnreadMessageCount(nextCounts.unreadMessageCount)
+      if (visibleNextCounts.unreadMessageCount !== previousCounts.unreadMessageCount) {
+        setUnreadMessageCount(visibleNextCounts.unreadMessageCount)
       }
 
-      if (nextCounts.unreadNotificationCount !== previousCounts.unreadNotificationCount) {
-        setUnreadNotificationCount(nextCounts.unreadNotificationCount)
+      if (visibleNextCounts.unreadNotificationCount !== previousCounts.unreadNotificationCount) {
+        setUnreadNotificationCount(visibleNextCounts.unreadNotificationCount)
       }
 
       return previousCounts
@@ -375,7 +380,7 @@ export function InboxRealtimeProvider({
 
       const previousCounts = applyEventState(payload)
 
-      if (shouldPlayInboxPrompt(payload, currentUserIdRef.current, previousCounts)) {
+      if (messageEnabled && shouldPlayInboxPrompt(payload, currentUserIdRef.current, previousCounts)) {
         playPromptAudio()
       }
 
@@ -439,7 +444,7 @@ export function InboxRealtimeProvider({
       setConnectionStatus("closed")
       eventSource?.close()
     }
-  }, [currentUserId, notifyListeners, playPromptAudio, restoreDocumentTitle])
+  }, [currentUserId, messageEnabled, notifyListeners, playPromptAudio, restoreDocumentTitle])
 
   const value = useMemo<InboxRealtimeContextValue>(() => ({
     currentUserId,

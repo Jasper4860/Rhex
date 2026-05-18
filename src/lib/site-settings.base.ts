@@ -1,5 +1,6 @@
 import type { PostListDisplayMode } from "@/lib/post-list-display"
 import type { PostListLoadMode } from "@/lib/post-list-load-mode"
+import type { CommentLoadMode } from "@/lib/comment-load-mode"
 import type { FooterLinkItem } from "@/lib/shared/config-parsers"
 import type { LeftSidebarDisplayMode, PostSlugGenerationMode } from "@/lib/site-settings-app-state"
 import type { SiteSearchSettings } from "@/lib/site-search-settings"
@@ -27,6 +28,7 @@ export interface SiteSettingsBaseData {
   zonePostPageSize: number
   boardPostPageSize: number
   commentPageSize: number
+  commentLoadMode: CommentLoadMode
   postTitleMinLength: number
   postTitleMaxLength: number
   postContentMinLength: number
@@ -38,6 +40,7 @@ export interface SiteSettingsBaseData {
   homeHotRecentWindowHours: number
   homeSidebarStatsCardEnabled: boolean
   homeSidebarAnnouncementsEnabled: boolean
+  userProfileIpLocationEnabled: boolean
   leftSidebarDisplayMode: LeftSidebarDisplayMode
   postSlugGenerationMode: PostSlugGenerationMode
   footerCopyrightText: string
@@ -45,6 +48,7 @@ export interface SiteSettingsBaseData {
   footerLinks: FooterLinkItem[]
   headerAppLinks: SiteHeaderAppLinkItem[]
   headerAppIconName: string
+  messageEnabled: boolean
   theme: ThemeRuntimeSettings
   search: SiteSearchSettings
   analyticsCode?: string | null

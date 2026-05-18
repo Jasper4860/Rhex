@@ -12,7 +12,6 @@ import {
 import {
   createDirectMessageInTransaction,
   findConversationHistoryBatch,
-  findConversationParticipantByUser,
   findMessageHistoryAnchor,
   findMessageRecipientById,
 } from "@/db/message-write-queries"
@@ -21,6 +20,7 @@ import { ConversationKind, Prisma, UserStatus } from "@/db/types"
 import { apiError } from "@/lib/api-route"
 import { enforceSensitiveText } from "@/lib/content-safety"
 import { formatMonthDayTime } from "@/lib/formatters"
+import { isImageOnlyMarkdownHtml, renderMarkdown } from "@/lib/markdown/render"
 import {
   containsMessageFileToken,
   containsMessageImageSyntax,
@@ -56,7 +56,17 @@ import type {
 type MessageTransactionClient = DbTransaction
 
 const INITIAL_MESSAGE_PAGE_SIZE = 20
-const MESSAGE_HISTORY_BATCH_SIZE = 50
+const MESSAGE_HISTORY_BATCH_SIZE = 20
+
+export async function assertMessageFeatureEnabled() {
+  const settings = await getSiteSettings()
+
+  if (!settings.messageEnabled) {
+    apiError(403, "当前站点未开启私信功能")
+  }
+
+  return settings
+}
 
 type MessageRecipientRecord = NonNullable<Awaited<ReturnType<typeof findMessageRecipientById>>>
 type SiteChatMessageSendResult = MessageSendResult & { participantUserIds: number[] }
@@ -131,14 +141,26 @@ function mapMessageBubble(
     }
   },
   currentUserId: number,
+  markdownEmojiMap?: Awaited<ReturnType<typeof getSiteSettings>>["markdownEmojiMap"],
+  options?: {
+    displayCurrentUserAsSelf?: boolean
+  },
 ): MessageBubbleItem {
+  const bodyHtml = markdownEmojiMap ? renderMarkdown(message.body.replace(/\r\n/g, "\n").trim(), markdownEmojiMap) : undefined
+  const displayCurrentUserAsSelf = options?.displayCurrentUserAsSelf ?? true
+
   return {
     id: message.id,
     body: message.body,
+    ...(bodyHtml ? {
+      bodyHtml,
+      bodyImageOnly: isImageOnlyMarkdownHtml(bodyHtml),
+    } : {}),
     createdAt: formatMonthDayTime(message.createdAt),
     occurredAt: message.createdAt.toISOString(),
     senderId: message.senderId,
-    senderName: message.senderId === currentUserId ? "我" : getUserDisplayName(message.sender),
+    senderUsername: message.sender.username,
+    senderName: message.senderId === currentUserId && displayCurrentUserAsSelf ? "我" : getUserDisplayName(message.sender),
     senderAvatarPath: message.sender.avatarPath,
     isMine: message.senderId === currentUserId,
   }
@@ -312,8 +334,10 @@ async function getSiteChatConversationDetail(currentUserId: number): Promise<Mes
     return null
   }
 
-  await ensureSiteChatParticipant(currentUserId)
-  const conversation = await findSiteChatConversationWithMessages(INITIAL_MESSAGE_PAGE_SIZE + 1)
+  const [settings, conversation] = await Promise.all([
+    getSiteSettings(),
+    ensureSiteChatParticipant(currentUserId).then(() => findSiteChatConversationWithMessages(INITIAL_MESSAGE_PAGE_SIZE + 1)),
+  ])
 
   if (!conversation) {
     return null
@@ -335,7 +359,9 @@ async function getSiteChatConversationDetail(currentUserId: number): Promise<Mes
       : SITE_CHAT_UPDATED_AT_PLACEHOLDER,
     participants: [createSiteChatParticipant()],
     hasMoreHistory,
-    messages: visibleMessages.map((message) => mapMessageBubble(message, currentUserId)),
+    messages: visibleMessages.map((message) => mapMessageBubble(message, currentUserId, settings.markdownEmojiMap, {
+      displayCurrentUserAsSelf: false,
+    })),
   }
 }
 
@@ -350,7 +376,7 @@ async function sanitizeOutgoingMessageBody(body: string) {
     apiError(400, "消息内容不能超过 1000 个字符")
   }
 
-  const settings = await getSiteSettings()
+  const settings = await assertMessageFeatureEnabled()
   if (containsMessageImageSyntax(content) && !settings.messageImageUploadEnabled) {
     apiError(403, "当前站点未开启私信图片发送")
   }
@@ -469,6 +495,9 @@ async function sendSiteChatMessage(senderId: number, body: string): Promise<Site
     content: message.body,
     createdAt: formatMonthDayTime(message.createdAt),
     occurredAt,
+    senderUsername,
+    senderDisplayName,
+    senderAvatarPath,
     contentAdjusted: Boolean(contentAdjusted),
     participantUserIds: participants.map((participant) => participant.userId),
   }
@@ -588,10 +617,18 @@ async function getDatabaseBackedConversations(currentUserId: number): Promise<Me
 }
 
 export async function getUnreadMessageConversationCount(currentUserId: number) {
+  const settings = await getSiteSettings()
+
+  if (!settings.messageEnabled) {
+    return 0
+  }
+
   return getUnreadConversationCount(currentUserId)
 }
 
 export async function markConversationAsRead(conversationId: string, currentUserId: number) {
+  await assertMessageFeatureEnabled()
+
   if (isSiteChatConversationId(conversationId)) {
     if (await isSiteChatEnabled()) {
       await markSiteChatConversationAsRead(currentUserId)
@@ -614,7 +651,10 @@ async function getDatabaseConversationDetail(currentUserId: number, conversation
     return null
   }
 
-  const conversation = await findConversationDetailById(canonicalConversationId, currentUserId, INITIAL_MESSAGE_PAGE_SIZE)
+  const [conversation, settings] = await Promise.all([
+    findConversationDetailById(canonicalConversationId, currentUserId, INITIAL_MESSAGE_PAGE_SIZE),
+    getSiteSettings(),
+  ])
   if (!conversation) {
     return null
   }
@@ -641,7 +681,7 @@ async function getDatabaseConversationDetail(currentUserId: number, conversation
     participants,
     recipientId: partner.id,
     hasMoreHistory,
-    messages: visibleMessages.map((message) => mapMessageBubble(message, currentUserId)),
+    messages: visibleMessages.map((message) => mapMessageBubble(message, currentUserId, settings.markdownEmojiMap)),
   }
 }
 
@@ -738,6 +778,8 @@ async function resolveConversationReference(currentUserId: number, conversationI
 }
 
 export async function getMessageConversationDetail(currentUserId: number, conversationId: string): Promise<MessageConversationDetail | null> {
+  await assertMessageFeatureEnabled()
+
   if (isSiteChatConversationId(conversationId)) {
     return getSiteChatConversationDetail(currentUserId)
   }
@@ -759,6 +801,8 @@ export async function sendDirectMessage(
     conversationId?: string
   },
 ): Promise<MessageSendResult | SiteChatMessageSendResult> {
+  await assertMessageFeatureEnabled()
+
   if (isSiteChatConversationId(options?.conversationId)) {
     return sendSiteChatMessage(senderId, body)
   }
@@ -803,18 +847,25 @@ export async function sendDirectMessage(
     content: message.body,
     createdAt: formatMonthDayTime(message.createdAt),
     occurredAt,
+    senderUsername,
+    senderDisplayName,
+    senderAvatarPath,
     contentAdjusted: Boolean(contentAdjusted),
   }
 }
 
 export async function getConversationHistory(currentUserId: number, conversationId: string, beforeMessageId: string): Promise<MessageHistoryResult> {
+  await assertMessageFeatureEnabled()
+
   if (isSiteChatConversationId(conversationId)) {
     if (!await isSiteChatEnabled()) {
       apiError(404, "会话不存在或无权查看")
     }
 
-    await ensureSiteChatParticipant(currentUserId)
-    const anchor = await findMessageHistoryAnchor(beforeMessageId, SITE_CHAT_ROOM_DB_ID)
+    const [settings, anchor] = await Promise.all([
+      getSiteSettings(),
+      findMessageHistoryAnchor(beforeMessageId, SITE_CHAT_ROOM_DB_ID),
+    ])
 
     if (!anchor) {
       apiError(404, "历史消息定位失败")
@@ -825,7 +876,9 @@ export async function getConversationHistory(currentUserId: number, conversation
     const visibleHistory = hasMoreHistory ? history.slice(0, MESSAGE_HISTORY_BATCH_SIZE) : history
 
     return {
-      messages: visibleHistory.reverse().map((message) => mapMessageBubble(message, currentUserId)),
+      messages: visibleHistory.reverse().map((message) => mapMessageBubble(message, currentUserId, settings.markdownEmojiMap, {
+        displayCurrentUserAsSelf: false,
+      })),
       hasMoreHistory,
     }
   }
@@ -835,27 +888,27 @@ export async function getConversationHistory(currentUserId: number, conversation
     apiError(404, "会话不存在或无权查看")
   }
 
-  const participant = await findConversationParticipantByUser(canonicalConversationId, currentUserId)
-  if (!participant) {
-    apiError(404, "会话不存在或无权查看")
-  }
-
   const anchor = await findMessageHistoryAnchor(beforeMessageId, canonicalConversationId)
   if (!anchor) {
     apiError(404, "历史消息定位失败")
   }
 
-  const history = await findConversationHistoryBatch(canonicalConversationId, anchor.createdAt, MESSAGE_HISTORY_BATCH_SIZE)
+  const [history, settings] = await Promise.all([
+    findConversationHistoryBatch(canonicalConversationId, anchor.createdAt, MESSAGE_HISTORY_BATCH_SIZE),
+    getSiteSettings(),
+  ])
   const hasMoreHistory = history.length > MESSAGE_HISTORY_BATCH_SIZE
   const visibleHistory = hasMoreHistory ? history.slice(0, MESSAGE_HISTORY_BATCH_SIZE) : history
 
   return {
-    messages: visibleHistory.reverse().map((message) => mapMessageBubble(message, currentUserId)),
+    messages: visibleHistory.reverse().map((message) => mapMessageBubble(message, currentUserId, settings.markdownEmojiMap)),
     hasMoreHistory,
   }
 }
 
 export async function deleteConversationForUser(conversationId: string, currentUserId: number) {
+  await assertMessageFeatureEnabled()
+
   if (isSiteChatConversationId(conversationId)) {
     apiError(400, "全站聊天室不支持删除")
   }
@@ -872,10 +925,18 @@ export async function deleteConversationForUser(conversationId: string, currentU
 
 export async function getMessageCenterData(currentUserId: number, conversationId?: string): Promise<MessageCenterData> {
   try {
-    const [siteSettings, databaseConversations] = await Promise.all([
-      getSiteSettings(),
-      getDatabaseBackedConversations(currentUserId),
-    ])
+    const siteSettings = await getSiteSettings()
+
+    if (!siteSettings.messageEnabled) {
+      return {
+        conversations: [],
+        activeConversation: null,
+        usingDemoData: false,
+        errorMessage: null,
+      }
+    }
+
+    const databaseConversations = await getDatabaseBackedConversations(currentUserId)
     const siteChatConversation = siteSettings.siteChatEnabled
       ? await buildSiteChatConversationListItem(currentUserId)
       : null

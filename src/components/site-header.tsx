@@ -88,8 +88,7 @@ export async function SiteHeader() {
             <div className="ml-auto flex h-14 items-center gap-1.5">
               <AddonSlotRenderer slot="layout.header.right" />
               <ThemeToggle />
-              <HeaderUserActions />
-
+              <HeaderUserActions messageEnabled={settings.messageEnabled} />
             </div>
           </div>
         </div>

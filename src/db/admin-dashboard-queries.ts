@@ -270,6 +270,8 @@ export async function getAdminStructureRawData(options?: {
         sortOrder: true,
         hiddenFromSidebar: true,
         showInHomeFeed: true,
+        allowUserPost: true,
+        allowUserReply: true,
         requirePostReview: true,
         requireCommentReview: true,
         postPointDelta: true,
@@ -288,6 +290,22 @@ export async function getAdminStructureRawData(options?: {
         minReplyVipLevel: true,
         postListDisplayMode: true,
         postListLoadMode: true,
+        moderatorScopes: {
+          orderBy: [{ createdAt: "asc" }, { moderatorId: "asc" }],
+          select: {
+            canEditSettings: true,
+            canWithdrawTreasury: true,
+            moderator: {
+              select: {
+                id: true,
+                username: true,
+                nickname: true,
+                role: true,
+                status: true,
+              },
+            },
+          },
+        },
         _count: { select: { boards: true } },
       },
     }),
@@ -304,6 +322,8 @@ export async function getAdminStructureRawData(options?: {
         sortOrder: true,
         status: true,
         allowPost: true,
+        allowUserPost: true,
+        allowUserReply: true,
         showInHomeFeed: true,
         postCount: true,
         followerCount: true,
@@ -326,9 +346,49 @@ export async function getAdminStructureRawData(options?: {
         minReplyVipLevel: true,
         postListDisplayMode: true,
         postListLoadMode: true,
+        moderatorScopes: {
+          orderBy: [{ createdAt: "asc" }, { moderatorId: "asc" }],
+          select: {
+            canEditSettings: true,
+            canWithdrawTreasury: true,
+            moderator: {
+              select: {
+                id: true,
+                username: true,
+                nickname: true,
+                role: true,
+                status: true,
+              },
+            },
+          },
+        },
         zoneId: true,
         zone: {
-          select: { id: true, name: true, showInHomeFeed: true, postListDisplayMode: true, postListLoadMode: true },
+          select: {
+            id: true,
+            name: true,
+            showInHomeFeed: true,
+            allowUserPost: true,
+            allowUserReply: true,
+            postListDisplayMode: true,
+            postListLoadMode: true,
+            moderatorScopes: {
+              orderBy: [{ createdAt: "asc" }, { moderatorId: "asc" }],
+              select: {
+                canEditSettings: true,
+                canWithdrawTreasury: true,
+                moderator: {
+                  select: {
+                    id: true,
+                    username: true,
+                    nickname: true,
+                    role: true,
+                    status: true,
+                  },
+                },
+              },
+            },
+          },
         },
       },
     }),

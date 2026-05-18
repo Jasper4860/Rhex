@@ -151,6 +151,7 @@ export interface CreatePostFormBoardItem {
   label: string
   allowedPostTypes?: string[]
   requirePostReview?: boolean
+  allowUserPost?: boolean
   minPostPoints?: number
   minPostLevel?: number
   minPostVipLevel?: number

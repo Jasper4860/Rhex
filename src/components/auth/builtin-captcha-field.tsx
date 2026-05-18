@@ -1,7 +1,15 @@
 "use client"
 
 import Image from "next/image"
-import { useCallback, useRef, useState } from "react"
+import { RefreshCw, ShieldCheck } from "lucide-react"
+import { useCallback, useId, useRef, useState } from "react"
+
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+import { cn } from "@/lib/utils"
 
 interface BuiltinCaptchaFieldProps {
   code: string
@@ -20,21 +28,31 @@ type CaptchaResponse = {
 }
 
 export function BuiltinCaptchaField({ code, onCodeChange, onTokenChange, onLoadError }: BuiltinCaptchaFieldProps) {
+  const inputId = useId()
   const [captchaUrl, setCaptchaUrl] = useState("")
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const hasInitializedRef = useRef(false)
 
   const refreshCaptcha = useCallback(async () => {
-    const response = await fetch(`/api/auth/captcha?ts=${Date.now()}`, { cache: "no-store" })
-    const result = await response.json() as CaptchaResponse
+    setIsRefreshing(true)
 
-    if (!response.ok || result.code !== 0) {
-      onLoadError?.(result.message ?? "验证码加载失败")
-      return
+    try {
+      const response = await fetch(`/api/auth/captcha?ts=${Date.now()}`, { cache: "no-store" })
+      const result = await response.json() as CaptchaResponse
+
+      if (!response.ok || result.code !== 0) {
+        onLoadError?.(result.message ?? "验证码加载失败")
+        return
+      }
+
+      setCaptchaUrl(result.data?.imageDataUrl ?? "")
+      onTokenChange(result.data?.captchaToken ?? "")
+      onCodeChange("")
+    } catch {
+      onLoadError?.("验证码加载失败")
+    } finally {
+      setIsRefreshing(false)
     }
-
-    setCaptchaUrl(result.data?.imageDataUrl ?? "")
-    onTokenChange(result.data?.captchaToken ?? "")
-    onCodeChange("")
   }, [onCodeChange, onLoadError, onTokenChange])
 
   const handleMount = useCallback((node: HTMLDivElement | null) => {
@@ -47,23 +65,54 @@ export function BuiltinCaptchaField({ code, onCodeChange, onTokenChange, onLoadE
   }, [refreshCaptcha])
 
   return (
-    <div ref={handleMount} className="space-y-3 rounded-xl">
+    <div ref={handleMount} className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium">验证码</p>
-        <button type="button" className="text-xs text-primary hover:opacity-80" onClick={() => void refreshCaptcha()}>刷新验证码</button>
+        <label htmlFor={inputId} className="text-sm font-medium text-foreground">
+          图形验证码
+        </label>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        {captchaUrl ? (
-          <Image
-            src={captchaUrl}
-            alt="图形验证码"
-            width={132}
-            height={44}
-            unoptimized
-            className="h-11 w-[132px] rounded-xl bg-card"
+        <button
+          type="button"
+          aria-label="刷新图形验证码"
+          title="点击刷新验证码"
+          onClick={() => void refreshCaptcha()}
+          disabled={isRefreshing}
+          className="group relative h-11 w-[132px] overflow-hidden rounded-2xl border border-border bg-background/80 shadow-xs transition-colors hover:border-primary/50 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-wait disabled:opacity-70"
+        >
+          {captchaUrl ? (
+            <Image
+              src={captchaUrl}
+              alt="图形验证码"
+              width={132}
+              height={44}
+              unoptimized
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+              加载中...
+            </span>
+          )}
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/0 text-primary opacity-0 transition-opacity group-hover:bg-background/45 group-hover:opacity-100 group-focus-visible:bg-background/45 group-focus-visible:opacity-100">
+            <RefreshCw data-icon="captcha-refresh" className={cn("size-4", isRefreshing && "animate-spin")} />
+          </span>
+        </button>
+
+        <InputGroup className="h-11 rounded-2xl bg-background/80 sm:max-w-[220px]">
+          <InputGroupAddon>
+            <ShieldCheck />
+          </InputGroupAddon>
+          <InputGroupInput
+            id={inputId}
+            value={code}
+            onChange={(event) => onCodeChange(event.target.value.toUpperCase())}
+            placeholder="输入图中验证码"
+            autoComplete="off"
+            inputMode="text"
+            maxLength={4}
           />
-        ) : null}
-        <input value={code} onChange={(event) => onCodeChange(event.target.value.toUpperCase())} placeholder="输入图中验证码" className="h-11 w-full rounded-full border border-border bg-card px-4 text-sm outline-hidden sm:max-w-[220px]" />
+        </InputGroup>
       </div>
     </div>
   )

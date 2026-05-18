@@ -30,6 +30,7 @@ import {
   writeAdminActionLog,
   type AdminActionDefinition,
 } from "@/lib/admin-action-types"
+import { getBlockedUserStatusChangeMessage, type RestrictiveUserStatus } from "@/lib/admin-user-status-guard"
 import { enforceSensitiveText } from "@/lib/content-safety"
 import { parseBusinessDateTime } from "@/lib/formatters"
 import { ensureCanModerateUser, isScopedModerator, isSiteAdmin } from "@/lib/moderator-permissions"
@@ -53,11 +54,24 @@ function buildProfileUpdateDetail(context: AdminActionContext) {
     : "管理员更新用户资料"
 }
 
+type UserStatusRecord = NonNullable<Awaited<ReturnType<typeof findUserStatus>>>
+
+function requireUserStatusRecord(user: UserStatusRecord | null) {
+  if (!user) apiError(404, "用户不存在")
+  return user
+}
+
+function ensureCanApplyRestrictiveStatus(user: UserStatusRecord, status: RestrictiveUserStatus) {
+  const blockedMessage = getBlockedUserStatusChangeMessage(user, status)
+  if (blockedMessage) apiError(403, blockedMessage)
+}
 
 export const adminUserActionHandlers: Record<string, AdminActionDefinition> = {
   "user.mute": defineAdminAction({ targetType: "USER", buildDetail: () => "管理员禁言用户" }, async (context) => {
     const userId = normalizePositiveUserId(context.targetId)
     if (!userId) apiError(400, "用户标识不合法")
+    const user = requireUserStatusRecord(await findUserStatus(userId))
+    ensureCanApplyRestrictiveStatus(user, UserStatus.MUTED)
     await ensureCanModerateUser(context.actor, {
       targetUserId: userId,
       postId: readAdminActionString(context.body, "postId") || undefined,
@@ -71,8 +85,7 @@ export const adminUserActionHandlers: Record<string, AdminActionDefinition> = {
   "user.activate": defineAdminAction({ targetType: "USER", buildDetail: () => "管理员恢复用户状态" }, async (context) => {
     const userId = normalizePositiveUserId(context.targetId)
     if (!userId) apiError(400, "用户标识不合法")
-    const user = await findUserStatus(userId)
-    if (!user) apiError(404, "用户不存在")
+    const user = requireUserStatusRecord(await findUserStatus(userId))
     if (isScopedModerator(context.actor) && user.status !== UserStatus.MUTED) {
       apiError(403, "版主只能解除禁言状态")
     }
@@ -90,6 +103,8 @@ export const adminUserActionHandlers: Record<string, AdminActionDefinition> = {
     if (!isSiteAdmin(context.actor)) apiError(403, "仅管理员可封禁用户")
     const userId = normalizePositiveUserId(context.targetId)
     if (!userId) apiError(400, "用户标识不合法")
+    const user = requireUserStatusRecord(await findUserStatus(userId))
+    ensureCanApplyRestrictiveStatus(user, UserStatus.BANNED)
     await updateUserStatus(userId, UserStatus.BANNED)
 
     await writeAdminActionLog(context, adminUserActionHandlers["user.ban"].metadata)

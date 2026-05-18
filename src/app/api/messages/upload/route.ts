@@ -22,6 +22,10 @@ export const POST = createUserRouteHandler<MessageUploadResponse>(async ({ reque
   const formData = await request.formData()
   const file = formData.get("file")
 
+  if (!settings.messageEnabled) {
+    apiError(403, "当前站点未开启私信功能")
+  }
+
   if (!(file instanceof File)) {
     apiError(400, "缺少上传文件")
   }

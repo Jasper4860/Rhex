@@ -11,6 +11,8 @@ import { CommentThreadReplyBox } from "@/components/comment/comment-thread-share
 import { updateBrowsingPreferences } from "@/lib/browsing-preferences"
 import type { SiteCommentItem, SiteCommentReplyItem, SiteFlatCommentItem } from "@/lib/comments"
 import { COMMENT_REPLY_TOGGLE_EVENT, emitCommentReplyState, type CommentReplyTarget, type CommentReplyToggleDetail } from "@/lib/comment-reply-box-events"
+import { COMMENT_LOAD_MODE_INFINITE, COMMENT_LOAD_MODE_PAGINATION, type CommentLoadMode } from "@/lib/comment-load-mode"
+import { buildCommentNavigationUrl } from "@/lib/comment-navigation"
 import type { MarkdownEmojiItem } from "@/lib/markdown-emoji"
 import { dispatchPostBountyResolved } from "@/lib/post-discussion-events"
 
@@ -28,6 +30,7 @@ interface CommentThreadProps {
   total: number
   currentSort: "oldest" | "newest"
   currentDisplayMode: "tree" | "flat"
+  commentLoadMode?: CommentLoadMode
   currentUserId?: number
   canAcceptAnswer?: boolean
   commentsVisibleToAuthorOnly?: boolean
@@ -45,6 +48,63 @@ interface CommentThreadProps {
 const REPLY_BOX_FOLLOW_ENTER_OFFSET = 72
 const REPLY_BOX_FOLLOW_EXIT_OFFSET = 20
 
+type PaginationToken = number | "ellipsis"
+
+interface CommentListApiPayload {
+  items: SiteCommentItem[]
+  flatItems: SiteFlatCommentItem[]
+  total: number
+  page: number
+  pageSize: number
+  hasNextPage: boolean
+  viewMode: "tree" | "flat"
+}
+
+function buildPageTokens(page: number, totalPages: number): PaginationToken[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  }
+
+  const tokens = new Set<number>([1, totalPages, page, page - 1, page + 1])
+  const visiblePages = Array.from(tokens)
+    .filter((value) => value >= 1 && value <= totalPages)
+    .sort((left, right) => left - right)
+
+  const result: PaginationToken[] = []
+
+  for (const current of visiblePages) {
+    const previous = typeof result.at(-1) === "number" ? (result.at(-1) as number) : null
+
+    if (previous !== null && current - previous > 1) {
+      result.push("ellipsis")
+    }
+
+    result.push(current)
+  }
+
+  return result
+}
+
+function getFlatEntryId(entry: SiteFlatCommentItem) {
+  return entry.type === "comment" ? entry.comment.id : entry.reply.id
+}
+
+function appendUniqueComments(current: SiteCommentItem[], nextItems: SiteCommentItem[]) {
+  const knownIds = new Set(current.map((comment) => comment.id))
+  return [
+    ...current,
+    ...nextItems.filter((comment) => !knownIds.has(comment.id)),
+  ]
+}
+
+function appendUniqueFlatComments(current: SiteFlatCommentItem[], nextItems: SiteFlatCommentItem[]) {
+  const knownIds = new Set(current.map(getFlatEntryId))
+  return [
+    ...current,
+    ...nextItems.filter((entry) => !knownIds.has(getFlatEntryId(entry))),
+  ]
+}
+
 function shouldIgnoreReplyShortcut(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
     return false
@@ -61,12 +121,17 @@ function shouldIgnoreReplyShortcut(target: EventTarget | null) {
   return ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
 }
 
-export function CommentThread({ threadId, comments, flatComments = [], postId, postPath, pointName, tipping, canReply, currentPage, pageSize, total, currentSort, currentDisplayMode, currentUserId, canAcceptAnswer = false, commentsVisibleToAuthorOnly = false, anonymousReplyEnabled = false, anonymousReplyDefaultChecked = false, anonymousReplySwitchVisible = false, isAdmin = false, adminRole = null, canPinComment = false, markdownEmojiMap, commentEditWindowMinutes = 5, initialVisibleReplies = 10 }: CommentThreadProps) {
+export function CommentThread({ threadId, comments, flatComments = [], postId, postPath, pointName, tipping, canReply, currentPage, pageSize, total, currentSort, currentDisplayMode, commentLoadMode = COMMENT_LOAD_MODE_PAGINATION, currentUserId, canAcceptAnswer = false, commentsVisibleToAuthorOnly = false, anonymousReplyEnabled = false, anonymousReplyDefaultChecked = false, anonymousReplySwitchVisible = false, isAdmin = false, adminRole = null, canPinComment = false, markdownEmojiMap, commentEditWindowMinutes = 5, initialVisibleReplies = 10 }: CommentThreadProps) {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [localComments, setLocalComments] = useState(comments)
   const [localFlatComments, setLocalFlatComments] = useState(flatComments)
+  const [localTotal, setLocalTotal] = useState(total)
+  const [loadedPage, setLoadedPage] = useState(currentPage)
+  const [hasNextInfinitePage, setHasNextInfinitePage] = useState(currentPage * pageSize < total)
+  const [isLoadingMoreComments, setIsLoadingMoreComments] = useState(false)
+  const [loadMoreError, setLoadMoreError] = useState("")
   const [canAcceptAnswerState, setCanAcceptAnswerState] = useState(canAcceptAnswer)
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({})
   const [submittingAnswerId, setSubmittingAnswerId] = useState<string | null>(null)
@@ -79,9 +144,10 @@ export function CommentThread({ threadId, comments, flatComments = [], postId, p
   const [isReplyBoxPinned, setIsReplyBoxPinned] = useState(false)
   const [isReplyBoxFollowing, setIsReplyBoxFollowing] = useState(false)
   const [replyBoxPinnedLayout, setReplyBoxPinnedLayout] = useState({ left: 0, width: 0 })
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const totalPages = Math.max(1, Math.ceil(localTotal / pageSize))
   const replyBoxContainerRef = useRef<HTMLDivElement | null>(null)
   const replyBoxFollowRafRef = useRef<number | null>(null)
+  const infiniteSentinelRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     setLocalComments(comments)
@@ -90,6 +156,14 @@ export function CommentThread({ threadId, comments, flatComments = [], postId, p
   useEffect(() => {
     setLocalFlatComments(flatComments)
   }, [flatComments])
+
+  useEffect(() => {
+    setLocalTotal(total)
+    setLoadedPage(currentPage)
+    setHasNextInfinitePage(currentPage * pageSize < total)
+    setIsLoadingMoreComments(false)
+    setLoadMoreError("")
+  }, [currentPage, pageSize, total])
 
   useEffect(() => {
     setCanAcceptAnswerState(canAcceptAnswer)
@@ -115,12 +189,92 @@ export function CommentThread({ threadId, comments, flatComments = [], postId, p
     return localFlatComments.filter((entry) => entry.type === "comment" ? entry.comment.isPostAuthor : entry.reply.isPostAuthor)
   }, [localFlatComments, showOnlyAuthorComments])
   const buildCommentHref = useCallback((patch: { sort?: "oldest" | "newest"; page?: number; view?: "tree" | "flat" }) => {
-    const nextSearchParams = new URLSearchParams(searchParams.toString())
-    nextSearchParams.set("sort", patch.sort ?? currentSort)
-    nextSearchParams.set("page", String(patch.page ?? currentPage))
-    nextSearchParams.set("view", patch.view ?? currentDisplayMode)
-    return `${pathname}?${nextSearchParams.toString()}#comments`
-  }, [currentDisplayMode, currentPage, currentSort, pathname, searchParams])
+    return buildCommentNavigationUrl({
+      pathname,
+      searchParams,
+      commentLoadMode,
+      navigation: {
+        sort: patch.sort ?? currentSort,
+        page: patch.page ?? currentPage,
+        view: patch.view ?? currentDisplayMode,
+      },
+    })
+  }, [commentLoadMode, currentDisplayMode, currentPage, currentSort, pathname, searchParams])
+
+  const buildCommentHighlightHref = useCallback((commentId: string, patch: { sort?: "oldest" | "newest"; page?: number; view?: "tree" | "flat" }) => {
+    return buildCommentNavigationUrl({
+      pathname,
+      searchParams,
+      commentLoadMode,
+      navigation: {
+        sort: patch.sort ?? currentSort,
+        page: patch.page ?? currentPage,
+        view: patch.view ?? currentDisplayMode,
+        anchor: `comment-${commentId}`,
+      },
+    })
+  }, [commentLoadMode, currentDisplayMode, currentPage, currentSort, pathname, searchParams])
+
+  const loadMoreComments = useCallback(async () => {
+    if (commentLoadMode !== COMMENT_LOAD_MODE_INFINITE || isLoadingMoreComments || !hasNextInfinitePage) {
+      return
+    }
+
+    setIsLoadingMoreComments(true)
+    setLoadMoreError("")
+
+    try {
+      const nextUrl = new URL("/api/comments/list", window.location.origin)
+      nextUrl.searchParams.set("postId", postId)
+      nextUrl.searchParams.set("page", String(loadedPage + 1))
+      nextUrl.searchParams.set("sort", currentSort)
+      nextUrl.searchParams.set("view", currentDisplayMode)
+
+      const response = await fetch(nextUrl.toString(), {
+        credentials: "same-origin",
+      })
+      const result = await response.json().catch(() => null) as { data?: CommentListApiPayload; message?: string } | null
+
+      if (!response.ok || !result?.data) {
+        setLoadMoreError(result?.message || "评论加载失败")
+        return
+      }
+
+      if (result.data.viewMode !== currentDisplayMode) {
+        return
+      }
+
+      if (currentDisplayMode === "tree") {
+        setLocalComments((current) => appendUniqueComments(current, result.data!.items))
+      } else {
+        setLocalFlatComments((current) => appendUniqueFlatComments(current, result.data!.flatItems))
+      }
+
+      setLocalTotal(result.data.total)
+      setLoadedPage(result.data.page)
+      setHasNextInfinitePage(result.data.hasNextPage)
+    } catch {
+      setLoadMoreError("评论加载失败")
+    } finally {
+      setIsLoadingMoreComments(false)
+    }
+  }, [commentLoadMode, currentDisplayMode, currentSort, hasNextInfinitePage, isLoadingMoreComments, loadedPage, postId])
+
+  useEffect(() => {
+    if (commentLoadMode !== COMMENT_LOAD_MODE_INFINITE || !hasNextInfinitePage || !infiniteSentinelRef.current) {
+      return
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        void loadMoreComments()
+      }
+    }, { rootMargin: "240px 0px" })
+
+    observer.observe(infiniteSentinelRef.current)
+
+    return () => observer.disconnect()
+  }, [commentLoadMode, hasNextInfinitePage, loadMoreComments])
 
   const replyHint = replyTarget ? `正在回复 @${replyTarget.replyToUserName}` : null
 
@@ -713,6 +867,11 @@ export function CommentThread({ threadId, comments, flatComments = [], postId, p
     router.replace(buildCommentHref({ page: 1, view: nextView }))
   }
 
+  function changeCommentSort(nextSort: "oldest" | "newest") {
+    updateBrowsingPreferences({ commentThreadSort: nextSort })
+    router.replace(buildCommentHref({ sort: nextSort, page: 1 }))
+  }
+
   function jumpToParentComment(commentId: string, href?: string) {
     const target = document.getElementById(`comment-${commentId}`)
     if (target) {
@@ -752,8 +911,8 @@ export function CommentThread({ threadId, comments, flatComments = [], postId, p
           </button>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Link href={buildCommentHref({ sort: "oldest", page: 1 })} className={currentSort === "oldest" ? "rounded-full bg-foreground px-2.5 py-1 text-[11px] text-background" : "rounded-full bg-secondary px-2.5 py-1 text-[11px] text-muted-foreground"}>最早</Link>
-          <Link href={buildCommentHref({ sort: "newest", page: 1 })} className={currentSort === "newest" ? "rounded-full bg-foreground px-2.5 py-1 text-[11px] text-background" : "rounded-full bg-secondary px-2.5 py-1 text-[11px] text-muted-foreground"}>最新</Link>
+          <button type="button" onClick={() => changeCommentSort("oldest")} className={currentSort === "oldest" ? "rounded-full bg-foreground px-2.5 py-1 text-[11px] text-background" : "rounded-full bg-secondary px-2.5 py-1 text-[11px] text-muted-foreground"}>最早</button>
+          <button type="button" onClick={() => changeCommentSort("newest")} className={currentSort === "newest" ? "rounded-full bg-foreground px-2.5 py-1 text-[11px] text-background" : "rounded-full bg-secondary px-2.5 py-1 text-[11px] text-muted-foreground"}>最新</button>
           <button
             type="button"
             aria-label={`当前评论视图：${currentDisplayModeLabel}，点击切换到${nextDisplayModeLabel}`}
@@ -858,7 +1017,7 @@ export function CommentThread({ threadId, comments, flatComments = [], postId, p
               parentCommentId={entry.reply.parentCommentId ?? ""}
               parentCommentFloor={entry.reply.parentCommentFloor}
               referenceCommentId={entry.reply.replyToCommentId ?? entry.reply.parentCommentId}
-              parentCommentHref={entry.reply.replyToCommentId ? `?sort=${currentSort}&page=${entry.reply.replyToCommentPage ?? 1}&view=flat&highlight=${entry.reply.replyToCommentId}#comment-${entry.reply.replyToCommentId}` : entry.reply.parentCommentId ? `?sort=${currentSort}&page=${entry.reply.parentCommentPage ?? 1}&view=flat&highlight=${entry.reply.parentCommentId}#comment-${entry.reply.parentCommentId}` : undefined}
+              parentCommentHref={entry.reply.replyToCommentId ? buildCommentHighlightHref(entry.reply.replyToCommentId, { sort: currentSort, page: entry.reply.replyToCommentPage ?? 1, view: "flat" }) : entry.reply.parentCommentId ? buildCommentHighlightHref(entry.reply.parentCommentId, { sort: currentSort, page: entry.reply.parentCommentPage ?? 1, view: "flat" }) : undefined}
               pointName={pointName}
               tipping={tipping}
               canReply={canReply}
@@ -885,17 +1044,64 @@ export function CommentThread({ threadId, comments, flatComments = [], postId, p
 
       {actionMessage ? <p className="text-sm text-muted-foreground">{actionMessage}</p> : null}
 
-      {totalPages > 1 ? (
-        <div className="flex items-center justify-between pt-2">
-          <Link href={buildCommentHref({ page: Math.max(1, currentPage - 1) })} className={currentPage <= 1 ? "pointer-events-none rounded-full border border-border bg-card px-4 py-2 text-sm opacity-50" : "rounded-full border border-border bg-card px-4 py-2 text-sm"}>
-            上一页
-          </Link>
-          <span className="text-sm text-muted-foreground">第 {currentPage} / {totalPages} 页</span>
-          <Link href={buildCommentHref({ page: Math.min(totalPages, currentPage + 1) })} className={currentPage >= totalPages ? "pointer-events-none rounded-full border border-border bg-card px-4 py-2 text-sm opacity-50" : "rounded-full border border-border bg-card px-4 py-2 text-sm"}>
-            下一页
-          </Link>
-        </div>
+      {commentLoadMode === COMMENT_LOAD_MODE_INFINITE ? (
+        hasNextInfinitePage ? (
+          <div className="flex flex-col items-center gap-3 pt-2">
+            <div ref={infiniteSentinelRef} className="h-1 w-full" aria-hidden="true" />
+            <button
+              type="button"
+              onClick={() => void loadMoreComments()}
+              disabled={isLoadingMoreComments}
+              className="rounded-full border border-border bg-card px-4 py-2 text-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isLoadingMoreComments ? "加载中..." : "继续加载"}
+            </button>
+          </div>
+        ) : localTotal > pageSize ? (
+          <p className="pt-2 text-center text-sm text-muted-foreground">没有更多评论</p>
+        ) : null
+      ) : totalPages > 1 ? (
+        <nav className="grid gap-3 pt-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center" aria-label="评论分页">
+          <span className="hidden sm:block" aria-hidden="true" />
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:col-start-2">
+            <Link
+              href={currentPage > 1 ? buildCommentHref({ page: currentPage - 1 }) : "#"}
+              aria-disabled={currentPage <= 1}
+              className={currentPage <= 1 ? "pointer-events-none rounded-full border border-border px-4 py-2 text-sm text-muted-foreground opacity-50" : "rounded-full border border-border bg-card px-4 py-2 text-sm transition-colors hover:bg-accent/40"}
+            >
+              上一页
+            </Link>
+
+            {buildPageTokens(currentPage, totalPages).map((token, index) => token === "ellipsis" ? (
+              <span key={`ellipsis-${index}`} className="px-1 text-sm text-muted-foreground">
+                ...
+              </span>
+            ) : (
+              <Link
+                key={token}
+                href={buildCommentHref({ page: token })}
+                aria-current={token === currentPage ? "page" : undefined}
+                className={token === currentPage
+                  ? "inline-flex min-w-10 items-center justify-center rounded-full border border-foreground bg-foreground px-3 py-2 text-sm text-background"
+                  : "inline-flex min-w-10 items-center justify-center rounded-full border border-border bg-card px-3 py-2 text-sm transition-colors hover:bg-accent/40"}
+              >
+                {token}
+              </Link>
+            ))}
+
+            <Link
+              href={currentPage < totalPages ? buildCommentHref({ page: currentPage + 1 }) : "#"}
+              aria-disabled={currentPage >= totalPages}
+              className={currentPage >= totalPages ? "pointer-events-none rounded-full border border-border px-4 py-2 text-sm text-muted-foreground opacity-50" : "rounded-full border border-border bg-card px-4 py-2 text-sm transition-colors hover:bg-accent/40"}
+            >
+              下一页
+            </Link>
+          </div>
+          <span className="text-center text-sm text-muted-foreground sm:col-start-3 sm:justify-self-end">第 {currentPage} / {totalPages} 页</span>
+        </nav>
       ) : null}
+
+      {loadMoreError ? <p className="text-center text-sm text-destructive">{loadMoreError}</p> : null}
 
       {canReply ? (
           <CommentThreadReplyBox
@@ -913,6 +1119,7 @@ export function CommentThread({ threadId, comments, flatComments = [], postId, p
           replyBoxContainerRef={replyBoxContainerRef}
           onDisableReplyBox={disableReplyBox}
           onClearReplyTarget={() => setReplyTarget(null)}
+          commentLoadMode={commentLoadMode}
         />
       ) : null}
     </div>

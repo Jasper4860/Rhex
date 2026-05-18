@@ -1,6 +1,7 @@
 import { BoardStatus, CommentStatus, PostStatus, UserRole } from "@/db/types"
 
 import { getAdminDashboardRawData, getAdminStructureRawData } from "@/db/admin-dashboard-queries"
+import type { StructureModeratorItem } from "@/lib/admin-structure-management"
 import { normalizeBoardSidebarConfig, type BoardSidebarLinkItem } from "@/lib/board-sidebar-config"
 import { resolveBoardSettings } from "@/lib/board-settings"
 import { serializeDateTime } from "@/lib/formatters"
@@ -10,6 +11,7 @@ import {
   type AdminActor,
 } from "@/lib/moderator-permissions"
 import { getPostStatusLabel, getPostTypeLabel } from "@/lib/post-types"
+import { getUserDisplayName } from "@/lib/user-display"
 
 export interface AdminDashboardData {
   overview: {
@@ -92,6 +94,8 @@ export interface AdminStructureData {
     boardCount: number
     postCount: number
     followerCount: number
+    allowUserPost: boolean
+    allowUserReply: boolean
     postPointDelta: number
     replyPointDelta: number
     postIntervalSeconds: number
@@ -110,6 +114,7 @@ export interface AdminStructureData {
     requireCommentReview: boolean
     postListDisplayMode: string | null
     postListLoadMode: string | null
+    moderators: StructureModeratorItem[]
     canEditSettings: boolean
   }>
   boardStatus: Array<{
@@ -125,6 +130,10 @@ export interface AdminStructureData {
     followerCount: number
     todayPostCount: number
     allowPost: boolean
+    allowUserPost: boolean | null
+    allowUserReply: boolean | null
+    effectiveAllowUserPost: boolean
+    effectiveAllowUserReply: boolean
     treasuryPoints: number
     zoneId: string | null
     zoneName: string | null
@@ -150,6 +159,8 @@ export interface AdminStructureData {
     requireCommentReview: boolean | null
     postListDisplayMode: string | null
     postListLoadMode: string | null
+    moderators: StructureModeratorItem[]
+    inheritedModerators: StructureModeratorItem[]
     canEditSettings: boolean
   }>
   permissions: {
@@ -200,6 +211,30 @@ export interface AdminStructureData {
 
 type AdminDashboardRawData = Awaited<ReturnType<typeof getAdminDashboardRawData>>
 type AdminStructureRawData = Awaited<ReturnType<typeof getAdminStructureRawData>>
+type AdminStructureModeratorScope = {
+  canEditSettings: boolean
+  canWithdrawTreasury: boolean
+  moderator: {
+    id: number
+    username: string
+    nickname: string | null
+    role: "USER" | "MODERATOR" | "ADMIN"
+    status: string
+  }
+}
+
+function mapStructureModeratorScope(scope: AdminStructureModeratorScope, source: StructureModeratorItem["source"]): StructureModeratorItem {
+  return {
+    id: scope.moderator.id,
+    username: scope.moderator.username,
+    displayName: getUserDisplayName(scope.moderator),
+    role: scope.moderator.role,
+    status: scope.moderator.status,
+    canEditSettings: scope.canEditSettings,
+    canWithdrawTreasury: scope.canWithdrawTreasury,
+    source,
+  }
+}
 
 export function mapAdminDashboardData(data: AdminDashboardRawData): AdminDashboardData {
   return {
@@ -273,6 +308,8 @@ export function mapAdminStructureData(data: AdminStructureRawData, actor: AdminA
         boardCount: zone._count.boards,
         postCount: relatedBoards.reduce((total, board) => total + board.postCount, 0),
         followerCount: relatedBoards.reduce((total, board) => total + board.followerCount, 0),
+        allowUserPost: settings.allowUserPost,
+        allowUserReply: settings.allowUserReply,
         postPointDelta: settings.postPointDelta,
         replyPointDelta: settings.replyPointDelta,
         postIntervalSeconds: settings.postIntervalSeconds,
@@ -291,6 +328,7 @@ export function mapAdminStructureData(data: AdminStructureRawData, actor: AdminA
         requireCommentReview: settings.requireCommentReview,
         postListDisplayMode: zone.postListDisplayMode ?? null,
         postListLoadMode: zone.postListLoadMode ?? null,
+        moderators: zone.moderatorScopes.map((scope) => mapStructureModeratorScope(scope, "zone")),
         canEditSettings: canEditZoneSettings(actor, zone.id),
       }
     }),
@@ -311,6 +349,10 @@ export function mapAdminStructureData(data: AdminStructureRawData, actor: AdminA
         followerCount: board.followerCount,
         todayPostCount: todayBoardPostCountMap.get(board.id) ?? 0,
         allowPost: board.allowPost,
+        allowUserPost: board.allowUserPost ?? null,
+        allowUserReply: board.allowUserReply ?? null,
+        effectiveAllowUserPost: settings.allowUserPost,
+        effectiveAllowUserReply: settings.allowUserReply,
         treasuryPoints: board.treasuryPoints,
         zoneId: board.zoneId ?? null,
         zoneName: board.zone?.name ?? null,
@@ -336,6 +378,8 @@ export function mapAdminStructureData(data: AdminStructureRawData, actor: AdminA
         requireCommentReview: board.requireCommentReview ?? null,
         postListDisplayMode: board.postListDisplayMode ?? null,
         postListLoadMode: board.postListLoadMode ?? null,
+        moderators: board.moderatorScopes.map((scope) => mapStructureModeratorScope(scope, "board")),
+        inheritedModerators: board.zone?.moderatorScopes.map((scope) => mapStructureModeratorScope(scope, "zone")) ?? [],
         canEditSettings: canEditBoardSettings(actor, board.id, board.zoneId),
       }
     }),

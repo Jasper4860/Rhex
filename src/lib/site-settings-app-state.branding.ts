@@ -21,6 +21,7 @@ import type {
   PostSlugGenerationSettings,
   SiteBrandingSettings,
   SiteThemeCustomizationSettings,
+  UserProfileDisplaySettings,
 } from "@/lib/site-settings-app-state.types"
 
 export function resolveSiteBrandingSettings(options: {
@@ -58,6 +59,37 @@ export function mergeSiteBrandingSettings(
         typeof input.iconPath === "string"
           ? input.iconPath.trim().slice(0, 1000)
           : "",
+    },
+  })
+}
+
+export function resolveUserProfileDisplaySettings(options: {
+  appStateJson?: string | null
+  ipLocationEnabledFallback?: boolean
+} = {}): UserProfileDisplaySettings {
+  const siteSettingsState = readSiteSettingsState(options.appStateJson)
+  const userProfile = isRecord(siteSettingsState.userProfile)
+    ? siteSettingsState.userProfile
+    : {}
+
+  return {
+    ipLocationEnabled:
+      typeof userProfile.ipLocationEnabled === "boolean"
+        ? userProfile.ipLocationEnabled
+        : options.ipLocationEnabledFallback ?? false,
+  }
+}
+
+export function mergeUserProfileDisplaySettings(
+  appStateJson: string | null | undefined,
+  input: UserProfileDisplaySettings,
+) {
+  const siteSettingsState = readSiteSettingsState(appStateJson)
+
+  return writeSiteSettingsState(appStateJson, {
+    ...siteSettingsState,
+    userProfile: {
+      ipLocationEnabled: Boolean(input.ipLocationEnabled),
     },
   })
 }

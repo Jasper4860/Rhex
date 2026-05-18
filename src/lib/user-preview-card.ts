@@ -6,6 +6,7 @@ import { buildUserProfileRadarData, type UserProfileRadarData } from "@/lib/user
 import { canViewUserProfileVisibility } from "@/lib/user-profile-settings"
 import { getUserProfileAccessState } from "@/lib/user-blocks"
 import { getUserProfile, type SiteUserProfile } from "@/lib/users"
+import { getSiteSettings } from "@/lib/site-settings"
 import { getVipLevel, isVipActive } from "@/lib/vip-status"
 
 export interface UserPreviewCardData {
@@ -74,7 +75,7 @@ export async function getUserPreviewCardData(username: string): Promise<UserPrev
     ? canViewUserProfileVisibility(user.activityVisibility, visibilityContext)
     : false
 
-  const [displayedBadges, radarSnapshot, initialFollowed] = await Promise.all([
+  const [displayedBadges, radarSnapshot, initialFollowed, settings] = await Promise.all([
     getDisplayedBadgesForUser(user.id),
     getBadgeEligibilitySnapshot(user.id),
     currentUser && currentUser.id !== user.id && !profileAccess.relation.isBlocked
@@ -84,6 +85,7 @@ export async function getUserPreviewCardData(username: string): Promise<UserPrev
         targetId: user.id,
       })
       : Promise.resolve(false),
+    getSiteSettings(),
   ])
   const vipActive = isVipActive(user)
   const vipLevel = vipActive ? getVipLevel(user) : null
@@ -122,7 +124,7 @@ export async function getUserPreviewCardData(username: string): Promise<UserPrev
       canFollow: (!currentUser || currentUser.id !== user.id) && !profileAccess.relation.isBlocked,
       initialFollowed,
     },
-    canSendMessage: Boolean(currentUser && currentUser.id !== user.id && !profileAccess.relation.isBlocked),
+    canSendMessage: Boolean(settings.messageEnabled && currentUser && currentUser.id !== user.id && !profileAccess.relation.isBlocked),
     radarData: buildUserProfileRadarData({
       user,
       snapshot: radarSnapshot,

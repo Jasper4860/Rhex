@@ -231,6 +231,15 @@ export async function executeAddonSurfaceRender<
 }
 
 export async function executeAddonPage(scope: AddonPageScope, addonId: string, routeSegments?: string[]) {
+  return executeAddonPageWithInput(scope, addonId, routeSegments)
+}
+
+export async function executeAddonPageWithInput(
+  scope: AddonPageScope,
+  addonId: string,
+  routeSegments?: string[],
+  input?: AddonRenderExecutionInput,
+) {
   const matched = await findAddonPageRoute(scope, addonId, routeSegments)
   if (!matched) {
     return null
@@ -240,6 +249,7 @@ export async function executeAddonPage(scope: AddonPageScope, addonId: string, r
   const result = await runAddonRenderCall({
     addon: matched.addon,
     action: `page:${scope}:${matched.registration.key}`,
+    input,
     call: (ctx) => matched.registration.render({
       ...ctx,
       scope,

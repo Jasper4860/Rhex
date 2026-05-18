@@ -8,6 +8,7 @@ import {
   type CheckInRewardRange,
 } from "@/lib/check-in-reward"
 import { parseNonNegativeSafeInteger } from "@/lib/shared/safe-integer"
+import { normalizePasswordMinLength, normalizePasswordPolicySettings, normalizePasswordStrength } from "@/lib/password-policy"
 import {
   isRecord,
   normalizeNonNegativeInteger,
@@ -28,6 +29,7 @@ import type {
   RegisterEmailWhitelistSettings,
   RegisterInviteCodeHelpSettings,
   RegisterNicknameLengthSettings,
+  RegisterPasswordPolicySettings,
   RegistrationEmailTemplateSettings,
   RegistrationRewardSettings,
   SiteSecuritySettings,
@@ -354,6 +356,35 @@ export function mergeRegisterNicknameLengthSettings(
       minLength,
       maxLength: Math.min(50, Math.max(minLength, normalizeNonNegativeInteger(input.maxLength, 20))),
     },
+  })
+}
+
+export function resolveRegisterPasswordPolicySettings(options: {
+  appStateJson?: string | null
+  minLengthFallback?: number
+  strengthFallback?: unknown
+} = {}): RegisterPasswordPolicySettings {
+  const siteSettingsState = readSiteSettingsState(options.appStateJson)
+  const passwordPolicy = isRecord(siteSettingsState.passwordPolicy)
+    ? siteSettingsState.passwordPolicy
+    : {}
+
+  return normalizePasswordPolicySettings({
+    minLength: normalizePasswordMinLength(passwordPolicy.minLength, normalizePasswordMinLength(options.minLengthFallback)),
+    strength: normalizePasswordStrength(passwordPolicy.strength, normalizePasswordStrength(options.strengthFallback)),
+  })
+}
+
+export function mergeRegisterPasswordPolicySettings(
+  appStateJson: string | null | undefined,
+  input: RegisterPasswordPolicySettings,
+) {
+  const siteSettingsState = readSiteSettingsState(appStateJson)
+  const normalized = normalizePasswordPolicySettings(input)
+
+  return writeSiteSettingsState(appStateJson, {
+    ...siteSettingsState,
+    passwordPolicy: normalized,
   })
 }
 

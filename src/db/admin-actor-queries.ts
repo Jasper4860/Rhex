@@ -167,6 +167,8 @@ export function findManagedZoneContext(zoneId: string) {
       slug: true,
       name: true,
       showInHomeFeed: true,
+      allowUserPost: true,
+      allowUserReply: true,
     },
   })
 }

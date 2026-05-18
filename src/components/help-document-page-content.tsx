@@ -75,7 +75,6 @@ export function HelpDocumentPageContent({ items, activeItem }: HelpDocumentPageC
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-dashed border-border bg-muted/20 px-4 py-3">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold tracking-[0.16em] text-muted-foreground">帮助目录已收起</p>
-                  <p className="mt-1 text-xs text-muted-foreground">展开后可快速切换文档，当前正文区域会占用更多宽度。</p>
                 </div>
                 <Button
                   type="button"

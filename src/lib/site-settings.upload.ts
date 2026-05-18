@@ -37,6 +37,7 @@ export interface SiteSettingsUploadData {
   attachmentMinUploadVipLevel: number
   attachmentAllowedExtensions: string[]
   attachmentMaxFileSizeMb: number
+  messageEnabled: boolean
   messageImageUploadEnabled: boolean
   messageFileUploadEnabled: boolean
   messagePromptAudioPath: string

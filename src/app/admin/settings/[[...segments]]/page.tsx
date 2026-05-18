@@ -7,6 +7,7 @@ import { AdminBasicSettingsForm } from "@/components/admin/admin-basic-settings-
 import { AdminFooterLinksSettingsForm } from "@/components/admin/admin-footer-links-settings-form"
 import { AdminFriendLinksSettingsForm } from "@/components/admin/admin-friend-links-settings-form"
 import { AdminMarkdownEmojiSettingsForm } from "@/components/admin/admin-markdown-emoji-settings-form"
+import { AdminMessageSettingsForm } from "@/components/admin/admin-message-settings-form"
 import { AdminModuleSearch } from "@/components/admin/admin-module-search"
 import { AdminSettingsWorkspace } from "@/components/admin/admin-settings-workspace"
 import { AdminShell } from "@/components/admin/admin-shell"
@@ -186,6 +187,17 @@ export default async function AdminSettingsPage(
           />
         ) : null}
 
+        {resolved.section === "messages" ? (
+          <AdminMessageSettingsForm
+            initialSettings={{
+              messageEnabled: Boolean(siteSettings!.messageEnabled),
+              messageImageUploadEnabled: Boolean(siteSettings!.messageImageUploadEnabled),
+              messageFileUploadEnabled: Boolean(siteSettings!.messageFileUploadEnabled),
+              messagePromptAudioPath: siteSettings!.messagePromptAudioPath,
+            }}
+          />
+        ) : null}
+
         {resolved.section === "friend-links" ? (
           <AdminFriendLinksSettingsForm
             initialSettings={friendLinks!.settings}
@@ -246,9 +258,6 @@ export default async function AdminSettingsPage(
                   ? siteSettings!.attachmentAllowedExtensions
                   : ["zip", "rar", "7z", "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt"],
               attachmentMaxFileSizeMb: Number(siteSettings!.attachmentMaxFileSizeMb ?? 20),
-              messageImageUploadEnabled: Boolean(siteSettings!.messageImageUploadEnabled),
-              messageFileUploadEnabled: Boolean(siteSettings!.messageFileUploadEnabled),
-              messagePromptAudioPath: siteSettings!.messagePromptAudioPath,
             }}
             levelOptions={uploadLevelOptions}
             vipLevelOptions={uploadVipLevelOptions}

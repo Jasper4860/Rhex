@@ -365,6 +365,9 @@ export function CreatePostFormShell({
           </button>
           {showBoardTips ? (
             <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+              {selectedBoard?.allowUserPost === false && currentUser.role !== "ADMIN" && currentUser.role !== "MODERATOR" ? (
+                <p>当前节点仅管理员和版主可发帖。</p>
+              ) : null}
               <p>
                 当前节点要求：最低{pointName} {selectedBoard?.minPostPoints ?? 0}
                 ，最低等级 Lv.{selectedBoard?.minPostLevel ?? 0}，最低 VIP 等级{" "}
@@ -383,7 +386,9 @@ export function CreatePostFormShell({
 
       {!canPostInBoard ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          当前不满足该节点发帖权限，请提升{pointName}、等级、VIP 等级或开通 VIP 后再试。
+          {selectedBoard?.allowUserPost === false && currentUser.role !== "ADMIN" && currentUser.role !== "MODERATOR"
+            ? "当前节点仅管理员和版主可发帖。"
+            : `当前不满足该节点发帖权限，请提升${pointName}、等级、VIP 等级或开通 VIP 后再试。`}
         </div>
       ) : null}
 

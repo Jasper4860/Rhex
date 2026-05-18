@@ -126,13 +126,19 @@ export async function generateMetadata(props: PageProps<"/posts/[slug]">): Promi
 export default async function PostPage(props: PageProps<"/posts/[slug]">) {
   const searchParams = await props.searchParams;
   const params = await props.params;
-  const currentSort = readSearchParam(searchParams?.sort) === "newest" ? "newest" : "oldest"
+  const browsingPreferences = resolveBrowsingPreferencesSnapshot((await cookies()).get(BROWSING_PREFERENCES_COOKIE_NAME)?.value)
+  const requestedCommentSort = readSearchParam(searchParams?.sort)
+  const currentSort = requestedCommentSort === "newest"
+    ? "newest"
+    : requestedCommentSort === "oldest"
+      ? "oldest"
+      : browsingPreferences.commentThreadSort
   const requestedCommentView = readSearchParam(searchParams?.view)
   const currentCommentView = requestedCommentView === "flat"
     ? "flat"
     : requestedCommentView === "tree"
       ? "tree"
-      : resolveBrowsingPreferencesSnapshot((await cookies()).get(BROWSING_PREFERENCES_COOKIE_NAME)?.value).commentThreadDisplayMode
+      : browsingPreferences.commentThreadDisplayMode
   const currentPage = Math.max(1, Number(readSearchParam(searchParams?.page) ?? "1") || 1)
 
 
@@ -175,6 +181,7 @@ export default async function PostPage(props: PageProps<"/posts/[slug]">) {
   const canViewOfflinePost = basePost.status === "OFFLINE" && isOwnerOrManager
 
   const viewPermission = boardAccessContext ? checkBoardPermission(currentUser, boardAccessContext.settings, "view") : { allowed: true, message: "" }
+  const replyPermission = boardAccessContext ? checkBoardPermission(currentUser, boardAccessContext.settings, "reply") : { allowed: true, message: "" }
   const postViewPermission = checkPostAccessPermission(currentUser, resolvePostAccessRequirements(basePost))
   const mergedViewPermission = mergeAccessPermissions(viewPermission, postViewPermission)
   const canViewRestrictedPost = basePost.status === "NORMAL" && (mergedViewPermission.allowed || isOwnerOrManager)
@@ -692,12 +699,13 @@ export default async function PostPage(props: PageProps<"/posts/[slug]">) {
                           perTargetLimit: tipSummary.perPostLimit,
                           usedDailyCount: tipSummary.usedDailyCount,
                         } : undefined}
-                        canReply={Boolean(currentUser && displayPost.status === "NORMAL")}
+                        canReply={Boolean(currentUser && displayPost.status === "NORMAL" && replyPermission.allowed)}
                         currentPage={commentResult.page}
                         pageSize={commentResult.pageSize}
                         total={commentResult.total}
                         currentSort={currentSort}
                         currentDisplayMode={currentCommentView}
+                        commentLoadMode={settings.commentLoadMode}
                         flatComments={commentResult.flatItems}
                         currentUserId={currentUser?.id}
                         canAcceptAnswer={displayPost.type === "BOUNTY" && currentUser?.id === displayPost.authorId && !displayPost.bounty?.isResolved}

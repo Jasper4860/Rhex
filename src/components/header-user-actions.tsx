@@ -23,6 +23,7 @@ import { getVipLevel, isVipActive } from "@/lib/vip-status"
 
 interface HeaderUserActionsProps {
   user?: (CurrentUserClient & { canAccessAdmin?: boolean }) | null
+  messageEnabled?: boolean
 }
 
 type UserMenuSettingsTab = "level" | "points" | "badges"
@@ -147,7 +148,7 @@ function UserMenuContent({
   )
 }
 
-export function HeaderUserActions({ user: userOverride }: HeaderUserActionsProps = {}) {
+export function HeaderUserActions({ user: userOverride, messageEnabled = true }: HeaderUserActionsProps = {}) {
   const router = useRouter()
   const { user: currentUser, loading, refresh } = useCurrentUser()
   const user = userOverride ?? (currentUser
@@ -209,12 +210,14 @@ export function HeaderUserActions({ user: userOverride }: HeaderUserActionsProps
           <HeaderUnreadBadge count={unreadNotificationCount} className="right-0.5 top-0.5" />
         </Link>
 
-        <Link href="/messages" className="relative">
-          <Button variant="ghost" size="icon" className="size-8 rounded-md">
-            <MessageSquareMore className={unreadMessageCount > 0 ? "h-4 w-4 text-rose-600 dark:text-rose-300" : "h-4 w-4"} />
-          </Button>
-          <HeaderUnreadBadge count={unreadMessageCount} className="right-0.5 top-0.5" />
-        </Link>
+        {messageEnabled ? (
+          <Link href="/messages" className="relative">
+            <Button variant="ghost" size="icon" className="size-8 rounded-md">
+              <MessageSquareMore className={unreadMessageCount > 0 ? "h-4 w-4 text-rose-600 dark:text-rose-300" : "h-4 w-4"} />
+            </Button>
+            <HeaderUnreadBadge count={unreadMessageCount} className="right-0.5 top-0.5" />
+          </Link>
+        ) : null}
 
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -241,12 +244,14 @@ export function HeaderUserActions({ user: userOverride }: HeaderUserActionsProps
           <HeaderUnreadBadge count={unreadNotificationCount} className="right-0.5 top-0.5" />
         </Link>
 
-        <Link href="/messages" className="relative">
-          <Button variant="ghost" className="h-8 rounded-md px-3 gap-1.5">
-            <MessageSquareMore className={unreadMessageCount > 0 ? "h-4 w-4 text-rose-600 dark:text-rose-300" : "h-4 w-4"} />
-          </Button>
-          <HeaderUnreadBadge count={unreadMessageCount} className="right-1 top-0.5" />
-        </Link>
+        {messageEnabled ? (
+          <Link href="/messages" className="relative">
+            <Button variant="ghost" className="h-8 rounded-md px-3 gap-1.5">
+              <MessageSquareMore className={unreadMessageCount > 0 ? "h-4 w-4 text-rose-600 dark:text-rose-300" : "h-4 w-4"} />
+            </Button>
+            <HeaderUnreadBadge count={unreadMessageCount} className="right-1 top-0.5" />
+          </Link>
+        ) : null}
 
   
 

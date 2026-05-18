@@ -22,9 +22,12 @@ export interface MessageConversationListItem {
 export interface MessageBubbleItem {
   id: string
   body: string
+  bodyHtml?: string
+  bodyImageOnly?: boolean
   createdAt: string
   occurredAt?: string
   senderId: number
+  senderUsername: string
   senderName: string
   senderAvatarPath?: string | null
   isMine: boolean
@@ -48,6 +51,9 @@ export interface MessageSendResult {
   content: string
   createdAt: string
   occurredAt: string
+  senderUsername?: string
+  senderDisplayName?: string
+  senderAvatarPath?: string | null
   contentAdjusted: boolean
 }
 

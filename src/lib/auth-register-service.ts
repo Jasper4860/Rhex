@@ -30,6 +30,7 @@ import { verifyTurnstileToken } from "@/lib/turnstile"
 import { findUsernameSensitiveWord } from "@/lib/username-sensitive-words"
 import { validateAuthPayload } from "@/lib/validators"
 import { verifyCode } from "@/lib/verification"
+import type { PasswordStrength } from "@/lib/password-policy"
 import { executeAddonActionHook } from "@/addons-host/runtime/hooks"
 
 interface RegisterFlowOptions {
@@ -73,7 +74,7 @@ interface RegisterContext {
 }
 
 
-function assertRegisterPayload(body: unknown, options: { nicknameMinLength: number; nicknameMaxLength: number }): RegisterPayload {
+function assertRegisterPayload(body: unknown, options: { nicknameMinLength: number; nicknameMaxLength: number; passwordMinLength: number; passwordStrength: PasswordStrength }): RegisterPayload {
   const validated = validateAuthPayload(body, options)
 
   if (!validated.success || !validated.data) {
@@ -256,6 +257,8 @@ export async function createRegisterFlow(options: RegisterFlowOptions): Promise<
   const payload = assertRegisterPayload(options.body, {
     nicknameMinLength: settings.registerNicknameMinLength,
     nicknameMaxLength: settings.registerNicknameMaxLength,
+    passwordMinLength: settings.registerPasswordMinLength,
+    passwordStrength: settings.registerPasswordStrength,
   })
   const body = options.body as Record<string, unknown>
   const addonFields = readAddonAuthFieldsFromBody(options.body)

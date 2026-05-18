@@ -2,6 +2,7 @@ import { listActiveGiftDefinitions } from "@/db/post-gift-queries"
 import { updateSiteSettingsRecord, updateSiteSettingsRecordWithGiftDefinitions } from "@/db/site-settings-write-queries"
 import { apiError, readOptionalNumberField, readOptionalStringField, type JsonObject } from "@/lib/api-route"
 import { finalizeSiteSettingsUpdate, type SiteSettingsRecord } from "@/lib/admin-site-settings-shared"
+import { normalizeCommentLoadMode } from "@/lib/comment-load-mode"
 import {
   mergeAnonymousPostSettings,
   mergeBoardTreasurySettings,
@@ -34,6 +35,7 @@ export async function updateInteractionSiteSettingsSection(existing: SiteSetting
       appStateJson: existing.appStateJson,
       guestCanViewFallback: true,
       initialVisibleRepliesFallback: 10,
+      loadModeFallback: normalizeCommentLoadMode(undefined),
     })
     const commentInitialVisibleReplies = Math.min(
       100,
@@ -42,6 +44,7 @@ export async function updateInteractionSiteSettingsSection(existing: SiteSetting
         readOptionalNumberField(body, "commentInitialVisibleReplies") ?? existingCommentAccessSettings.initialVisibleReplies,
       ),
     )
+    const commentLoadMode = normalizeCommentLoadMode(body.commentLoadMode, existingCommentAccessSettings.loadMode)
     const postEditableMinutes = Math.max(0, readOptionalNumberField(body, "postEditableMinutes") ?? existing.postEditableMinutes)
     const commentEditableMinutes = Math.max(0, readOptionalNumberField(body, "commentEditableMinutes") ?? existing.commentEditableMinutes)
     const existingAnonymousPostSettings = resolveAnonymousPostSettings({
@@ -203,6 +206,7 @@ export async function updateInteractionSiteSettingsSection(existing: SiteSetting
     const appStateWithCommentAccess = mergeCommentAccessSettings(existing.appStateJson, {
       guestCanView: guestCanViewComments,
       initialVisibleReplies: commentInitialVisibleReplies,
+      loadMode: commentLoadMode,
     })
     const appStateWithAnonymousPost = mergeAnonymousPostSettings(appStateWithCommentAccess, {
       enabled: anonymousPostEnabled,

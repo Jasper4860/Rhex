@@ -32,6 +32,8 @@ export interface SiteBoardItem {
   rulesMarkdown: string | null
   count: number
   allowedPostTypes?: string[]
+  allowUserPost?: boolean
+  allowUserReply?: boolean
   requirePostReview?: boolean
   requireCommentReview?: boolean
   minViewPoints?: number
@@ -67,6 +69,8 @@ function mapSiteBoard(board: SiteBoardRecord): SiteBoardItem {
     rulesMarkdown: sidebarConfig.rulesMarkdown,
     count: board._count.posts,
     allowedPostTypes: settings.allowedPostTypes,
+    allowUserPost: settings.allowUserPost,
+    allowUserReply: settings.allowUserReply,
     requirePostReview: settings.requirePostReview,
     requireCommentReview: settings.requireCommentReview,
     minViewPoints: settings.minViewPoints,

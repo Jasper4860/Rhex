@@ -13,6 +13,7 @@ import {
 import { getCurrentUser, type SessionActor } from "@/lib/auth"
 import { getUserCheckInStreakSummary } from "@/lib/check-in-streak-service"
 import { getLocalDateKey } from "@/lib/date-key"
+import { getSiteSettings } from "@/lib/site-settings"
 
 export interface UserSurfaceSnapshot {
   unreadNotificationCount: number
@@ -73,13 +74,14 @@ async function readUserSurfaceSnapshot(userId: number, todayKey: string): Promis
       }
     : await getUserCheckInStreakSummary(userId)
 
-  const [unreadNotificationCount, unreadMessageCount, boardCount, favoriteCount, checkInRecord] = await Promise.all([
+  const [settings, unreadNotificationCount, boardCount, favoriteCount, checkInRecord] = await Promise.all([
+    getSiteSettings(),
     countUnreadNotifications(userId),
-    getUnreadConversationCount(userId),
     countUserSurfaceBoardFollows(userId),
     countUserSurfaceFavorites(userId),
     findUserSurfaceCheckInRecord(userId, todayKey),
   ])
+  const unreadMessageCount = settings.messageEnabled ? await getUnreadConversationCount(userId) : 0
 
   return {
     unreadNotificationCount,

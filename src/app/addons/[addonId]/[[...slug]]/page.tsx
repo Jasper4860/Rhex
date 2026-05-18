@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 
-import { AddonRenderBlock, AddonSlotRenderer, executeAddonPage, isAddonRedirectResult } from "@/addons-host"
+import { AddonRenderBlock, AddonSlotRenderer, executeAddonPage, executeAddonPageWithInput, isAddonRedirectResult } from "@/addons-host"
 import { HomeSidebarPanels } from "@/components/home/home-sidebar-panels"
 import { SidebarNavigation } from "@/components/sidebar-navigation"
 import { SiteFooter } from "@/components/site-footer"
@@ -20,6 +20,7 @@ interface AddonPageProps {
     addonId: string
     slug?: string[]
   }>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
 export async function generateMetadata({ params }: AddonPageProps): Promise<Metadata> {
@@ -38,9 +39,32 @@ export async function generateMetadata({ params }: AddonPageProps): Promise<Meta
   }
 }
 
-export default async function AddonPublicPage({ params }: AddonPageProps) {
+function toUrlSearchParams(input: Record<string, string | string[] | undefined>) {
+  const params = new URLSearchParams()
+
+  for (const [key, value] of Object.entries(input)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        params.append(key, item)
+      }
+      continue
+    }
+
+    if (typeof value === "string") {
+      params.set(key, value)
+    }
+  }
+
+  return params
+}
+
+export default async function AddonPublicPage({ params, searchParams }: AddonPageProps) {
   const { addonId, slug } = await params
-  const resolved = await executeAddonPage("public", addonId, slug)
+  const resolvedSearchParams = searchParams ? toUrlSearchParams(await searchParams) : undefined
+  const resolved = await executeAddonPageWithInput("public", addonId, slug, {
+    pathname: `/addons/${addonId}/${(slug ?? []).join("/")}`.replace(/\/+$/g, ""),
+    searchParams: resolvedSearchParams,
+  })
 
   if (!resolved) {
     notFound()

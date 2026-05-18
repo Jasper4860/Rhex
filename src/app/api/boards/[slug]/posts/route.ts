@@ -42,6 +42,8 @@ export const GET = createRouteHandler(async ({ request, routeContext }) => {
     postIntervalSeconds: 120,
     replyIntervalSeconds: 3,
     allowedPostTypes: board.allowedPostTypes?.length ? normalizePostTypes(board.allowedPostTypes.join(",")) : DEFAULT_ALLOWED_POST_TYPES,
+    allowUserPost: board.allowUserPost ?? true,
+    allowUserReply: board.allowUserReply ?? true,
     minViewPoints: board.minViewPoints ?? 0,
     minViewLevel: board.minViewLevel ?? 0,
     minPostPoints: board.minPostPoints ?? 0,

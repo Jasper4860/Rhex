@@ -8,7 +8,7 @@ import { finalizeSiteSettingsUpdate, type SiteSettingsRecord } from "@/lib/admin
 import { normalizeMarkdownEmojiItems, serializeMarkdownEmojiItems } from "@/lib/markdown-emoji"
 import { normalizePostListLoadMode } from "@/lib/post-list-load-mode"
 import { normalizePostListDisplayMode } from "@/lib/post-list-display"
-import { mergeFooterCopyrightSettings, mergeHomeFeedPostListLoadSettings, mergeHomeSidebarAnnouncementSettings, mergeLeftSidebarDisplaySettings, mergePostPageSizeSettings, mergePostSlugGenerationSettings, mergeSiteBrandingSettings, mergeThemeCustomizationSettings, normalizeLeftSidebarDisplayMode, normalizePostSlugGenerationMode, resolveFooterCopyrightSettings, resolveHomeFeedPostListLoadSettings, resolveHomeSidebarAnnouncementSettings, resolveLeftSidebarDisplaySettings, resolvePostPageSizeSettings, resolvePostSlugGenerationSettings, resolveSiteBrandingSettings, resolveThemeCustomizationSettingsFromAppState } from "@/lib/site-settings-app-state"
+import { mergeFooterCopyrightSettings, mergeHomeFeedPostListLoadSettings, mergeHomeSidebarAnnouncementSettings, mergeLeftSidebarDisplaySettings, mergePostPageSizeSettings, mergePostSlugGenerationSettings, mergeSiteBrandingSettings, mergeThemeCustomizationSettings, mergeUserProfileDisplaySettings, normalizeLeftSidebarDisplayMode, normalizePostSlugGenerationMode, resolveFooterCopyrightSettings, resolveHomeFeedPostListLoadSettings, resolveHomeSidebarAnnouncementSettings, resolveLeftSidebarDisplaySettings, resolvePostPageSizeSettings, resolvePostSlugGenerationSettings, resolveSiteBrandingSettings, resolveThemeCustomizationSettingsFromAppState, resolveUserProfileDisplaySettings } from "@/lib/site-settings-app-state"
 import { normalizeHeaderAppIconName, normalizeSiteHeaderAppLinks } from "@/lib/site-header-app-links"
 import { mergeSiteSearchSettings, resolveSiteSearchSettings } from "@/lib/site-search-settings"
 import { normalizeFooterLinks } from "@/lib/shared/config-parsers"
@@ -40,6 +40,13 @@ export async function updateProfileSiteSettingsSection(existing: SiteSettingsRec
     const homeSidebarAnnouncementsEnabled = body.homeSidebarAnnouncementsEnabled === undefined
       ? existingHomeSidebarAnnouncementSettings.enabled
       : Boolean(body.homeSidebarAnnouncementsEnabled)
+    const existingUserProfileDisplaySettings = resolveUserProfileDisplaySettings({
+      appStateJson: existing.appStateJson,
+      ipLocationEnabledFallback: false,
+    })
+    const userProfileIpLocationEnabled = body.userProfileIpLocationEnabled === undefined
+      ? existingUserProfileDisplaySettings.ipLocationEnabled
+      : Boolean(body.userProfileIpLocationEnabled)
     const existingLeftSidebarDisplaySettings = resolveLeftSidebarDisplaySettings({
       appStateJson: existing.appStateJson,
       modeFallback: "DEFAULT",
@@ -129,7 +136,11 @@ export async function updateProfileSiteSettingsSection(existing: SiteSettingsRec
 
     const appStateWithThemeDefaults = mergeThemeCustomizationSettings(appStateWithSiteBranding, themeCustomization)
 
-    const appStateJson = mergeFooterCopyrightSettings(appStateWithThemeDefaults, {
+    const appStateWithUserProfileDisplay = mergeUserProfileDisplaySettings(appStateWithThemeDefaults, {
+      ipLocationEnabled: userProfileIpLocationEnabled,
+    })
+
+    const appStateJson = mergeFooterCopyrightSettings(appStateWithUserProfileDisplay, {
       text: footerCopyrightText || existingFooterCopyrightSettings.text || `${siteName} @ ${new Date().getFullYear()}`,
       brandingVisible: footerBrandingVisible,
     })

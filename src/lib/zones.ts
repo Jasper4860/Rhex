@@ -23,6 +23,8 @@ export interface SiteZoneItem {
   hiddenFromSidebar: boolean
   boardSlugs: string[]
   count: number
+  allowUserPost?: boolean
+  allowUserReply?: boolean
   requirePostReview?: boolean
   requireCommentReview?: boolean
   minViewPoints?: number
@@ -47,6 +49,8 @@ function mapSiteZone(zone: SiteZoneRecord): SiteZoneItem {
     hiddenFromSidebar: zone.hiddenFromSidebar ?? false,
     boardSlugs: zone.boards.map((board) => board.slug),
     count: zone.boards.reduce((total, board) => total + board._count.posts, 0),
+    allowUserPost: zone.allowUserPost ?? true,
+    allowUserReply: zone.allowUserReply ?? true,
     requirePostReview: zone.requirePostReview ?? false,
     requireCommentReview: zone.requireCommentReview ?? false,
     minViewPoints: (zone as { minViewPoints?: number | null }).minViewPoints ?? 0,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, type ReactNode } from "react"
+import { useMemo, useState, type PointerEvent, type ReactNode } from "react"
 import { Copy, Ellipsis, Eye, Flag } from "lucide-react"
 
 import { FollowToggleButton } from "@/components/follow-toggle-button"
@@ -50,14 +50,51 @@ export function PostBodyCopyMenu({ post, postLinkDisplayMode = "SLUG", canReport
     }
   }
 
+  function isProfilePreviewTrigger(target: EventTarget | null) {
+    if (!(target instanceof Element)) {
+      return false
+    }
+
+    return Boolean(target.closest('[data-user-profile-preview-trigger="true"]'))
+  }
+
+  function handlePointerEnter(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "mouse") {
+      return
+    }
+
+    setIsHovered(true)
+  }
+
+  function handlePointerLeave(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "mouse") {
+      return
+    }
+
+    setIsHovered(false)
+    setIsMenuOpen(false)
+  }
+
+  function handlePointerDownCapture(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "mouse") {
+      return
+    }
+
+    if (isProfilePreviewTrigger(event.target)) {
+      setIsHovered(false)
+      setIsMenuOpen(false)
+      return
+    }
+
+    setIsHovered(true)
+  }
+
   return (
     <div
       className="relative"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false)
-        setIsMenuOpen(false)
-      }}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
+      onPointerDownCapture={handlePointerDownCapture}
     >
       <div
         className={cn(

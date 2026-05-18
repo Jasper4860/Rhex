@@ -664,7 +664,10 @@ export async function getCommentsByPostId(
         }
       })
 
-      await attachGiftStats(flatItems.flatMap((item) => item.type === "comment" ? [item.comment] : [item.reply]))
+      const flatGiftTargets: Array<SiteCommentItem | SiteCommentReplyItem> = flatItems.map((item) => (
+        item.type === "comment" ? item.comment : item.reply
+      ))
+      await attachGiftStats(flatGiftTargets)
 
       return {
         items: [],

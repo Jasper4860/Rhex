@@ -35,7 +35,8 @@ export function ActionsTab({
   operations: UserActionsState["operations"]
   isPending: boolean
 }) {
-  const canMute = activeUser.status === "ACTIVE"
+  const isAdminTarget = activeUser.role === "ADMIN"
+  const canMute = activeUser.status === "ACTIVE" && !isAdminTarget
   const canActivate = activeUser.status !== "ACTIVE"
   const activateLabel = activeUser.status === "BANNED" ? "解除拉黑" : "恢复状态"
 
@@ -79,7 +80,7 @@ export function ActionsTab({
                 {
                   key: "ban",
                   label: isPending ? "处理中..." : "拉黑",
-                  hidden: activeUser.status === "BANNED",
+                  hidden: activeUser.status === "BANNED" || isAdminTarget,
                   disabled: isPending,
                   onClick: () => account.runStatusAction("user.ban", `确认拉黑 @${activeUser.username} 吗？`),
                   className: "h-8 rounded-full bg-red-600 px-3 text-xs text-white hover:bg-red-500",

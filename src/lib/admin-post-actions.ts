@@ -109,6 +109,41 @@ export const adminPostActionHandlers: Record<string, AdminActionDefinition> = {
     await writeAdminActionLog(context, adminPostActionHandlers["post.show"].metadata)
     return { message: "帖子已上线" }
   }),
+  "post.lock": defineAdminAction({ targetType: "POST", revalidatePaths: ["/", "/admin"], buildDetail: () => "管理员关闭帖子" }, async (context) => {
+    const post = await ensureCanManagePost(context.actor, context.targetId)
+    const previousStatus = post.status as AddonReadablePostStatus
+    await updatePostStatus(context.targetId, PostStatus.LOCKED)
+    revalidateHomeSidebarStatsCache()
+    revalidatePostDetailCache({ postId: post.id, slug: post.slug })
+    expireTaxonomyCacheImmediately()
+    await executeAddonActionHook("post.status.changed.after", {
+      postId: context.targetId,
+      editorId: String(context.adminUserId),
+      previousStatus,
+      nextStatus: "LOCKED",
+    })
+    await writeAdminActionLog(context, adminPostActionHandlers["post.lock"].metadata)
+    return { message: "帖子已关闭" }
+  }),
+  "post.unlock": defineAdminAction({ targetType: "POST", revalidatePaths: ["/", "/admin"], buildDetail: () => "管理员开放帖子" }, async (context) => {
+    const post = await ensureCanManagePost(context.actor, context.targetId)
+    const previousStatus = post.status as AddonReadablePostStatus
+    await updatePostStatus(context.targetId, PostStatus.NORMAL, null)
+    if (post.type === "AUCTION") {
+      await activatePostAuctionForPost(post.id)
+    }
+    revalidateHomeSidebarStatsCache()
+    revalidatePostDetailCache({ postId: post.id, slug: post.slug })
+    expireTaxonomyCacheImmediately()
+    await executeAddonActionHook("post.status.changed.after", {
+      postId: context.targetId,
+      editorId: String(context.adminUserId),
+      previousStatus,
+      nextStatus: "NORMAL",
+    })
+    await writeAdminActionLog(context, adminPostActionHandlers["post.unlock"].metadata)
+    return { message: "帖子已开放" }
+  }),
   "post.moveBoard": defineAdminAction({ targetType: "POST", buildDetail: () => "管理员移动帖子节点" }, async (context) => {
     const boardSlug = requireAdminActionString(context.body, "boardSlug", "缺少目标节点")
     const [post, targetBoard] = await Promise.all([

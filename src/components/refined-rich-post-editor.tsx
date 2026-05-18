@@ -212,8 +212,8 @@ export function RefinedRichPostEditor({
         <div
           className={cn(
             viewState.isFullscreen
-              ? "flex h-full max-h-[96vh] w-full max-w-6xl flex-col overflow-x-hidden overflow-y-visible rounded-xl border border-border bg-background shadow-2xl"
-              : "overflow-x-hidden overflow-y-visible rounded-xl border border-border bg-card shadow-xs",
+              ? "flex h-full min-w-0 max-h-[96vh] w-full max-w-6xl flex-col overflow-x-hidden overflow-y-visible rounded-xl border border-border bg-background shadow-2xl"
+              : "min-w-0 max-w-full overflow-x-hidden overflow-y-visible rounded-xl border border-border bg-card shadow-xs",
             !viewState.isFullscreen && shellClassName,
           )}
         >

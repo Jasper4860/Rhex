@@ -126,15 +126,16 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
   return <CurrentUserContext.Provider value={value}>{children}</CurrentUserContext.Provider>
 }
 
-export function CurrentUserInboxProvider({ children, messagePromptAudioPath }: { children: React.ReactNode; messagePromptAudioPath?: string }) {
+export function CurrentUserInboxProvider({ children, messageEnabled = true, messagePromptAudioPath }: { children: React.ReactNode; messageEnabled?: boolean; messagePromptAudioPath?: string }) {
   const { user, surface } = useCurrentUser()
 
   return (
     <InboxRealtimeProvider
       key={`${user?.id ?? "guest"}:${surface?.unreadMessageCount ?? 0}:${surface?.unreadNotificationCount ?? 0}`}
       currentUserId={user?.id ?? null}
-      initialUnreadMessageCount={surface?.unreadMessageCount ?? 0}
+      initialUnreadMessageCount={messageEnabled ? surface?.unreadMessageCount ?? 0 : 0}
       initialUnreadNotificationCount={surface?.unreadNotificationCount ?? 0}
+      messageEnabled={messageEnabled}
       messagePromptAudioPath={messagePromptAudioPath}
     >
       {children}

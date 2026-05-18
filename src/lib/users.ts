@@ -28,6 +28,7 @@ const USER_PROFILE_ACTIVE_BOARD_MAX_BATCHES = 10
 export interface SiteUserProfile {
   id: number
   createdAt: string
+  lastLoginIp: string | null
   username: string
   displayName: string
   role: PublicUserRole
@@ -90,6 +91,7 @@ export async function getUserProfile(username: string): Promise<SiteUserProfile 
     return applyHookedUserPresentationToNamedItem({
       id: Number(user.id),
       createdAt: user.createdAt.toISOString(),
+      lastLoginIp: user.lastLoginIp,
       username: user.username,
       displayName: getUserDisplayName(user),
       role: user.role,

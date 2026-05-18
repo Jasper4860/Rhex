@@ -5,6 +5,7 @@ import { useMemo, type ReactNode } from "react"
 
 import {
   AdminBooleanSelectField,
+  SettingsSelectField as SelectField,
   SettingsInputField as TextField,
 } from "@/components/admin/admin-settings-fields"
 import { HEAT_COLOR_PRESETS } from "@/components/admin/admin-basic-settings.constants"
@@ -12,6 +13,7 @@ import type { AdminInteractionSettingsFormProps } from "@/components/admin/admin
 import { AdminTippingGiftListEditor } from "@/components/admin/admin-tipping-gift-list-editor"
 import { ColorPicker } from "@/components/ui/color-picker"
 import { Tooltip } from "@/components/ui/tooltip"
+import { COMMENT_LOAD_MODE_INFINITE, COMMENT_LOAD_MODE_PAGINATION } from "@/lib/comment-load-mode"
 import { calculatePostHeatScore, resolvePostHeatStyle } from "@/lib/post-heat"
 
 function parseNumberList(raw: string) {
@@ -142,9 +144,30 @@ export function AdminInteractionSettingsForm({
             <AdminBooleanSelectField label="游客可查看评论" checked={draft.guestCanViewComments} onChange={(value) => updateDraftField("guestCanViewComments", value)} />
             <TextField label="楼中楼默认展开条数" value={draft.commentInitialVisibleReplies} onChange={(value) => updateDraftField("commentInitialVisibleReplies", value)} placeholder="如 10" />
             <TextField label="评论区一页显示数" value={draft.commentPageSize} onChange={(value) => updateDraftField("commentPageSize", value)} placeholder="如 15" />
+            <SelectField
+              label="评论加载方式"
+              value={draft.commentLoadMode}
+              onChange={(value) => updateDraftField("commentLoadMode", value === COMMENT_LOAD_MODE_INFINITE ? COMMENT_LOAD_MODE_INFINITE : COMMENT_LOAD_MODE_PAGINATION)}
+              options={[
+                { value: COMMENT_LOAD_MODE_PAGINATION, label: "数字分页" },
+                { value: COMMENT_LOAD_MODE_INFINITE, label: "无限下拉" },
+              ]}
+            />
+          </div>
+          <p className="text-xs leading-6 text-muted-foreground">楼中楼超过默认展开条数后，前台会显示“展开其余 X 条回复”；评论区一页显示数控制主评论分页容量，无限下拉会按同样数量逐页追加。</p>
+        </div>
+      ) : null}
+
+      {activeSubTab === "chat" ? (
+        <div className="rounded-xl border border-border p-5 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold">全站聊天室</h3>
+            <p className="mt-1 text-xs leading-6 text-muted-foreground">控制站内私信页里的全站聊天室入口和公共聊天功能。</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AdminBooleanSelectField label="开启全站聊天室" checked={draft.siteChatEnabled} onChange={(value) => updateDraftField("siteChatEnabled", value)} />
           </div>
-          <p className="text-xs leading-6 text-muted-foreground">楼中楼超过默认展开条数后，前台会显示“展开其余 X 条回复”；评论区一页显示数控制主评论分页容量。开启全站聊天室后，站内私信页会在会话列表首位显示聊天室入口。</p>
+          <p className="text-xs leading-6 text-muted-foreground">开启后，站内私信页会在会话列表首位显示聊天室入口；关闭后仅保留普通私信会话。</p>
         </div>
       ) : null}
 

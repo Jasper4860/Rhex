@@ -18,9 +18,10 @@ import { formatCheckInRewardRange } from "@/lib/check-in-reward"
 import { defaultSiteSettingsCreateInput } from "@/lib/site-settings-defaults"
 import { buildThemeRuntimeSettings } from "@/lib/theme"
 import { parseMarkdownEmojiMapJson } from "@/lib/markdown-emoji"
+import { normalizeCommentLoadMode } from "@/lib/comment-load-mode"
 import { normalizePostListLoadMode } from "@/lib/post-list-load-mode"
 import { normalizePostListDisplayMode } from "@/lib/post-list-display"
-import { resolveAnonymousPostSettings, resolveAttachmentFeatureSettings, resolveAuthProviderSettings, resolveAvatarChangePointCostSettings, resolveBoardApplicationSettings, resolveBoardTreasurySettings, resolveCheckInMakeUpPriceSettings, resolveCheckInRewardSettings, resolveCheckInStreakSettings, resolveCommentAccessSettings, resolveFooterCopyrightSettings, resolveHomeFeedPostListLoadSettings, resolveHomeHotFeedSettings, resolveHomeSidebarAnnouncementSettings, resolveImageWatermarkSettings, resolveInteractionGateSettings, resolveIntroductionChangePointCostSettings, resolveInviteCodePurchasePriceSettings, resolveLeftSidebarDisplaySettings, resolveMarkdownImageUploadSettings, resolveMessageMediaSettings, resolveNicknameChangePointCostSettings, resolvePostContentLengthSettings, resolvePostJackpotSettings, resolvePostPageSizeSettings, resolvePostRedPacketSettings, resolvePostSlugGenerationSettings, resolveRegisterEmailWhitelistSettings, resolveRegisterInviteCodeHelpSettings, resolveRegisterNicknameLengthSettings, resolveRegistrationEmailTemplateSettings, resolveRegistrationRewardSettings, resolveSiteBrandingSettings, resolveSiteChatSettings, resolveSiteSecuritySettings, resolveThemeCustomizationSettingsFromAppState, resolveUploadObjectStorageSettings, resolveUsernameSensitiveWordSettings, resolveVipLevelIconSettings, resolveVipNameColorSettings } from "@/lib/site-settings-app-state"
+import { resolveAnonymousPostSettings, resolveAttachmentFeatureSettings, resolveAuthProviderSettings, resolveAvatarChangePointCostSettings, resolveBoardApplicationSettings, resolveBoardTreasurySettings, resolveCheckInMakeUpPriceSettings, resolveCheckInRewardSettings, resolveCheckInStreakSettings, resolveCommentAccessSettings, resolveFooterCopyrightSettings, resolveHomeFeedPostListLoadSettings, resolveHomeHotFeedSettings, resolveHomeSidebarAnnouncementSettings, resolveImageWatermarkSettings, resolveInteractionGateSettings, resolveIntroductionChangePointCostSettings, resolveInviteCodePurchasePriceSettings, resolveLeftSidebarDisplaySettings, resolveMarkdownImageUploadSettings, resolveMessageMediaSettings, resolveNicknameChangePointCostSettings, resolvePostContentLengthSettings, resolvePostJackpotSettings, resolvePostPageSizeSettings, resolvePostRedPacketSettings, resolvePostSlugGenerationSettings, resolveRegisterEmailWhitelistSettings, resolveRegisterInviteCodeHelpSettings, resolveRegisterNicknameLengthSettings, resolveRegisterPasswordPolicySettings, resolveRegistrationEmailTemplateSettings, resolveRegistrationRewardSettings, resolveSiteBrandingSettings, resolveSiteChatSettings, resolveSiteSecuritySettings, resolveThemeCustomizationSettingsFromAppState, resolveUploadObjectStorageSettings, resolveUserProfileDisplaySettings, resolveUsernameSensitiveWordSettings, resolveVipLevelIconSettings, resolveVipNameColorSettings } from "@/lib/site-settings-app-state"
 import { resolveAuthPageShowcaseSettings } from "@/lib/site-settings-app-state"
 import { resolveAuthProviderSensitiveConfig, resolveCaptchaSensitiveConfig, resolveUploadStorageSensitiveConfig } from "@/lib/site-settings-sensitive-state"
 import { resolveSiteSearchSettings } from "@/lib/site-search-settings"
@@ -43,6 +44,14 @@ export type { LeftSidebarDisplayMode } from "@/lib/site-settings-app-state"
 export type { PostSlugGenerationMode } from "@/lib/site-settings-app-state"
 export type { RegistrationEmailTemplateSettings } from "@/lib/site-settings-app-state"
 export type { PostLinkDisplayMode, ServerSiteSettingsData, SiteSettingsData } from "@/lib/site-settings.types"
+
+function filterMessageNavigationLinks<T extends { href: string }>(links: T[], messageEnabled: boolean): T[] {
+  if (messageEnabled) {
+    return links
+  }
+
+  return links.filter((item) => item.href !== "/messages")
+}
 
 function getDefaultServerSiteSettings(): ServerSiteSettingsData {
   return mapSiteSettings({
@@ -88,6 +97,12 @@ function normalizeLegacyServerSiteSettings(data: ServerSiteSettingsData): Server
     passwordChangeRequireEmailVerification: typeof data.passwordChangeRequireEmailVerification === "boolean"
       ? data.passwordChangeRequireEmailVerification
       : defaults.passwordChangeRequireEmailVerification,
+    registerPasswordMinLength: typeof data.registerPasswordMinLength === "number" && Number.isFinite(data.registerPasswordMinLength)
+      ? data.registerPasswordMinLength
+      : defaults.registerPasswordMinLength,
+    registerPasswordStrength: data.registerPasswordStrength === "MEDIUM" || data.registerPasswordStrength === "HIGH" || data.registerPasswordStrength === "LOW"
+      ? data.registerPasswordStrength
+      : defaults.registerPasswordStrength,
     redeemCodeHelpEnabled: typeof data.redeemCodeHelpEnabled === "boolean"
       ? data.redeemCodeHelpEnabled
       : defaults.redeemCodeHelpEnabled,
@@ -100,6 +115,7 @@ function normalizeLegacyServerSiteSettings(data: ServerSiteSettingsData): Server
     checkInMakeUpOldestDayLimit: typeof data.checkInMakeUpOldestDayLimit === "number" && Number.isFinite(data.checkInMakeUpOldestDayLimit)
       ? Math.max(0, Math.floor(data.checkInMakeUpOldestDayLimit))
       : defaults.checkInMakeUpOldestDayLimit,
+    commentLoadMode: normalizeCommentLoadMode(data.commentLoadMode, defaults.commentLoadMode),
   }
 }
 
@@ -206,6 +222,10 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     appStateJson: record.appStateJson,
     iconPathFallback: "",
   })
+  const userProfileDisplaySettings = resolveUserProfileDisplaySettings({
+    appStateJson: record.appStateJson,
+    ipLocationEnabledFallback: false,
+  })
   const themeSettings = buildThemeRuntimeSettings(resolveThemeCustomizationSettingsFromAppState({
     appStateJson: record.appStateJson,
   }))
@@ -256,6 +276,7 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
   })
   const messageMediaSettings = resolveMessageMediaSettings({
     appStateJson: record.appStateJson,
+    enabledFallback: true,
     imageUploadEnabledFallback: false,
     fileUploadEnabledFallback: false,
     promptAudioPathFallback: DEFAULT_MESSAGE_PROMPT_AUDIO_PATH,
@@ -264,6 +285,7 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     appStateJson: record.appStateJson,
     guestCanViewFallback: true,
     initialVisibleRepliesFallback: 10,
+    loadModeFallback: normalizeCommentLoadMode(undefined),
   })
   const siteChatSettings = resolveSiteChatSettings({
     appStateJson: record.appStateJson,
@@ -296,6 +318,11 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     appStateJson: record.appStateJson,
     minLengthFallback: 1,
     maxLengthFallback: 20,
+  })
+  const registerPasswordPolicySettings = resolveRegisterPasswordPolicySettings({
+    appStateJson: record.appStateJson,
+    minLengthFallback: 6,
+    strengthFallback: "LOW",
   })
   const registerInviteCodeHelpSettings = resolveRegisterInviteCodeHelpSettings({
     appStateJson: record.appStateJson,
@@ -376,6 +403,7 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     zonePostPageSize: postPageSizeSettings.zonePosts,
     boardPostPageSize: postPageSizeSettings.boardPosts,
     commentPageSize: postPageSizeSettings.comments,
+    commentLoadMode: commentAccessSettings.loadMode,
     postTitleMinLength: postContentLengthSettings.postTitleMinLength,
     postTitleMaxLength: postContentLengthSettings.postTitleMaxLength,
     postContentMinLength: postContentLengthSettings.postContentMinLength,
@@ -387,15 +415,17 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     homeHotRecentWindowHours: homeHotFeedSettings.recentWindowHours,
     homeSidebarStatsCardEnabled: record.homeSidebarStatsCardEnabled,
     homeSidebarAnnouncementsEnabled: homeSidebarAnnouncementSettings.enabled,
+    userProfileIpLocationEnabled: userProfileDisplaySettings.ipLocationEnabled,
     leftSidebarDisplayMode: leftSidebarDisplaySettings.mode,
     postSlugGenerationMode: postSlugGenerationSettings.mode,
     footerCopyrightText: footerCopyrightSettings.text,
     footerBrandingVisible: footerCopyrightSettings.brandingVisible,
     vipLevelIcons,
     vipNameColors,
-    footerLinks: parseFooterLinks(record.footerLinksJson),
-    headerAppLinks: parseSiteHeaderAppLinks(record.headerAppLinksJson),
+    footerLinks: filterMessageNavigationLinks(parseFooterLinks(record.footerLinksJson), messageMediaSettings.enabled),
+    headerAppLinks: filterMessageNavigationLinks(parseSiteHeaderAppLinks(record.headerAppLinksJson), messageMediaSettings.enabled),
     headerAppIconName: normalizeHeaderAppIconName(record.headerAppIconName),
+    messageEnabled: messageMediaSettings.enabled,
     theme: themeSettings,
     search: searchSettings,
     analyticsCode: record.analyticsCode,
@@ -495,6 +525,8 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     sessionIpMismatchLogoutEnabled: siteSecuritySettings.sessionIpMismatchLogoutEnabled,
     loginIpChangeEmailAlertEnabled: siteSecuritySettings.loginIpChangeEmailAlertEnabled,
     passwordChangeRequireEmailVerification: siteSecuritySettings.passwordChangeRequireEmailVerification,
+    registerPasswordMinLength: registerPasswordPolicySettings.minLength,
+    registerPasswordStrength: registerPasswordPolicySettings.strength,
     usernameSensitiveWordsEnabled: usernameSensitiveWordSettings.usernameSensitiveWordsEnabled,
     usernameSensitiveWords: usernameSensitiveWordSettings.usernameSensitiveWords,
     registerEmailWhitelistEnabled: registerEmailWhitelistSettings.enabled,
@@ -583,8 +615,8 @@ async function applyAddonSiteSettings(
 
   return {
     ...data,
-    footerLinks: navigationLinks.footerLinks,
-    headerAppLinks: navigationLinks.headerAppLinks,
+    footerLinks: filterMessageNavigationLinks(navigationLinks.footerLinks, data.messageEnabled),
+    headerAppLinks: filterMessageNavigationLinks(navigationLinks.headerAppLinks, data.messageEnabled),
     markdownEmojiMap,
   }
 }

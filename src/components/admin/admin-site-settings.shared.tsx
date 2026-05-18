@@ -5,12 +5,14 @@ import { Loader2, Upload } from "lucide-react"
 
 import { Button } from "@/components/ui/rbutton"
 import { buildDefaultRegistrationEmailTemplateSettings, normalizeRegistrationEmailTemplateSettings } from "@/lib/email-template-settings"
+import { COMMENT_LOAD_MODE_INFINITE, COMMENT_LOAD_MODE_PAGINATION, type CommentLoadMode } from "@/lib/comment-load-mode"
 import { POST_LIST_LOAD_MODE_INFINITE, POST_LIST_LOAD_MODE_PAGINATION, type PostListLoadMode } from "@/lib/post-list-load-mode"
 import { POST_LIST_DISPLAY_MODE_DEFAULT, POST_LIST_DISPLAY_MODE_GALLERY, type PostListDisplayMode } from "@/lib/post-list-display"
 import { defaultSiteSettingsCreateInput } from "@/lib/site-settings-defaults"
 import { DEFAULT_THEME_CUSTOMIZATION_SETTINGS, type BuiltInThemePreset, type EditableThemePresetDefinition, type FontSizePreset, type FontSizePresetDefinition, type ThemeCustomizationSettings, type ThemeRuntimeSettings } from "@/lib/theme"
 import type { InteractionGateCondition, InteractionGateSettings } from "@/lib/site-settings"
 import type { LeftSidebarDisplayMode, PostSlugGenerationMode, RegistrationEmailTemplateSettings, SiteSearchSettings, SiteTippingGiftItem } from "@/lib/site-settings"
+import type { PasswordStrength } from "@/lib/password-policy"
 
 export interface AdminBasicSettingsInitialSettings {
   siteName: string
@@ -27,6 +29,7 @@ export interface AdminBasicSettingsInitialSettings {
   zonePostPageSize: number
   boardPostPageSize: number
   commentPageSize: number
+  commentLoadMode: CommentLoadMode
   postTitleMinLength: number
   postTitleMaxLength: number
   postContentMinLength: number
@@ -37,6 +40,7 @@ export interface AdminBasicSettingsInitialSettings {
   postSidebarRelatedTopicsCount: number
   homeSidebarStatsCardEnabled: boolean
   homeSidebarAnnouncementsEnabled: boolean
+  userProfileIpLocationEnabled: boolean
   leftSidebarDisplayMode: LeftSidebarDisplayMode
   theme: ThemeRuntimeSettings
   postSlugGenerationMode: PostSlugGenerationMode
@@ -102,6 +106,8 @@ export interface AdminBasicSettingsInitialSettings {
   sessionIpMismatchLogoutEnabled: boolean
   loginIpChangeEmailAlertEnabled: boolean
   passwordChangeRequireEmailVerification: boolean
+  registerPasswordMinLength: number
+  registerPasswordStrength: PasswordStrength
   usernameSensitiveWordsEnabled: boolean
   usernameSensitiveWords: string[]
   registerEmailWhitelistEnabled: boolean
@@ -153,6 +159,7 @@ export interface AdminBasicSettingsDraft {
   zonePostPageSize: string
   boardPostPageSize: string
   commentPageSize: string
+  commentLoadMode: CommentLoadMode
   postTitleMinLength: string
   postTitleMaxLength: string
   postContentMinLength: string
@@ -163,6 +170,7 @@ export interface AdminBasicSettingsDraft {
   postSidebarRelatedTopicsCount: string
   homeSidebarStatsCardEnabled: boolean
   homeSidebarAnnouncementsEnabled: boolean
+  userProfileIpLocationEnabled: boolean
   leftSidebarDisplayMode: LeftSidebarDisplayMode
   defaultThemePreset: BuiltInThemePreset
   defaultFontSizePreset: FontSizePreset
@@ -239,6 +247,8 @@ export interface AdminBasicSettingsDraft {
   sessionIpMismatchLogoutEnabled: boolean
   loginIpChangeEmailAlertEnabled: boolean
   passwordChangeRequireEmailVerification: boolean
+  registerPasswordMinLength: string
+  registerPasswordStrength: PasswordStrength
   usernameSensitiveWordsEnabled: boolean
   usernameSensitiveWords: string
   registerEmailWhitelistEnabled: boolean
@@ -370,6 +380,7 @@ export function createAdminBasicSettingsDraft(initialSettings: AdminBasicSetting
     zonePostPageSize: coerceNumberString(initialSettings.zonePostPageSize, 20),
     boardPostPageSize: coerceNumberString(initialSettings.boardPostPageSize, 20),
     commentPageSize: coerceNumberString(initialSettings.commentPageSize, 15),
+    commentLoadMode: initialSettings.commentLoadMode === COMMENT_LOAD_MODE_INFINITE ? COMMENT_LOAD_MODE_INFINITE : COMMENT_LOAD_MODE_PAGINATION,
     postTitleMinLength: coerceNumberString(initialSettings.postTitleMinLength, 5),
     postTitleMaxLength: coerceNumberString(initialSettings.postTitleMaxLength, 100),
     postContentMinLength: coerceNumberString(initialSettings.postContentMinLength, 10),
@@ -380,6 +391,7 @@ export function createAdminBasicSettingsDraft(initialSettings: AdminBasicSetting
     postSidebarRelatedTopicsCount: coerceNumberString(initialSettings.postSidebarRelatedTopicsCount, 5),
     homeSidebarStatsCardEnabled: coerceBoolean(initialSettings.homeSidebarStatsCardEnabled, true),
     homeSidebarAnnouncementsEnabled: coerceBoolean(initialSettings.homeSidebarAnnouncementsEnabled, true),
+    userProfileIpLocationEnabled: coerceBoolean(initialSettings.userProfileIpLocationEnabled, false),
     leftSidebarDisplayMode: initialSettings.leftSidebarDisplayMode ?? "DEFAULT",
     defaultThemePreset: themeCustomization.defaultThemePreset,
     defaultFontSizePreset: themeCustomization.defaultFontSizePreset,
@@ -456,6 +468,8 @@ export function createAdminBasicSettingsDraft(initialSettings: AdminBasicSetting
     sessionIpMismatchLogoutEnabled: coerceBoolean(initialSettings.sessionIpMismatchLogoutEnabled, true),
     loginIpChangeEmailAlertEnabled: coerceBoolean(initialSettings.loginIpChangeEmailAlertEnabled, false),
     passwordChangeRequireEmailVerification: coerceBoolean(initialSettings.passwordChangeRequireEmailVerification, false),
+    registerPasswordMinLength: coerceNumberString(initialSettings.registerPasswordMinLength, 6),
+    registerPasswordStrength: initialSettings.registerPasswordStrength ?? "LOW",
     usernameSensitiveWordsEnabled: coerceBoolean(initialSettings.usernameSensitiveWordsEnabled, false),
     usernameSensitiveWords: Array.isArray(initialSettings.usernameSensitiveWords)
       ? initialSettings.usernameSensitiveWords.join("\n")
@@ -529,6 +543,7 @@ export function buildAdminBasicSettingsPayload(draft: AdminBasicSettingsDraft, m
       postSidebarRelatedTopicsCount: Number(draft.postSidebarRelatedTopicsCount),
       homeSidebarStatsCardEnabled: draft.homeSidebarStatsCardEnabled,
       homeSidebarAnnouncementsEnabled: draft.homeSidebarAnnouncementsEnabled,
+      userProfileIpLocationEnabled: draft.userProfileIpLocationEnabled,
       leftSidebarDisplayMode: draft.leftSidebarDisplayMode,
       themeCustomization: {
         defaultThemePreset: draft.defaultThemePreset,
@@ -570,6 +585,8 @@ export function buildAdminBasicSettingsPayload(draft: AdminBasicSettingsDraft, m
       sessionIpMismatchLogoutEnabled: draft.sessionIpMismatchLogoutEnabled,
       loginIpChangeEmailAlertEnabled: draft.loginIpChangeEmailAlertEnabled,
       passwordChangeRequireEmailVerification: draft.passwordChangeRequireEmailVerification,
+      registerPasswordMinLength: Number(draft.registerPasswordMinLength),
+      registerPasswordStrength: draft.registerPasswordStrength,
       usernameSensitiveWordsEnabled: draft.usernameSensitiveWordsEnabled,
       usernameSensitiveWords: draft.usernameSensitiveWords,
       registerEmailWhitelistEnabled: draft.registerEmailWhitelistEnabled,
@@ -645,6 +662,7 @@ export function buildAdminBasicSettingsPayload(draft: AdminBasicSettingsDraft, m
     postCreateMinRegisteredMinutes: Number(draft.postCreateMinRegisteredMinutes),
     commentCreateMinRegisteredMinutes: Number(draft.commentCreateMinRegisteredMinutes),
     commentPageSize: Number(draft.commentPageSize),
+    commentLoadMode: draft.commentLoadMode ?? COMMENT_LOAD_MODE_PAGINATION,
     postTitleMinLength: Number(draft.postTitleMinLength),
     postTitleMaxLength: Number(draft.postTitleMaxLength),
     postContentMinLength: Number(draft.postContentMinLength),

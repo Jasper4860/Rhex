@@ -7,6 +7,7 @@ import { AdminInviteCodeManager } from "@/components/admin/admin-invite-code-man
 import {
   AdminBooleanSelectField,
   SettingsInputField as TextField,
+  SettingsSelectField,
   SettingsTextareaField,
 } from "@/components/admin/admin-settings-fields"
 import type { AdminRegistrationSettingsFormProps } from "@/components/admin/admin-basic-settings.types"
@@ -15,6 +16,12 @@ import { Button } from "@/components/ui/rbutton"
 import { toast } from "@/components/ui/toast"
 import { adminPost } from "@/lib/admin-client"
 import { renderEmailTemplate } from "@/lib/email-template-settings"
+import { getPasswordStrengthDescription, getPasswordStrengthLabel, PASSWORD_STRENGTH_VALUES, type PasswordStrength } from "@/lib/password-policy"
+
+const passwordStrengthOptions = PASSWORD_STRENGTH_VALUES.map((value) => ({
+  value,
+  label: `${getPasswordStrengthLabel(value)} - ${getPasswordStrengthDescription(value)}`,
+}))
 
 function extractEmailAddress(value: string) {
   const matched = value.match(/<([^<>@\s]+@[^<>@\s]+)>/)
@@ -358,6 +365,22 @@ export function AdminRegistrationSettingsForm({
                 onChange={(value) => updateDraftField("passwordChangeRequireEmailVerification", value)}
               />
               <p className="text-xs leading-6 text-muted-foreground">开启后，用户中心修改密码除了校验当前密码，还必须输入发送到已验证邮箱的验证码。前台也会提前检查邮箱和邮件能力，不满足条件时直接提示不可用。</p>
+            </FieldGroup>
+            <FieldGroup title="密码策略">
+              <TextField
+                label="最小密码位数"
+                value={draft.registerPasswordMinLength}
+                onChange={(value) => updateDraftField("registerPasswordMinLength", value)}
+                placeholder="如 8"
+                description="取值范围 6-64 位，影响注册、找回密码和用户修改密码。"
+              />
+              <SettingsSelectField
+                label="密码强度"
+                value={draft.registerPasswordStrength}
+                onChange={(value) => updateDraftField("registerPasswordStrength", value as PasswordStrength)}
+                options={passwordStrengthOptions}
+                description="基础强度只校验长度；中等强度要求字母和数字；高强度要求大小写字母、数字和特殊字符。"
+              />
             </FieldGroup>
             <FieldGroup title="用户名 / 昵称敏感词">
               <AdminBooleanSelectField

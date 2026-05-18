@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { useDeferredValue, useEffect, useState, useTransition } from "react"
+import { useDeferredValue, useState, useTransition } from "react"
 
 import { AccessThresholdSelectGroup } from "@/components/access-threshold-select-group"
 import {
@@ -19,7 +19,6 @@ import type { AccessThresholdOption } from "@/lib/access-threshold-options"
 import { saveAdminSiteSettings } from "@/lib/admin-site-settings-client"
 import { getAdminSettingsHref } from "@/lib/admin-settings-navigation"
 import type { AdminSettingsSectionKey } from "@/lib/admin-navigation"
-import { DEFAULT_MESSAGE_PROMPT_AUDIO_PATH } from "@/lib/message-prompt-audio"
 import type { UploadProvider } from "@/lib/upload-provider"
 import type { ImageWatermarkPosition } from "@/lib/site-settings-app-state"
 
@@ -53,9 +52,6 @@ interface AdminUploadSettingsFormProps {
     attachmentMinUploadVipLevel: number
     attachmentAllowedExtensions: string[]
     attachmentMaxFileSizeMb: number
-    messageImageUploadEnabled: boolean
-    messageFileUploadEnabled: boolean
-    messagePromptAudioPath: string
   }
   levelOptions: AccessThresholdOption[]
   vipLevelOptions: AccessThresholdOption[]
@@ -82,7 +78,7 @@ type WatermarkFontPresetKey = "default" | "zhimangxing" | "yahei" | "pingfang" |
 const UPLOAD_TABS = [
   { key: "storage", label: "上传配置" },
   { key: "watermark", label: "水印配置" },
-  { key: "attachment", label: "附件与私信" },
+  { key: "attachment", label: "附件配置" },
 ] as const
 
 const WATERMARK_FONT_PRESETS: Array<{
@@ -167,12 +163,11 @@ export function AdminUploadSettingsForm({
   const [attachmentMinUploadVipLevel, setAttachmentMinUploadVipLevel] = useState(String(normalizedAttachmentMinUploadVipLevel))
   const [attachmentAllowedExtensions, setAttachmentAllowedExtensions] = useState(normalizedAttachmentAllowedExtensions.join(", "))
   const [attachmentMaxFileSizeMb, setAttachmentMaxFileSizeMb] = useState(String(normalizedAttachmentMaxFileSizeMb))
-  const [messageImageUploadEnabled, setMessageImageUploadEnabled] = useState(Boolean(initialSettings.messageImageUploadEnabled))
-  const [messageFileUploadEnabled, setMessageFileUploadEnabled] = useState(Boolean(initialSettings.messageFileUploadEnabled))
-  const [messagePromptAudioPath, setMessagePromptAudioPath] = useState(initialSettings.messagePromptAudioPath || DEFAULT_MESSAGE_PROMPT_AUDIO_PATH)
   const [feedback, setFeedback] = useState("")
   const [isPending, startTransition] = useTransition()
-  const [activeTab, setActiveTab] = useState<UploadSettingsTabKey>(() => resolveUploadTab(initialSubTab))
+  const resolvedRouteTab = resolveUploadTab(initialSubTab)
+  const [localActiveTab, setLocalActiveTab] = useState<UploadSettingsTabKey>(resolvedRouteTab)
+  const activeTab = tabRouteSection ? resolvedRouteTab : localActiveTab
   const normalizedImageWatermarkOpacity = normalizeSliderNumber(imageWatermarkOpacity, initialSettings.imageWatermarkOpacity ?? 22, 0, 100)
   const normalizedImageWatermarkFontSize = normalizeSliderNumber(imageWatermarkFontSize, initialSettings.imageWatermarkFontSize ?? 24, 8, 160)
   const normalizedImageWatermarkMargin = normalizeSliderNumber(imageWatermarkMargin, initialSettings.imageWatermarkMargin ?? 24, 0, 200)
@@ -182,11 +177,7 @@ export function AdminUploadSettingsForm({
     ? "保存上传配置"
     : activeTab === "watermark"
       ? "保存水印配置"
-      : "保存附件与私信配置"
-
-  useEffect(() => {
-    setActiveTab(resolveUploadTab(initialSubTab))
-  }, [initialSubTab])
+      : "保存附件配置"
 
   return (
     <form
@@ -225,9 +216,6 @@ export function AdminUploadSettingsForm({
             attachmentMinUploadVipLevel: Number(attachmentMinUploadVipLevel),
             attachmentAllowedExtensions,
             attachmentMaxFileSizeMb: Number(attachmentMaxFileSizeMb),
-            messageImageUploadEnabled,
-            messageFileUploadEnabled,
-            messagePromptAudioPath,
             section: "upload",
           })
           setFeedback(result.message)
@@ -249,7 +237,7 @@ export function AdminUploadSettingsForm({
               label: item.label,
               ...(tabRouteSection
                 ? { href: getAdminSettingsHref(tabRouteSection, item.key) }
-                : { onSelect: () => setActiveTab(item.key) }),
+                : { onSelect: () => setLocalActiveTab(item.key) }),
             }))}
             activeKey={activeTab}
           />
@@ -389,16 +377,6 @@ export function AdminUploadSettingsForm({
         {activeTab === "attachment" ? (
           <div className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <SettingsToggleField label="私信图片发送" checked={messageImageUploadEnabled} onChange={setMessageImageUploadEnabled} description="开启后，私信输入框支持上传和粘贴发送图片，并以内嵌图片消息展示。" />
-              <SettingsToggleField label="私信文件发送" checked={messageFileUploadEnabled} onChange={setMessageFileUploadEnabled} description="开启后，私信支持上传文件，并以 file::FILENAME:FILEURL 的专用消息卡片展示。" />
-              <SettingsInputField
-                label="消息提示音 URL"
-                value={messagePromptAudioPath}
-                onChange={setMessagePromptAudioPath}
-                placeholder={DEFAULT_MESSAGE_PROMPT_AUDIO_PATH}
-                description="留空会回退到默认提示音 /apps/messages/prompt.mp3。可填写站内静态资源路径，也可填写完整音频 URL。"
-                className="md:col-span-2 xl:col-span-2"
-              />
               <SettingsToggleField label="启用附件上传" checked={attachmentUploadEnabled} onChange={setAttachmentUploadEnabled} description="关闭后不再允许上传站内附件，但仍可继续添加网盘链接附件。" />
               <SettingsToggleField label="启用附件下载" checked={attachmentDownloadEnabled} onChange={setAttachmentDownloadEnabled} description="关闭后仅拦截站内附件的下载与购买入口，网盘附件的信息查看不受影响。" />
               <div className="md:col-span-2 xl:col-span-2">
@@ -419,7 +397,7 @@ export function AdminUploadSettingsForm({
               <SettingsInputField label="附件大小上限（MB）" type="number" value={attachmentMaxFileSizeMb} onChange={setAttachmentMaxFileSizeMb} />
             </div>
             <p className="text-xs leading-6 text-muted-foreground">
-              私信图片会复用站点图片上传规则，私信文件会复用当前附件格式与大小限制；两者都沿用同一套存储策略。上传型附件会复用现有存储策略写入本地或对象存储；下载时统一走站内接口完成权限校验与下载次数统计。网盘附件不占用站内存储，且不受站内上传/下载开关影响，但仍受各附件自身的等级、积分和回复权限控制。
+              上传型附件会复用现有存储策略写入本地或对象存储；下载时统一走站内接口完成权限校验与下载次数统计。网盘附件不占用站内存储，且不受站内上传/下载开关影响，但仍受各附件自身的等级、积分和回复权限控制。
             </p>
           </div>
         ) : null}

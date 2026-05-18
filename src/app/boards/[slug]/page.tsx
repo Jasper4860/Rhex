@@ -102,6 +102,8 @@ export default async function BoardPage(props: PageProps<"/boards/[slug]">) {
     postIntervalSeconds: 120,
     replyIntervalSeconds: 3,
     allowedPostTypes: board.allowedPostTypes ? normalizePostTypes(board.allowedPostTypes.join(",")) : DEFAULT_ALLOWED_POST_TYPES,
+    allowUserPost: board.allowUserPost ?? true,
+    allowUserReply: board.allowUserReply ?? true,
     minViewPoints: board.minViewPoints ?? 0,
     minViewLevel: board.minViewLevel ?? 0,
     minPostPoints: board.minPostPoints ?? 0,

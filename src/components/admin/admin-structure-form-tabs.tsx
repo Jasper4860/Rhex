@@ -1,8 +1,13 @@
 "use client"
 
+import { useState, useTransition } from "react"
+
 import { AddonEditor } from "@/components/addon-editor"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { IconPicker } from "@/components/ui/icon-picker"
+import { Input } from "@/components/ui/input"
+import { toast } from "@/components/ui/toast"
 import type {
   BoardSidebarLinkDraft,
   ModalMode,
@@ -19,6 +24,7 @@ import {
   Toggle,
 } from "@/components/admin/admin-structure.shared"
 import type { ZoneItem } from "@/lib/admin-structure-management"
+import type { StructureModeratorItem } from "@/lib/admin-structure-management"
 import { POST_LIST_DISPLAY_MODE_DEFAULT, POST_LIST_DISPLAY_MODE_GALLERY } from "@/lib/post-list-display"
 import { POST_LIST_LOAD_MODE_INFINITE, POST_LIST_LOAD_MODE_PAGINATION } from "@/lib/post-list-load-mode"
 import { Plus } from "lucide-react"
@@ -29,6 +35,8 @@ interface StructureTabProps {
   form: StructureFormState
   isBoard: boolean
   isModeratorBoardEdit: boolean
+  isSiteAdmin: boolean
+  onModeratorChanged: () => void
   updateField: <K extends keyof StructureFormState>(
     field: K,
     value: StructureFormState[K],
@@ -226,6 +234,28 @@ export function StructureAccessTab({
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-border p-5">
+        <h4 className="text-sm font-semibold">普通用户操作权限</h4>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <SelectField label="普通用户发帖" value={form.allowUserPost} onValueChange={(value) => updateField("allowUserPost", value)} options={[
+              ...(isBoard ? [{ value: "", label: "继承分区" }] : []),
+              { value: "true", label: "允许普通用户发帖" },
+              { value: "false", label: "仅管理员和版主可发帖" },
+            ]} />
+            <p className="text-xs leading-6 text-muted-foreground">{isBoard ? "留空时继承所属分区；关闭后普通用户不能在此节点发帖。" : "关闭后该分区默认只允许管理员和版主发帖，节点仍可单独覆盖。"}</p>
+          </div>
+          <div className="space-y-2">
+            <SelectField label="普通用户回帖" value={form.allowUserReply} onValueChange={(value) => updateField("allowUserReply", value)} options={[
+              ...(isBoard ? [{ value: "", label: "继承分区" }] : []),
+              { value: "true", label: "允许普通用户回帖" },
+              { value: "false", label: "仅管理员和版主可回帖" },
+            ]} />
+            <p className="text-xs leading-6 text-muted-foreground">{isBoard ? "留空时继承所属分区；关闭后普通用户不能在此节点回帖。" : "关闭后该分区默认只允许管理员和版主回帖，节点仍可单独覆盖。"}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border p-5">
         <h4 className="text-sm font-semibold">浏览 / 发帖 / 回复权限</h4>
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Field label="浏览最低积分" help={getStructureAccessFieldHelp({ field: "minViewPoints", isBoard })} value={form.minViewPoints} onChange={(value) => updateField("minViewPoints", value)} placeholder={isBoard ? "留空继承分区" : "默认 0"} />
@@ -247,6 +277,209 @@ export function StructureAccessTab({
           <Toggle label="开启回帖审核" checked={form.requireCommentReview} onChange={(value) => updateField("requireCommentReview", value)} />
         </div>
       </div>
+    </div>
+  )
+}
+
+export function StructureModeratorsTab({
+  modal,
+  isBoard,
+  isSiteAdmin,
+  onModeratorChanged,
+}: StructureTabProps) {
+  const editableTarget = modal.kind === "edit-zone" || modal.kind === "edit-board" ? modal.item : null
+  const targetType = modal.kind === "edit-zone" ? "zone" : modal.kind === "edit-board" ? "board" : null
+  const [directModerators, setDirectModerators] = useState<StructureModeratorItem[]>(
+    editableTarget ? [...editableTarget.moderators] : [],
+  )
+  const inheritedModerators = modal.kind === "edit-board" ? modal.item.inheritedModerators : []
+  const [username, setUsername] = useState("")
+  const [canEditSettings, setCanEditSettings] = useState(true)
+  const [canWithdrawTreasury, setCanWithdrawTreasury] = useState(true)
+  const [isPending, startTransition] = useTransition()
+
+  function saveModerator() {
+    if (!editableTarget || !targetType || !username.trim()) {
+      toast.error("请输入版主用户名")
+      return
+    }
+
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/admin/structure/moderators", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            targetType,
+            targetId: editableTarget.id,
+            username: username.trim(),
+            canEditSettings,
+            canWithdrawTreasury,
+          }),
+        })
+        const result = (await response.json().catch(() => null)) as {
+          message?: string
+          data?: { moderator?: StructureModeratorItem }
+        } | null
+        const message = result?.message ?? (response.ok ? "版主设置已保存" : "保存失败，请稍后重试")
+
+        if (!response.ok || !result?.data?.moderator) {
+          toast.error(message)
+          return
+        }
+
+        setDirectModerators((current) => [
+          result.data!.moderator!,
+          ...current.filter((item) => item.id !== result.data!.moderator!.id),
+        ])
+        setUsername("")
+        toast.success(message)
+        onModeratorChanged()
+      } catch {
+        toast.error("网络异常，请稍后重试")
+      }
+    })
+  }
+
+  function removeModerator(moderator: StructureModeratorItem) {
+    if (!editableTarget || !targetType) {
+      return
+    }
+
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/admin/structure/moderators", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            targetType,
+            targetId: editableTarget.id,
+            moderatorId: moderator.id,
+          }),
+        })
+        const result = (await response.json().catch(() => null)) as { message?: string } | null
+        const message = result?.message ?? (response.ok ? "版主已移除" : "移除失败，请稍后重试")
+
+        if (!response.ok) {
+          toast.error(message)
+          return
+        }
+
+        setDirectModerators((current) => current.filter((item) => item.id !== moderator.id))
+        toast.success(message)
+        onModeratorChanged()
+      } catch {
+        toast.error("网络异常，请稍后重试")
+      }
+    })
+  }
+
+  if (!editableTarget || !targetType) {
+    return (
+      <div className="rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
+        创建完成后可在编辑弹窗里配置版主。
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-border p-5">
+        <div className="flex flex-col gap-1">
+          <h4 className="text-sm font-semibold">版主列表</h4>
+          <p className="text-xs text-muted-foreground">{isBoard ? "节点版主只作用于当前节点；所属分区的版主会自动继承到该节点。" : "分区版主会自动覆盖该分区下的全部节点。"}</p>
+        </div>
+        <div className="mt-4 space-y-3">
+          <ModeratorList
+            title={isBoard ? "节点版主" : "分区版主"}
+            moderators={directModerators}
+            canRemove={isSiteAdmin}
+            isPending={isPending}
+            onRemove={removeModerator}
+          />
+          {isBoard ? (
+            <ModeratorList
+              title="继承自分区"
+              moderators={inheritedModerators}
+              canRemove={false}
+              isPending={isPending}
+              onRemove={removeModerator}
+            />
+          ) : null}
+        </div>
+      </div>
+
+      {isSiteAdmin ? (
+        <div className="rounded-xl border border-border p-5">
+          <h4 className="text-sm font-semibold">版主设置</h4>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(220px,1fr)_180px_180px_auto] lg:items-end">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">版主用户名</p>
+              <Input
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                placeholder="输入用户用户名，普通用户会自动设为版主"
+                className="h-11 rounded-full bg-background px-4"
+              />
+            </div>
+            <Toggle label="可改设置" checked={canEditSettings} onChange={setCanEditSettings} />
+            <Toggle label="可提金库" checked={canWithdrawTreasury} onChange={setCanWithdrawTreasury} />
+            <Button type="button" disabled={isPending} onClick={saveModerator}>
+              {isPending ? "保存中..." : "保存版主"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
+          只有管理员可以新增、移除或调整版主设置。
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ModeratorList({
+  title,
+  moderators,
+  canRemove,
+  isPending,
+  onRemove,
+}: {
+  title: string
+  moderators: StructureModeratorItem[]
+  canRemove: boolean
+  isPending: boolean
+  onRemove: (moderator: StructureModeratorItem) => void
+}) {
+  return (
+    <div className="rounded-xl border border-border/70 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-medium text-muted-foreground">{title}</p>
+        <Badge variant="secondary" className="rounded-full">{moderators.length}</Badge>
+      </div>
+      {moderators.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">暂无版主。</p>
+      ) : (
+        <div className="mt-3 flex flex-col gap-2">
+          {moderators.map((moderator) => (
+            <div key={`${moderator.source}-${moderator.id}`} className="flex flex-col gap-2 rounded-[16px] border border-border px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{moderator.displayName}</p>
+                <p className="text-xs text-muted-foreground">@{moderator.username} · {moderator.status}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge variant="outline">{moderator.canEditSettings ? "可改设置" : "不可改设置"}</Badge>
+                <Badge variant="outline">{moderator.canWithdrawTreasury ? "可提金库" : "不可提金库"}</Badge>
+                {canRemove ? (
+                  <Button type="button" variant="outline" disabled={isPending} className="h-7 rounded-full px-2.5 text-xs" onClick={() => onRemove(moderator)}>
+                    移除
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

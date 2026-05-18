@@ -143,7 +143,7 @@ export function ProfileAccountBindingSettings({ providers, passkey }: ProfileAcc
 
     setActiveProvider(binding.provider)
     const separator = binding.connectUrl.includes("?") ? "&" : "?"
-    window.location.href = `${binding.connectUrl}${separator}redirectTo=${encodeURIComponent(ACCOUNT_BINDINGS_REDIRECT_PATH)}`
+    window.location.assign(`${binding.connectUrl}${separator}redirectTo=${encodeURIComponent(ACCOUNT_BINDINGS_REDIRECT_PATH)}`)
   }
 
   async function bindPasskey() {

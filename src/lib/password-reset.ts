@@ -6,17 +6,20 @@ import { findUserByEmail, updateUserPasswordById } from "@/db/password-reset-que
 import { executeAddonActionHook } from "@/addons-host/runtime/hooks"
 import { apiError } from "@/lib/api-route"
 import { normalizeEmailAddress } from "@/lib/email"
+import { getSiteSettings } from "@/lib/site-settings"
+import { validatePasswordPolicy, type PasswordPolicySettings } from "@/lib/password-policy"
 import { canSendEmail, sendResetPasswordVerificationEmail } from "@/lib/mailer"
 import { sendVerificationCode, verifyCode } from "@/lib/verification"
 
 
 const PASSWORD_RESET_PURPOSE = "password_reset"
 
-function ensurePassword(value: string) {
+function ensurePassword(value: string, policy: PasswordPolicySettings) {
   const password = value.trim()
+  const result = validatePasswordPolicy(password, policy)
 
-  if (password.length < 6 || password.length > 64) {
-    apiError(400, "密码长度需为 6-64 位")
+  if (!result.success) {
+    apiError(400, result.message)
   }
 
   return password
@@ -87,7 +90,11 @@ export async function resetPasswordByEmailCode(input: {
   request?: Request
 }) {
   const email = normalizeEmailAddress(input.email)
-  const password = ensurePassword(input.password)
+  const settings = await getSiteSettings()
+  const password = ensurePassword(input.password, {
+    minLength: settings.registerPasswordMinLength,
+    strength: settings.registerPasswordStrength,
+  })
   const code = input.code.trim()
 
   if (!email) {

@@ -36,6 +36,7 @@ import { getBadgeEligibilitySnapshot, getDisplayedBadgesForUser, getGrantedBadge
 import { getBoards } from "@/lib/boards"
 import { getPublicFavoriteCollectionsByUsername } from "@/lib/favorite-collections"
 import { isUserFollowingTarget } from "@/lib/follows"
+import { resolveIpLocationLabel } from "@/lib/ip-location"
 import { getSiteSettings } from "@/lib/site-settings"
 import { getUserProfileAccessState } from "@/lib/user-blocks"
 import { cn } from "@/lib/utils"
@@ -271,16 +272,18 @@ export default async function UserPage(props: PageProps<"/users/[username]">) {
 
   const vipActive = isVipActive(user)
   const vipLevel = getVipLevel(user)
-  const canSendMessage = Boolean(currentUser && currentUser.username !== user.username && !profileAccess.relation.isBlocked)
+  const canSendMessage = Boolean(settings.messageEnabled && currentUser && currentUser.username !== user.username && !profileAccess.relation.isBlocked)
   const isRestrictedUser = user.status === "BANNED" || user.status === "MUTED"
   const restrictionLabel = user.status === "BANNED" ? "封禁中" : user.status === "MUTED" ? "禁言中" : null
   const restrictionDescription = user.status === "BANNED" ? "该用户当前因封禁处于受限状态" : user.status === "MUTED" ? "该用户当前处于禁言状态" : null
   const roleBadge = getProfileRoleBadgeConfig(user.role)
   const joinedAtText = serializeDate(user.createdAt) ?? user.createdAt
   const levelMetaText = user.levelName ? `Lv.${user.level} ${user.levelName}` : `Lv.${user.level}`
+  const ipLocationLabel = settings.userProfileIpLocationEnabled
+    ? resolveIpLocationLabel(user.lastLoginIp)
+    : null
 
   const identityTags = [
-    { label: `@${user.username}`, tone: "plain" as const },
     user.role === "ADMIN" ? { label: "管理员", tone: "danger" as const } : null,
     user.role === "MODERATOR" ? { label: "版主", tone: "sky" as const } : null,
     user.status === "BANNED" ? { label: "账号封禁中", tone: "danger" as const } : null,
@@ -389,11 +392,15 @@ export default async function UserPage(props: PageProps<"/users/[username]">) {
                   identityRow={identityRow}
                   metaRow={(
                     <>
-                      <span className="shrink-0">@{user.username}</span>
-                      <span className="hidden size-1 rounded-full bg-border sm:inline-flex" />
                       <span className="shrink-0">{levelMetaText}</span>
                       <span className="hidden size-1 rounded-full bg-border sm:inline-flex" />
                       <span className="shrink-0">{joinedAtText} 加入</span>
+                      {ipLocationLabel ? (
+                        <>
+                          <span className="hidden size-1 rounded-full bg-border sm:inline-flex" />
+                          <span className="shrink-0">{ipLocationLabel}</span>
+                        </>
+                      ) : null}
                     </>
                   )}
                   bio={user.bio}

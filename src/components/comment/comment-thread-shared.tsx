@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import type { RefObject } from "react"
+import type { CSSProperties, RefObject } from "react"
 import { Keyboard, Minimize2, Sparkles } from "lucide-react"
 import { CommentForm } from "@/components/comment/comment-form"
 import { LevelIcon } from "@/components/level-icon"
@@ -10,6 +10,7 @@ import { toast } from "@/components/ui/toast"
 import { Tooltip } from "@/components/ui/tooltip"
 import type { SiteCommentItem, SiteCommentReplyItem } from "@/lib/comments"
 import type { CommentReplyTarget } from "@/lib/comment-reply-box-events"
+import { COMMENT_LOAD_MODE_PAGINATION, type CommentLoadMode } from "@/lib/comment-load-mode"
 import type { MarkdownEmojiItem } from "@/lib/markdown-emoji"
 import type { PostRewardPoolEffectFeedback, PostRewardPoolEffectFeedbackBadge } from "@/lib/post-reward-effect-feedback"
 import { cn } from "@/lib/utils"
@@ -214,7 +215,10 @@ export function CommentReviewStatusNotice({ status, reviewNote, isAdmin, isOwner
 
 export function buildCommentAdminActions({ entry, isAdmin, adminRole, canPinComment = false, pinningCommentId = null }: { entry: ThreadEntry; isAdmin: boolean; adminRole?: "ADMIN" | "MODERATOR" | null; canPinComment?: boolean; pinningCommentId?: string | null }) {
   const actions: CommentAdminAction[] = []
-  const canModerateEntryAuthor = adminRole === "ADMIN" || entry.authorRole === "USER"
+  const canRestrictEntryAuthor = adminRole === "ADMIN"
+    ? entry.authorRole !== "ADMIN"
+    : entry.authorRole === "USER"
+  const canRestoreEntryAuthor = adminRole === "ADMIN" || entry.authorRole === "USER"
   if (canPinComment && "isPinnedByAuthor" in entry) {
     actions.push({ key: entry.isPinnedByAuthor ? "comment.unpinByAuthor" : "comment.pinByAuthor", label: pinningCommentId === entry.id ? "处理中..." : entry.isPinnedByAuthor ? "取消置顶" : "置顶评论", targetId: entry.id, disabled: pinningCommentId === entry.id })
   }
@@ -223,7 +227,7 @@ export function buildCommentAdminActions({ entry, isAdmin, adminRole, canPinComm
     actions.push({ key: "comment.show", label: "上线评论", targetId: entry.id })
     actions.push({ key: "comment.delete", label: "删除评论", tone: "danger", targetId: entry.id })
     if (entry.authorStatus === "BANNED" && adminRole === "ADMIN") actions.push({ key: "user.activate", label: "解除封禁", targetId: String(entry.authorId), payload: { commentId: entry.id } })
-    if (entry.authorStatus === "MUTED" && canModerateEntryAuthor) actions.push({ key: "user.activate", label: "解除禁言", targetId: String(entry.authorId), payload: { commentId: entry.id } })
+    if (entry.authorStatus === "MUTED" && canRestoreEntryAuthor) actions.push({ key: "user.activate", label: "解除禁言", targetId: String(entry.authorId), payload: { commentId: entry.id } })
     return actions
   }
   actions.push({ key: "comment.hide", label: "下线评论", tone: "danger", targetId: entry.id })
@@ -233,12 +237,12 @@ export function buildCommentAdminActions({ entry, isAdmin, adminRole, canPinComm
     return actions
   }
   if (entry.authorStatus === "MUTED") {
-    if (canModerateEntryAuthor) actions.push({ key: "user.activate", label: "解除禁言", targetId: String(entry.authorId), payload: { commentId: entry.id } })
-    if (adminRole === "ADMIN") actions.push({ key: "user.ban", label: "封禁用户", tone: "danger", targetId: String(entry.authorId), payload: { commentId: entry.id } })
+    if (canRestoreEntryAuthor) actions.push({ key: "user.activate", label: "解除禁言", targetId: String(entry.authorId), payload: { commentId: entry.id } })
+    if (adminRole === "ADMIN" && canRestrictEntryAuthor) actions.push({ key: "user.ban", label: "封禁用户", tone: "danger", targetId: String(entry.authorId), payload: { commentId: entry.id } })
     return actions
   }
-  if (canModerateEntryAuthor) actions.push({ key: "user.mute", label: "禁言用户", targetId: String(entry.authorId), payload: { commentId: entry.id } })
-  if (adminRole === "ADMIN") actions.push({ key: "user.ban", label: "封禁用户", tone: "danger", targetId: String(entry.authorId), payload: { commentId: entry.id } })
+  if (canRestrictEntryAuthor) actions.push({ key: "user.mute", label: "禁言用户", targetId: String(entry.authorId), payload: { commentId: entry.id } })
+  if (adminRole === "ADMIN" && canRestrictEntryAuthor) actions.push({ key: "user.ban", label: "封禁用户", tone: "danger", targetId: String(entry.authorId), payload: { commentId: entry.id } })
   return actions
 }
 
@@ -258,37 +262,43 @@ export async function copyCommentPermalink(commentId: string, floor: number, pos
   }
 }
 
-export function CommentThreadReplyBox({ postId, commentsVisibleToAuthorOnly, anonymousIdentityEnabled, anonymousIdentityDefaultChecked, anonymousIdentitySwitchVisible, markdownEmojiMap, replyTarget, replyHint, isReplyBoxPinned, isReplyBoxFollowing, replyBoxPinnedLayout, replyBoxContainerRef, onDisableReplyBox, onClearReplyTarget }: { postId: string; commentsVisibleToAuthorOnly: boolean; anonymousIdentityEnabled?: boolean; anonymousIdentityDefaultChecked?: boolean; anonymousIdentitySwitchVisible?: boolean; markdownEmojiMap?: MarkdownEmojiItem[]; replyTarget: CommentReplyTarget | null; replyHint: string | null; isReplyBoxPinned: boolean; isReplyBoxFollowing: boolean; replyBoxPinnedLayout: { left: number; width: number }; replyBoxContainerRef: RefObject<HTMLDivElement | null>; onDisableReplyBox: () => void; onClearReplyTarget: () => void }) {
+export function CommentThreadReplyBox({ postId, commentsVisibleToAuthorOnly, anonymousIdentityEnabled, anonymousIdentityDefaultChecked, anonymousIdentitySwitchVisible, markdownEmojiMap, replyTarget, replyHint, isReplyBoxPinned, isReplyBoxFollowing, replyBoxPinnedLayout, replyBoxContainerRef, onDisableReplyBox, onClearReplyTarget, commentLoadMode = COMMENT_LOAD_MODE_PAGINATION }: { postId: string; commentsVisibleToAuthorOnly: boolean; anonymousIdentityEnabled?: boolean; anonymousIdentityDefaultChecked?: boolean; anonymousIdentitySwitchVisible?: boolean; markdownEmojiMap?: MarkdownEmojiItem[]; replyTarget: CommentReplyTarget | null; replyHint: string | null; isReplyBoxPinned: boolean; isReplyBoxFollowing: boolean; replyBoxPinnedLayout: { left: number; width: number }; replyBoxContainerRef: RefObject<HTMLDivElement | null>; onDisableReplyBox: () => void; onClearReplyTarget: () => void; commentLoadMode?: CommentLoadMode }) {
   const isPinnedLayout = isReplyBoxPinned
   const isFloatingPinnedLayout = isReplyBoxPinned && isReplyBoxFollowing
+  const floatingPinnedStyle = isFloatingPinnedLayout
+    ? ({
+        "--comment-reply-box-left": replyBoxPinnedLayout.left > 0 ? `${replyBoxPinnedLayout.left}px` : "0.75rem",
+        "--comment-reply-box-width": replyBoxPinnedLayout.width > 0 ? `${replyBoxPinnedLayout.width}px` : "calc(100vw - 1.5rem)",
+      } as CSSProperties)
+    : undefined
 
   return (
-    <div id="post-comment-reply-box" data-comment-reply-box="true" data-ignore-reply-shortcut="true" ref={replyBoxContainerRef} className="relative">
+    <div id="post-comment-reply-box" data-comment-reply-box="true" data-ignore-reply-shortcut="true" ref={replyBoxContainerRef} className="relative min-w-0 max-w-full">
       {isFloatingPinnedLayout ? <div aria-hidden="true" className="h-88 sm:h-96" /> : null}
       <div
         className={cn(
-          "rounded-xl bg-card",
+          "min-w-0 max-w-full rounded-xl bg-card",
           isPinnedLayout && "overflow-hidden rounded-xl border border-border/80 bg-card",
-          isFloatingPinnedLayout && "fixed bottom-3 z-50 bg-card/95 shadow-[0_-18px_48px_rgba(15,23,42,0.16)] backdrop-blur-xl",
+          isFloatingPinnedLayout && "fixed inset-x-3 bottom-3 z-50 max-h-[calc(100dvh-1.5rem)] max-w-[calc(100vw-1.5rem)] overflow-x-hidden overflow-y-auto bg-card/95 shadow-[0_-18px_48px_rgba(15,23,42,0.16)] backdrop-blur-xl sm:inset-x-auto sm:[left:var(--comment-reply-box-left)] sm:[width:min(var(--comment-reply-box-width),calc(100vw-1.5rem))]",
         )}
-        style={isFloatingPinnedLayout ? { left: replyBoxPinnedLayout.left || undefined, width: replyBoxPinnedLayout.width || undefined } : undefined}
+        style={floatingPinnedStyle}
       >
         {isPinnedLayout ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 bg-background/82 px-4 py-3 text-xs text-muted-foreground backdrop-blur-sm sm:px-5">
-            <span className="inline-flex items-center gap-1.5">
-              <Keyboard className="h-3.5 w-3.5" />
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border/70 bg-background/82 px-4 py-3 text-xs text-muted-foreground backdrop-blur-sm sm:px-5">
+            <span className="inline-flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+              <Keyboard className="h-3.5 w-3.5 shrink-0" />
               按 <kbd className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] text-foreground">R</kbd> 或 <kbd className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] text-foreground">Esc</kbd> 退出固定
             </span>
-            <button type="button" className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-foreground transition-colors hover:bg-accent" onClick={onDisableReplyBox}>
-              <Minimize2 className="h-3.5 w-3.5" />
+            <button type="button" className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-foreground transition-colors hover:bg-accent" onClick={onDisableReplyBox}>
+              <Minimize2 className="h-3.5 w-3.5 shrink-0" />
               收起固定
             </button>
           </div>
         ) : null}
         {replyHint ? (
-          <div className={cn("flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted-foreground", isPinnedLayout ? "border-b border-border/70 bg-secondary/35 sm:px-5" : "rounded-[16px] border border-border bg-secondary/50")}>
-            <span className="min-w-0">{replyHint}</span>
-            <button type="button" className="text-primary transition-opacity hover:opacity-80" onClick={onClearReplyTarget}>改为普通回复</button>
+          <div className={cn("flex min-w-0 flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm text-muted-foreground", isPinnedLayout ? "border-b border-border/70 bg-secondary/35 sm:px-5" : "rounded-[16px] border border-border bg-secondary/50")}>
+            <span className="min-w-0 flex-1 break-words">{replyHint}</span>
+            <button type="button" className="shrink-0 text-primary transition-opacity hover:opacity-80" onClick={onClearReplyTarget}>改为普通回复</button>
           </div>
         ) : null}
         <CommentForm
@@ -303,6 +313,7 @@ export function CommentThreadReplyBox({ postId, commentsVisibleToAuthorOnly, ano
           anonymousIdentitySwitchVisible={anonymousIdentitySwitchVisible}
           markdownEmojiMap={markdownEmojiMap}
           embedded={isPinnedLayout}
+          commentLoadMode={commentLoadMode}
         />
       </div>
     </div>

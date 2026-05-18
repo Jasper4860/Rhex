@@ -1,6 +1,7 @@
 import { findUsersByMentionTexts } from "@/db/mention-queries"
 
-const MENTION_PATTERN = /(^|[^\S\r\n]|[\p{P}\p{S}])@([^\s@]{1,20})/gu
+const MENTION_BOUNDARY_CJK = "\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\p{Script=Hangul}"
+const MENTION_PATTERN = new RegExp(`(^|[^\\S\\r\\n]|[\\p{P}\\p{S}]|[${MENTION_BOUNDARY_CJK}])@([^\\s@]{1,20})`, "gu")
 const USER_LINK_PATTERN = /\[userLink:([^\]\r\n:]+):([^\]\r\n:]+)\]/gu
 
 export interface MentionUser {
