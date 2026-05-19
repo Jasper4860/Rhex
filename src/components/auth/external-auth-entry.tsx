@@ -17,7 +17,7 @@ interface ExternalAuthEntryProps {
 }
 
 function EntryLink({ href, children, useDocumentNavigation = false }: { href: string; children: React.ReactNode; useDocumentNavigation?: boolean }) {
-  const className = cn(buttonVariants({ variant: "outline", size: "sm" }), "min-w-0 w-full px-2")
+  const className = cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full min-w-0 overflow-hidden px-2")
 
   if (useDocumentNavigation) {
     return (
@@ -84,17 +84,17 @@ export function ExternalAuthEntry({ settings, mode, addonEntries = [], className
   }
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-3", className)}>
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <Separator />
-        <span>{mode === "login" ? "其它登录方式" : "快捷注册方式"}</span>
+        <span className="shrink-0">{mode === "login" ? "其它登录方式" : "快捷注册方式"}</span>
         <Separator />
       </div>
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid min-w-0 grid-cols-1 gap-2 min-[360px]:grid-cols-2 sm:grid-cols-3 sm:gap-3">
         {items.map((item) => (
           <EntryLink key={item.key} href={item.href} useDocumentNavigation={item.useDocumentNavigation}>
             {item.icon}
-            <span className="truncate">{item.label}</span>
+            <span className="min-w-0 truncate">{item.label}</span>
           </EntryLink>
         ))}
       </div>

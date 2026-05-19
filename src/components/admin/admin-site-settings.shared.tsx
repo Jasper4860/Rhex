@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/rbutton"
 import { buildDefaultRegistrationEmailTemplateSettings, normalizeRegistrationEmailTemplateSettings } from "@/lib/email-template-settings"
 import { COMMENT_LOAD_MODE_INFINITE, COMMENT_LOAD_MODE_PAGINATION, type CommentLoadMode } from "@/lib/comment-load-mode"
 import { POST_LIST_LOAD_MODE_INFINITE, POST_LIST_LOAD_MODE_PAGINATION, type PostListLoadMode } from "@/lib/post-list-load-mode"
-import { POST_LIST_DISPLAY_MODE_DEFAULT, POST_LIST_DISPLAY_MODE_GALLERY, type PostListDisplayMode } from "@/lib/post-list-display"
+import { normalizePostListDisplayMode, POST_LIST_DISPLAY_MODE_DEFAULT, type PostListDisplayMode } from "@/lib/post-list-display"
 import { defaultSiteSettingsCreateInput } from "@/lib/site-settings-defaults"
 import { DEFAULT_THEME_CUSTOMIZATION_SETTINGS, type BuiltInThemePreset, type EditableThemePresetDefinition, type FontSizePreset, type FontSizePresetDefinition, type ThemeCustomizationSettings, type ThemeRuntimeSettings } from "@/lib/theme"
 import type { InteractionGateCondition, InteractionGateSettings } from "@/lib/site-settings"
@@ -374,7 +374,7 @@ export function createAdminBasicSettingsDraft(initialSettings: AdminBasicSetting
     siteIconPath: initialSettings.siteIconPath ?? "",
     siteSeoKeywords: (initialSettings.siteSeoKeywords ?? []).join(","),
     postLinkDisplayMode: initialSettings.postLinkDisplayMode === "ID" ? "ID" : "SLUG",
-    homeFeedPostListDisplayMode: initialSettings.homeFeedPostListDisplayMode === POST_LIST_DISPLAY_MODE_GALLERY ? POST_LIST_DISPLAY_MODE_GALLERY : POST_LIST_DISPLAY_MODE_DEFAULT,
+    homeFeedPostListDisplayMode: normalizePostListDisplayMode(initialSettings.homeFeedPostListDisplayMode),
     homeFeedPostListLoadMode: initialSettings.homeFeedPostListLoadMode === POST_LIST_LOAD_MODE_INFINITE ? POST_LIST_LOAD_MODE_INFINITE : POST_LIST_LOAD_MODE_PAGINATION,
     homeFeedPostPageSize: coerceNumberString(initialSettings.homeFeedPostPageSize, 35),
     zonePostPageSize: coerceNumberString(initialSettings.zonePostPageSize, 20),
@@ -937,5 +937,5 @@ export function SiteIconUploadCard(props: {
 }
 
 export function resolveHomeFeedPostListDisplayMode(value: string) {
-  return value === POST_LIST_DISPLAY_MODE_DEFAULT ? POST_LIST_DISPLAY_MODE_DEFAULT : POST_LIST_DISPLAY_MODE_GALLERY
+  return normalizePostListDisplayMode(value, POST_LIST_DISPLAY_MODE_DEFAULT)
 }

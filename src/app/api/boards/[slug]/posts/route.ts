@@ -71,6 +71,7 @@ export const GET = createRouteHandler(async ({ request, routeContext }) => {
       posts: result.items,
       settings,
       sort: currentSort,
+      listDisplayMode: board.postListDisplayMode,
       visiblePinScopes: ["GLOBAL", "ZONE", "BOARD"],
       pathname: `/boards/${slug}`,
       request,

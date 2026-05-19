@@ -9,6 +9,7 @@ import markdownItMark from "markdown-it-mark"
 import markdownItSub from "markdown-it-sub"
 import markdownItSup from "markdown-it-sup"
 import markdownItTaskLists from "markdown-it-task-lists"
+import hljs from "highlight.js"
 
 import { renderUserLinkTokens } from "@/lib/mentions"
 import { renderMarkdownEmojiHtml, type MarkdownEmojiItem } from "@/lib/markdown-emoji"
@@ -40,7 +41,12 @@ const HTML_CODE_BLOCK_START_PATTERN = /^\s*<(?:!doctype|html|head|body|meta|titl
 const HTML_CODE_BLOCK_TAG_LINE_PATTERN = /^\s*(?:<!doctype[^>]*>|<!--.*?-->|<\/?[a-zA-Z][\w:-]*(?:\s+[^>]*)?\s*\/?>)\s*$/i
 const HTML_CODE_BLOCK_INLINE_TAG_PATTERN = /^\s*<([a-zA-Z][\w:-]*)(?:\s+[^>]*)?>.*<\/\1>\s*$/i
 const HTML_CODE_BLOCK_LANGUAGE_ALIASES = new Set(["html", "htm"])
-const ASCII_LINK_CANDIDATE_PATTERN = /https?:\/\/[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::\d{1,5})?(?:[/?#][A-Za-z0-9\-._~:/?#\[\]@!$&*+,;=%]*)?|(?:www\.)?[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+(?:\:\d{1,5})?(?:[/?#][A-Za-z0-9\-._~:/?#\[\]@!$&*+,;=%]*)?/gi
+const LINK_CANDIDATE_PATH_CHARS = "A-Za-z0-9\\p{L}\\p{N}\\p{M}\\-._~/?#\\[\\]@!$&*+,;=%"
+const LINK_CANDIDATE_PATH_SEGMENT = `[/?#][${LINK_CANDIDATE_PATH_CHARS}]*`
+const LINK_CANDIDATE_PATTERN = new RegExp(
+  `https?:\\/\\/[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::\\d{1,5})?(?:${LINK_CANDIDATE_PATH_SEGMENT})?|(?:www\\.)?[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+(?::\\d{1,5})?(?:${LINK_CANDIDATE_PATH_SEGMENT})?`,
+  "giu",
+)
 
 type CalloutType = (typeof CALLOUT_TYPES)[number]
 const MARKDOWN_RENDERER_CACHE_LIMIT = 8
@@ -48,6 +54,11 @@ const markdownRendererCache = new Map<string, MarkdownIt>()
 
 interface MarkdownRenderEnv {
   __usedHeadingSlugs?: Map<string, number>
+}
+
+interface EscapedHtmlPlaceholder {
+  marker: string
+  html: string
 }
 
 interface MarkdownToken {
@@ -93,7 +104,7 @@ interface MarkdownItWithLinkifyCore extends MarkdownIt {
   validateLink(url: string): boolean
 }
 
-interface AsciiLinkMatch {
+interface AutoLinkMatch {
   start: number
   end: number
   text: string
@@ -127,27 +138,27 @@ function cloneMarkdownToken(Token: MarkdownTokenConstructor, token: MarkdownToke
   return nextToken
 }
 
-function trimAsciiAutoLinkCandidate(input: string) {
+function trimAutoLinkCandidate(input: string) {
   return input.replace(/[.,!?;:]+$/g, "")
 }
 
-function hasAsciiAutoLinkBoundary(text: string, start: number, end: number) {
+function hasAutoLinkBoundary(text: string, start: number, end: number) {
   const before = start > 0 ? text[start - 1] : ""
   const after = end < text.length ? text[end] : ""
 
   return !/[A-Za-z0-9@/._~-]/.test(before) && !/[A-Za-z0-9@/_~-]/.test(after)
 }
 
-function findAsciiAutoLinkMatch(text: string, linkify: LinkifyLike): AsciiLinkMatch | null {
-  ASCII_LINK_CANDIDATE_PATTERN.lastIndex = 0
+function findAutoLinkMatch(text: string, linkify: LinkifyLike): AutoLinkMatch | null {
+  LINK_CANDIDATE_PATTERN.lastIndex = 0
 
-  for (const match of text.matchAll(ASCII_LINK_CANDIDATE_PATTERN)) {
+  for (const match of text.matchAll(LINK_CANDIDATE_PATTERN)) {
     const rawCandidate = match[0]
-    const candidate = trimAsciiAutoLinkCandidate(rawCandidate)
+    const candidate = trimAutoLinkCandidate(rawCandidate)
     const start = match.index ?? 0
     const end = start + candidate.length
 
-    if (!candidate || !hasAsciiAutoLinkBoundary(text, start, end)) {
+    if (!candidate || !hasAutoLinkBoundary(text, start, end)) {
       continue
     }
 
@@ -172,19 +183,19 @@ function findAsciiAutoLinkMatch(text: string, linkify: LinkifyLike): AsciiLinkMa
   return null
 }
 
-function collectAsciiAutoLinkMatches(text: string, linkify: LinkifyLike) {
-  const matches: AsciiLinkMatch[] = []
+function collectAutoLinkMatches(text: string, linkify: LinkifyLike) {
+  const matches: AutoLinkMatch[] = []
   let lastEnd = 0
 
-  ASCII_LINK_CANDIDATE_PATTERN.lastIndex = 0
+  LINK_CANDIDATE_PATTERN.lastIndex = 0
 
-  for (const match of text.matchAll(ASCII_LINK_CANDIDATE_PATTERN)) {
+  for (const match of text.matchAll(LINK_CANDIDATE_PATTERN)) {
     const rawCandidate = match[0]
-    const candidate = trimAsciiAutoLinkCandidate(rawCandidate)
+    const candidate = trimAutoLinkCandidate(rawCandidate)
     const start = match.index ?? 0
     const end = start + candidate.length
 
-    if (!candidate || start < lastEnd || !hasAsciiAutoLinkBoundary(text, start, end)) {
+    if (!candidate || start < lastEnd || !hasAutoLinkBoundary(text, start, end)) {
       continue
     }
 
@@ -229,7 +240,7 @@ function splitAutoLinkToken(
     return null
   }
 
-  const linkMatch = findAsciiAutoLinkMatch(linkTextToken.content, markdown.linkify)
+  const linkMatch = findAutoLinkMatch(linkTextToken.content, markdown.linkify)
   if (!linkMatch) {
     return null
   }
@@ -260,12 +271,12 @@ function splitAutoLinkToken(
   return replacement
 }
 
-function linkifyAsciiTextToken(
+function linkifyTextToken(
   token: MarkdownToken,
   Token: MarkdownTokenConstructor,
   markdown: MarkdownItWithLinkifyCore,
 ) {
-  const linkMatches = collectAsciiAutoLinkMatches(token.content, markdown.linkify)
+  const linkMatches = collectAutoLinkMatches(token.content, markdown.linkify)
   if (linkMatches.length === 0) {
     return null
   }
@@ -347,7 +358,7 @@ function fixCjkAutoLinkBoundaries(markdown: MarkdownItWithLinkifyCore) {
           continue
         }
 
-        const replacement = linkifyAsciiTextToken(childToken, state.Token, markdown)
+        const replacement = linkifyTextToken(childToken, state.Token, markdown)
         if (!replacement) {
           continue
         }
@@ -729,7 +740,24 @@ function renderScratchMaskSyntax(input: string) {
   return output.join("\n")
 }
 
-function sanitizeMarkdownHtmlLine(line: string) {
+function createEscapedHtmlPlaceholder(raw: string, placeholders: EscapedHtmlPlaceholder[]) {
+  const marker = `\uE000MD_ESCAPED_HTML_${placeholders.length}\uE001`
+  placeholders.push({ marker, html: escapeHtml(raw) })
+  return marker
+}
+
+function restoreEscapedHtmlPlaceholders(html: string, placeholders: EscapedHtmlPlaceholder[]) {
+  if (placeholders.length === 0) {
+    return html
+  }
+
+  return placeholders.reduce(
+    (currentHtml, placeholder) => currentHtml.replaceAll(placeholder.marker, placeholder.html),
+    html,
+  )
+}
+
+function sanitizeMarkdownHtmlLine(line: string, placeholders: EscapedHtmlPlaceholder[]) {
   return line.replace(/<(\/)?([a-zA-Z][\w-]*)([^>]*)>/g, (raw, closingSlash: string | undefined, rawTagName: string, rawAttributes: string) => {
     const tagName = rawTagName.toLowerCase()
 
@@ -737,7 +765,7 @@ function sanitizeMarkdownHtmlLine(line: string) {
       if (tagName === "center" || tagName === "p" || tagName === "u" || ALLOWED_MARKDOWN_HTML_INLINE_TAGS.has(tagName)) {
         return `</${tagName}>`
       }
-      return escapeHtml(raw)
+      return createEscapedHtmlPlaceholder(raw, placeholders)
     }
 
     if (tagName === "center") {
@@ -754,7 +782,7 @@ function sanitizeMarkdownHtmlLine(line: string) {
       if (className === "md-wavy") {
         return '<span class="md-wavy">'
       }
-      return escapeHtml(raw)
+      return createEscapedHtmlPlaceholder(raw, placeholders)
     }
 
     if (ALLOWED_MARKDOWN_HTML_INLINE_TAGS.has(tagName)) {
@@ -762,20 +790,20 @@ function sanitizeMarkdownHtmlLine(line: string) {
     }
 
     if (tagName !== "p") {
-      return escapeHtml(raw)
+      return createEscapedHtmlPlaceholder(raw, placeholders)
     }
 
     const alignMatch = rawAttributes.match(/\balign\s*=\s*(["']?)(left|center|right|justify)\1/i)
     const alignment = alignMatch?.[2]?.toLowerCase()
     if (!alignment || !ALLOWED_MARKDOWN_HTML_ALIGNMENTS.has(alignment)) {
-      return escapeHtml(raw)
+      return createEscapedHtmlPlaceholder(raw, placeholders)
     }
 
     return `<p align="${alignment}">`
   })
 }
 
-function sanitizeMarkdownInlineHtml(input: string) {
+function sanitizeMarkdownInlineHtml(input: string, placeholders: EscapedHtmlPlaceholder[]) {
   const lines = input.split("\n")
   const output: string[] = []
   let inFence = false
@@ -787,7 +815,7 @@ function sanitizeMarkdownInlineHtml(input: string) {
       continue
     }
 
-    output.push(inFence ? line : sanitizeMarkdownHtmlLine(line))
+    output.push(inFence ? line : sanitizeMarkdownHtmlLine(line, placeholders))
   }
 
   return output.join("\n")
@@ -802,12 +830,15 @@ function createMarkdownRenderer(emojiItems: MarkdownEmojiItem[]) {
     highlight(code, language) {
       const languageName = resolveCodeBlockLanguage(code, language)
       const safeLanguage = escapeHtml(languageName || "text")
+      const safeCode = languageName && hljs.getLanguage(languageName)
+        ? hljs.highlight(code, { language: languageName, ignoreIllegals: true }).value
+        : escapeHtml(code)
 
       if (languageName === "mermaid") {
         return `<div class="md-mermaid" data-mermaid="${escapeHtml(code)}"><div class="md-mermaid-loading">正在渲染 Mermaid 图表…</div></div>`
       }
 
-      return `<pre class="md-code-block"><div class="md-code-header"><span>${safeLanguage || "text"}</span></div><code class="language-${safeLanguage}">${escapeHtml(code)}</code></pre>`
+      return `<pre class="md-code-block"><div class="md-code-header"><span>${safeLanguage || "text"}</span></div><code class="language-${safeLanguage}">${safeCode}</code></pre>`
     },
   })
   fixCjkAutoLinkBoundaries(md as MarkdownItWithLinkifyCore)
@@ -926,7 +957,8 @@ export function isImageOnlyMarkdownHtml(html: string) {
 export function renderMarkdown(input: string, emojiItems: MarkdownEmojiItem[]) {
   const markdown = getMarkdownRenderer(emojiItems)
   const normalizedInput = renderWavySyntax(renderRubySyntax(wrapHtmlDocumentBlocks(renderUserLinkTokens(input))))
-  const sanitizedInput = renderScratchMaskSyntax(sanitizeMarkdownInlineHtml(normalizedInput))
+  const escapedHtmlPlaceholders: EscapedHtmlPlaceholder[] = []
+  const sanitizedInput = renderScratchMaskSyntax(sanitizeMarkdownInlineHtml(normalizedInput, escapedHtmlPlaceholders))
   const lines = sanitizedInput.split("\n")
   const htmlChunks: string[] = []
   const markdownBuffer: string[] = []
@@ -1006,7 +1038,7 @@ export function renderMarkdown(input: string, emojiItems: MarkdownEmojiItem[]) {
     .replace(/<li class="task-list-item">/g, '<li class="task-list-item flex items-start gap-2 leading-7">')
     .replace(/<li class="task-list-item enabled">/g, '<li class="task-list-item enabled flex items-start gap-2 leading-7">')
 
-  return decorateMarkdownImages(html)
+  return restoreEscapedHtmlPlaceholders(decorateMarkdownImages(html), escapedHtmlPlaceholders)
 }
 
 export function isImageOnlyMarkdown(input: string, emojiItems: MarkdownEmojiItem[]) {

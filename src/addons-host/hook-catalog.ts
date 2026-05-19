@@ -5,8 +5,12 @@ import type {
   AddonSlotKey,
   AddonWaterfallHookName,
 } from "@/addons-host/types"
+import {
+  ADDON_SURFACE_CATALOG,
+  isKnownAddonSurfaceName,
+} from "@/addons-host/surface-catalog"
 
-export type AddonExtensionPointKind = "slot" | AddonHookKind
+export type AddonExtensionPointKind = "slot" | "surface" | AddonHookKind
 
 export interface AddonExtensionPointCatalogEntry {
   name: string
@@ -19,8 +23,18 @@ export interface AddonExtensionPointCatalogEntry {
 
 const slotCatalog: readonly AddonExtensionPointCatalogEntry[] = [
   { name: "auth.login.captcha", kind: "slot", category: "auth", scope: "page", summary: "在登录表单验证码区域插入 UI。", returns: "AddonRenderResult | null" },
+  { name: "auth.login.page.before", kind: "slot", category: "auth", scope: "page", summary: "在登录页主体前插入 UI。", returns: "AddonRenderResult | null" },
+  { name: "auth.login.page.after", kind: "slot", category: "auth", scope: "page", summary: "在登录页主体后插入 UI。", returns: "AddonRenderResult | null" },
+  { name: "auth.login.panel.before", kind: "slot", category: "auth", scope: "page", summary: "在登录面板前插入 UI。", returns: "AddonRenderResult | null" },
+  { name: "auth.login.panel.after", kind: "slot", category: "auth", scope: "page", summary: "在登录面板后插入 UI。", returns: "AddonRenderResult | null" },
+  { name: "auth.login.form.before", kind: "slot", category: "auth", scope: "page", summary: "在登录表单主要字段前插入 UI 块。", returns: "AddonRenderResult | null" },
   { name: "auth.login.form.after", kind: "slot", category: "auth", scope: "page", summary: "在登录表单主要字段后追加 UI 块。", returns: "AddonRenderResult | null" },
   { name: "auth.register.captcha", kind: "slot", category: "auth", scope: "page", summary: "在注册表单验证码区域插入 UI。", returns: "AddonRenderResult | null" },
+  { name: "auth.register.page.before", kind: "slot", category: "auth", scope: "page", summary: "在注册页主体前插入 UI。", returns: "AddonRenderResult | null" },
+  { name: "auth.register.page.after", kind: "slot", category: "auth", scope: "page", summary: "在注册页主体后插入 UI。", returns: "AddonRenderResult | null" },
+  { name: "auth.register.panel.before", kind: "slot", category: "auth", scope: "page", summary: "在注册面板前插入 UI。", returns: "AddonRenderResult | null" },
+  { name: "auth.register.panel.after", kind: "slot", category: "auth", scope: "page", summary: "在注册面板后插入 UI。", returns: "AddonRenderResult | null" },
+  { name: "auth.register.form.before", kind: "slot", category: "auth", scope: "page", summary: "在注册表单主要字段前插入 UI 块。", returns: "AddonRenderResult | null" },
   { name: "auth.register.form.after", kind: "slot", category: "auth", scope: "page", summary: "在注册表单主要字段后追加 UI 块。", returns: "AddonRenderResult | null" },
   { name: "post.create.captcha", kind: "slot", category: "post", scope: "page", summary: "在发帖页验证码区域插入 UI。", returns: "AddonRenderResult | null" },
   { name: "addon.page.before", kind: "slot", category: "addon", scope: "page", summary: "在插件前台页面主内容前插入 UI（props 含 scope/addonId/routePath/routeSegments）。", returns: "AddonRenderResult | null" },
@@ -31,6 +45,8 @@ const slotCatalog: readonly AddonExtensionPointCatalogEntry[] = [
   { name: "addon.page.content.after", kind: "slot", category: "addon", scope: "page", summary: "在插件前台页面渲染块后插入 UI。", returns: "AddonRenderResult | null" },
   { name: "layout.head.before", kind: "slot", category: "layout", scope: "global", summary: "在全站 head 前段插入资源或标记。", returns: "AddonRenderResult | null" },
   { name: "layout.head.after", kind: "slot", category: "layout", scope: "global", summary: "在全站 head 尾段插入资源或标记。", returns: "AddonRenderResult | null" },
+  { name: "layout.header.before", kind: "slot", category: "layout", scope: "global", summary: "在站点头部主体前插入内容。", returns: "AddonRenderResult | null" },
+  { name: "layout.header.after", kind: "slot", category: "layout", scope: "global", summary: "在站点头部主体后插入内容。", returns: "AddonRenderResult | null" },
   { name: "layout.header.left", kind: "slot", category: "layout", scope: "global", summary: "在站点头部左侧区域插入内容。", returns: "AddonRenderResult | null" },
   { name: "layout.header.center", kind: "slot", category: "layout", scope: "global", summary: "在站点头部中部区域插入内容。", returns: "AddonRenderResult | null" },
   { name: "layout.header.right", kind: "slot", category: "layout", scope: "global", summary: "在站点头部右侧区域插入内容。", returns: "AddonRenderResult | null" },
@@ -348,6 +364,8 @@ const actionHookCatalog: readonly AddonExtensionPointCatalogEntry[] = [
   { name: "report.create.before", kind: "action", category: "report", scope: "service", summary: "举报创建前执行副作用或拦截逻辑。", returns: "void" },
   { name: "report.create.after", kind: "action", category: "report", scope: "service", summary: "举报创建成功后执行副作用逻辑（含 report 快照）。", returns: "void" },
   { name: "task.complete.after", kind: "action", category: "task", scope: "service", summary: "任务完成并结算奖励后执行副作用逻辑（含 task/progress 快照与奖励结果）。", returns: "void" },
+  { name: "check-in.submit.before", kind: "action", category: "check-in", scope: "service", summary: "签到或补签写入前执行副作用或拦截逻辑（payload 含 userId/date/reward/makeUpCost?）。", returns: "void" },
+  { name: "check-in.submit.after", kind: "action", category: "check-in", scope: "service", summary: "签到或补签成功后执行副作用逻辑（payload 含 finalReward/points/streak/alreadyCheckedIn）。", returns: "void" },
   { name: "payment.paid.before", kind: "action", category: "payment", scope: "service", summary: "支付到账后的宿主处理前执行副作用逻辑。", returns: "void" },
   { name: "payment.paid.after", kind: "action", category: "payment", scope: "service", summary: "支付到账后执行副作用逻辑。", returns: "void" },
   { name: "invite-code.purchase.before", kind: "action", category: "invite", scope: "service", summary: "邀请码购买扣点前执行副作用或拦截逻辑。", returns: "void" },
@@ -370,15 +388,19 @@ const actionHookCatalog: readonly AddonExtensionPointCatalogEntry[] = [
   { name: "post.delete.before", kind: "action", category: "post", scope: "service", summary: "帖子删除前执行副作用或拦截逻辑（payload: { postId, editorId, reason? }）。", returns: "void" },
   { name: "post.delete.after", kind: "action", category: "post", scope: "service", summary: "帖子删除成功后执行副作用逻辑。", returns: "void" },
   { name: "post.status.changed.after", kind: "action", category: "post", scope: "service", summary: "帖子可读状态变化后执行副作用逻辑（payload: { postId, editorId, previousStatus, nextStatus }）。", returns: "void" },
+  { name: "post.like.before", kind: "action", category: "post", scope: "service", summary: "帖子点赞状态切换前执行副作用逻辑（payload: { postId, userId }）。", returns: "void" },
   { name: "post.like.after", kind: "action", category: "post", scope: "service", summary: "帖子点赞状态变化后执行副作用逻辑（payload: { postId, userId, liked, likeCount }）。", returns: "void" },
+  { name: "post.favorite.toggle.before", kind: "action", category: "post", scope: "service", summary: "帖子收藏状态切换前执行副作用逻辑（payload: { postId, userId }）。", returns: "void" },
   { name: "post.favorite.toggle.after", kind: "action", category: "post", scope: "service", summary: "帖子收藏状态切换后执行副作用逻辑（payload: { postId, userId, favorited }）。", returns: "void" },
   // 评论
   { name: "comment.update.before", kind: "action", category: "comment", scope: "service", summary: "评论更新前执行副作用或拦截逻辑（payload: { commentId, editorId, changes }）。", returns: "void" },
   { name: "comment.update.after", kind: "action", category: "comment", scope: "service", summary: "评论更新成功后执行副作用逻辑（含最新 comment 快照）。", returns: "void" },
   { name: "comment.delete.before", kind: "action", category: "comment", scope: "service", summary: "评论删除前执行副作用或拦截逻辑（payload: { commentId, editorId, reason? }）。", returns: "void" },
   { name: "comment.delete.after", kind: "action", category: "comment", scope: "service", summary: "评论删除成功后执行副作用逻辑。", returns: "void" },
+  { name: "comment.like.before", kind: "action", category: "comment", scope: "service", summary: "评论点赞状态切换前执行副作用逻辑（payload: { commentId, userId }）。", returns: "void" },
   { name: "comment.like.after", kind: "action", category: "comment", scope: "service", summary: "评论点赞状态变化后执行副作用逻辑（payload: { commentId, userId, liked, likeCount }）。", returns: "void" },
   // 用户关系
+  { name: "user.follow.toggle.before", kind: "action", category: "user", scope: "service", summary: "关注 / 取关关系切换前执行副作用逻辑（payload: { followerId, followeeId, desiredFollowing? }）。", returns: "void" },
   { name: "user.follow.toggle.after", kind: "action", category: "user", scope: "service", summary: "关注 / 取关关系切换后执行副作用逻辑（payload: { followerId, followeeId, following }）。", returns: "void" },
   // 通知
   { name: "notification.create.before", kind: "action", category: "notification", scope: "service", summary: "通知写入前执行副作用或拦截逻辑（payload: { recipientId, type, payload }）。", returns: "void" },
@@ -423,7 +445,8 @@ const asyncWaterfallHookCatalog: readonly AddonExtensionPointCatalogEntry[] = [
   { name: "home.sidebar.hot-topics.items", kind: "asyncWaterfall", category: "home", scope: "service", summary: "串行改写首页右栏热点帖子列表。", returns: "HomeSidebarHotTopic[]" },
   { name: "settings.post-management.tabs", kind: "asyncWaterfall", category: "settings", scope: "service", summary: "串行扩展用户设置页“帖子管理”的插件 tab 列表。", returns: "AddonSettingsPostManagementTab[]" },
   // ─── v2 扩展 hook ───
-  { name: "feed.posts.items", kind: "asyncWaterfall", category: "post", scope: "service", summary: "串行改写帖子流（首页 / 分类 / 搜索结果列表），可插入广告位、置顶项、重排序。", returns: "AddonPostRecord[]" },
+  { name: "feed.posts.items", kind: "asyncWaterfall", category: "post", scope: "service", summary: "串行改写原始帖子流（首页 / 分类 / 搜索结果列表），可插入广告位、置顶项、重排序；payload 含 displayMode。", returns: "AddonPostRecord[]" },
+  { name: "post-list.display.items", kind: "asyncWaterfall", category: "post", scope: "service", summary: "串行改写帖子列表展示项（默认 / 画廊 / 微博模式映射后），可调整摘要、预览媒体、统计或插入轻量展示项。", returns: "PostListDisplayItem[]" },
   { name: "search.results.rerank", kind: "asyncWaterfall", category: "search", scope: "service", summary: "串行对搜索结果重排序（含 query / scope 上下文）。", returns: "AddonSearchResultItem[]" },
   { name: "notification.dispatch.targets", kind: "asyncWaterfall", category: "notification", scope: "service", summary: "串行改写单条通知的分发目标（站内 / 邮件 / 其他通道）。", returns: "AddonNotificationDispatchTarget[]" },
   { name: "sitemap.entries", kind: "asyncWaterfall", category: "seo", scope: "service", summary: "串行扩展 sitemap.xml 条目列表。", returns: "AddonSitemapEntry[]" },
@@ -433,6 +456,14 @@ const asyncWaterfallHookCatalog: readonly AddonExtensionPointCatalogEntry[] = [
 
 export const ADDON_EXTENSION_POINT_CATALOG: readonly AddonExtensionPointCatalogEntry[] = [
   ...slotCatalog,
+  ...ADDON_SURFACE_CATALOG.map((item) => ({
+    name: item.name,
+    kind: "surface" as const,
+    category: item.category,
+    scope: item.scope,
+    summary: `${item.summary}（${item.mode} surface）`,
+    returns: "AddonRenderResult | null",
+  })),
   ...actionHookCatalog,
   ...waterfallHookCatalog,
   ...asyncWaterfallHookCatalog,
@@ -446,6 +477,8 @@ const asyncWaterfallHookNameSet = new Set<string>(asyncWaterfallHookCatalog.map(
 export function isKnownAddonSlotName(name: string): name is AddonSlotKey {
   return slotNameSet.has(name)
 }
+
+export { isKnownAddonSurfaceName }
 
 export function isKnownAddonActionHookName(name: string): name is AddonActionHookName {
   return actionHookNameSet.has(name)

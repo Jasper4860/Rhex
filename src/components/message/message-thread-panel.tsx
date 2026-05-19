@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/rbutton"
 import { Tooltip } from "@/components/ui/tooltip"
 import { UserAvatar } from "@/components/user/user-avatar"
 import { UserProfilePreviewCardTrigger } from "@/components/user/user-profile-preview-card-trigger"
+import { isImageOnlyMessageContent } from "@/lib/message-media"
 import { createSiteChatParticipant } from "@/lib/site-chat"
 import { cn } from "@/lib/utils"
 import type { MessageBubbleItem, MessageConversationDetail, MessageSendResult } from "@/lib/message-types"
@@ -65,7 +66,7 @@ export function MessageThreadPanel({
   if (!conversation || !recipient) {
     if (loadingConversation) {
       return (
-        <div className="flex min-h-[calc(100vh-164px)] items-center justify-center rounded-xl border border-border bg-card px-6 text-center shadow-soft max-sm:min-h-[calc(100dvh-56px)] max-sm:rounded-none max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-none">
+        <div className="flex min-h-[calc(100vh-164px)] items-center justify-center rounded-xl bg-card px-6 text-center max-sm:min-h-[calc(100dvh-56px)] max-sm:rounded-none">
           <div>
             {onBack ? (
               <button
@@ -88,7 +89,7 @@ export function MessageThreadPanel({
 
     if (conversationError) {
       return (
-        <div className="flex min-h-[calc(100vh-164px)] items-center justify-center rounded-xl border border-dashed border-rose-200/80 bg-card px-6 text-center shadow-soft max-sm:min-h-[calc(100dvh-56px)] max-sm:rounded-none max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-none dark:border-rose-400/20">
+        <div className="flex min-h-[calc(100vh-164px)] items-center justify-center rounded-xl bg-card px-6 text-center max-sm:min-h-[calc(100dvh-56px)] max-sm:rounded-none">
           <div>
             {onBack ? (
               <button
@@ -110,7 +111,7 @@ export function MessageThreadPanel({
     }
 
     return (
-      <div className="flex min-h-[calc(100vh-164px)] items-center justify-center rounded-xl border border-dashed border-border bg-card px-6 text-center shadow-soft max-sm:min-h-[calc(100dvh-56px)] max-sm:rounded-none max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-none">
+      <div className="flex min-h-[calc(100vh-164px)] items-center justify-center rounded-xl bg-card px-6 text-center max-sm:min-h-[calc(100dvh-56px)] max-sm:rounded-none">
         <div>
           <MessageSquareMore className="mx-auto h-10 w-10 text-muted-foreground" />
           <p className="mt-4 text-sm uppercase tracking-[0.28em] text-muted-foreground">Chat Thread</p>
@@ -289,6 +290,7 @@ function MessageThreadPanelContent({
           senderName: conversation.kind === "SITE_CHAT" ? result.senderDisplayName ?? "我" : "我",
           senderAvatarPath: result.senderAvatarPath ?? null,
           isMine: true,
+          bodyImageOnly: isImageOnlyMessageContent(result.content),
         },
       })
     }
@@ -437,7 +439,7 @@ function MessageThreadPanelContent({
   }
 
   return (
-    <div className="flex max-h-[calc(100vh-164px)] min-h-[calc(100vh-164px)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-soft max-sm:max-h-[calc(100dvh-56px)] max-sm:min-h-[calc(100dvh-56px)] max-sm:rounded-none max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-none">
+    <div className="flex max-h-[calc(100vh-164px)] min-h-[calc(100vh-164px)] flex-col overflow-hidden rounded-xl bg-card max-sm:max-h-[calc(100dvh-56px)] max-sm:min-h-[calc(100dvh-56px)] max-sm:rounded-none">
       <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-3 sm:px-5 sm:py-3.5">
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           {onBack ? (
@@ -496,6 +498,7 @@ function MessageThreadPanelContent({
           const shouldShowSenderName = conversation.kind === "SITE_CHAT"
           const canDeleteMessage = canManageSiteChatMessages && conversation.kind === "SITE_CHAT" && Boolean(onDeleteMessage)
           const deletingThisMessage = deletingMessageId === message.id
+          const isImageOnlyMessage = message.bodyImageOnly ?? isImageOnlyMessageContent(message.body)
           const senderAvatar = (
             <ChatMessageAvatar
               message={message}
@@ -515,10 +518,15 @@ function MessageThreadPanelContent({
                 ) : null}
                 <div
                   className={cn(
-                    "inline-block max-w-full min-w-0 rounded-xl px-3.5 py-2 text-sm leading-6 shadow-xs",
-                    message.isMine
-                      ? "rounded-br-md bg-foreground text-background dark:bg-primary dark:text-primary-foreground"
-                      : "rounded-bl-md border border-border bg-card text-foreground dark:bg-secondary/70 dark:text-foreground",
+                    "inline-block max-w-full min-w-0 text-sm leading-6",
+                    isImageOnlyMessage
+                      ? "rounded-xl bg-transparent p-0 shadow-none"
+                      : [
+                          "rounded-xl px-3.5 py-2 shadow-xs",
+                          message.isMine
+                            ? "rounded-br-md bg-foreground text-background dark:bg-primary dark:text-primary-foreground"
+                            : "rounded-bl-md bg-secondary/70 text-foreground dark:bg-secondary/70 dark:text-foreground",
+                        ],
                   )}
                 >
                   <MessageBubbleContent
@@ -529,7 +537,7 @@ function MessageThreadPanelContent({
                     isMine={message.isMine}
                   />
                 </div>
-                <div className={cn("mt-2 flex items-center gap-1.5", message.isMine ? "flex-row-reverse" : "flex-row")}>
+                <div className={cn("mt-2 flex w-full items-center gap-1.5", message.isMine ? "justify-end" : "justify-start")}>
                   <p className="text-xs text-muted-foreground">{message.createdAt}</p>
                   {canDeleteMessage ? (
                     <Tooltip content="删除消息">
@@ -584,11 +592,10 @@ function MessageThreadPanelContent({
                 <span className="hidden sm:inline">表情</span>
               </button>
               {showEmojiPanel ? (
-                <div className="absolute bottom-[calc(100%+12px)] left-0 z-20 w-[260px] max-h-[320px] overflow-y-auto rounded-2xl border border-border bg-background p-3 shadow-2xl">
+                <div className="absolute bottom-[calc(100%+12px)] left-0 z-20 max-h-[360px] w-[min(320px,calc(100vw-32px))] overflow-y-auto rounded-2xl border border-border bg-background p-3 shadow-2xl">
                   <EmojiPicker
                     items={emojiPickerItems}
-                    columns={5}
-                    panelClassName="space-y-2"
+                    columns={6}
                     onSelect={(value) => insertEmoji(value)}
                   />
                 </div>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 
-import { AddonSlotRenderer } from "@/addons-host"
+import { AddonSlotRenderer, AddonSurfaceRenderer } from "@/addons-host"
 import { SiteHeader } from "@/components/site-header"
 import { getCurrentUser } from "@/lib/auth"
 import { getGobangAppConfig } from "@/lib/app-config"
@@ -55,11 +55,15 @@ export default async function GobangFunPage() {
       <SiteHeader />
       <div className="mx-auto max-w-[1200px] px-1 py-8">
         <AddonSlotRenderer slot="funs.app.page.before" props={funsAppSlotProps} />
-        <div className="space-y-6">
-          <AddonSlotRenderer slot="funs.app.content.before" props={funsAppSlotProps} />
-          <GobangPage config={config} initialMatches={initialMatches} initialSummary={initialSummary} />
-          <AddonSlotRenderer slot="funs.app.content.after" props={funsAppSlotProps} />
-        </div>
+        <AddonSurfaceRenderer surface="funs.app.page" props={funsAppSlotProps}>
+          <div className="space-y-6">
+            <AddonSlotRenderer slot="funs.app.content.before" props={funsAppSlotProps} />
+            <AddonSurfaceRenderer surface="funs.app.content" props={funsAppSlotProps}>
+              <GobangPage config={config} initialMatches={initialMatches} initialSummary={initialSummary} />
+            </AddonSurfaceRenderer>
+            <AddonSlotRenderer slot="funs.app.content.after" props={funsAppSlotProps} />
+          </div>
+        </AddonSurfaceRenderer>
         <AddonSlotRenderer slot="funs.app.page.after" props={funsAppSlotProps} />
       </div>
     </div>

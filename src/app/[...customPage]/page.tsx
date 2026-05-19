@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
-import { AddonSlotRenderer } from "@/addons-host"
+import { AddonSlotRenderer, AddonSurfaceRenderer } from "@/addons-host"
 import { ForumPageShell } from "@/components/forum/forum-page-shell"
 import { HomeSidebarPanels } from "@/components/home/home-sidebar-panels"
 import { SiteHeader } from "@/components/site-header"
@@ -101,39 +101,45 @@ export default async function CustomPageRoute({ params }: CustomPageRouteProps) 
       {page.includeHeader ? <SiteHeader /> : null}
       <div className="mx-auto max-w-[1200px] px-1">
         <AddonSlotRenderer slot="custom-page.page.before" props={customPageSlotProps} />
-        <ForumPageShell
-          zones={zones}
-          boards={boards}
-          rightSidebar={page.includeRightSidebar ? (
-            <div className="mt-6 hidden pb-12 lg:block">
+        <AddonSurfaceRenderer surface="custom-page.page" props={customPageSlotProps}>
+          <ForumPageShell
+            zones={zones}
+            boards={boards}
+            rightSidebar={page.includeRightSidebar ? (
+              <div className="mt-6 hidden pb-12 lg:block">
               <AddonSlotRenderer slot="custom-page.sidebar.before" props={customPageSlotProps} />
-              <HomeSidebarPanels
-                user={sidebarUser}
-                hotTopics={hotTopics}
-                announcements={announcements}
-                showAnnouncements={settings.homeSidebarAnnouncementsEnabled}
-                siteName={settings.siteName}
-                siteDescription={settings.siteDescription}
-                siteLogoPath={settings.siteLogoPath}
-                siteIconPath={settings.siteIconPath}
-                stickyTopClass={page.includeHeader ? "top-20" : "top-4"}
-              />
+              <AddonSurfaceRenderer surface="custom-page.sidebar" props={customPageSlotProps}>
+                <HomeSidebarPanels
+                  user={sidebarUser}
+                  hotTopics={hotTopics}
+                  announcements={announcements}
+                  showAnnouncements={settings.homeSidebarAnnouncementsEnabled}
+                  siteName={settings.siteName}
+                  siteDescription={settings.siteDescription}
+                  siteLogoPath={settings.siteLogoPath}
+                  siteIconPath={settings.siteIconPath}
+                  stickyTopClass={page.includeHeader ? "top-20" : "top-4"}
+                />
+              </AddonSurfaceRenderer>
               <AddonSlotRenderer slot="custom-page.sidebar.after" props={customPageSlotProps} />
-            </div>
-          ) : null}
-          leftSidebarDisplayModeOverride={page.includeLeftSidebar ? undefined : "HIDDEN"}
-          sidebarStickyTopClass={page.includeHeader ? "top-14" : "top-4"}
-          main={(
-            <main className={page.includeHeader ? "py-1 pb-12 mt-6" : "py-3 pb-12"}>
+              </div>
+            ) : null}
+            leftSidebarDisplayModeOverride={page.includeLeftSidebar ? undefined : "HIDDEN"}
+            sidebarStickyTopClass={page.includeHeader ? "top-14" : "top-4"}
+            main={(
+              <main className={page.includeHeader ? "py-1 pb-12 mt-6" : "py-3 pb-12"}>
               <AddonSlotRenderer slot="custom-page.content.before" props={customPageSlotProps} />
-              <div
-                className="custom-page-html min-w-0 [&_iframe]:max-w-full [&_img]:max-w-full [&_table]:max-w-full"
-                dangerouslySetInnerHTML={{ __html: page.htmlContent }}
-              />
+              <AddonSurfaceRenderer surface="custom-page.content" props={{ ...customPageSlotProps, htmlContent: page.htmlContent }}>
+                <div
+                  className="custom-page-html min-w-0 [&_iframe]:max-w-full [&_img]:max-w-full [&_table]:max-w-full"
+                  dangerouslySetInnerHTML={{ __html: page.htmlContent }}
+                />
+              </AddonSurfaceRenderer>
               <AddonSlotRenderer slot="custom-page.content.after" props={customPageSlotProps} />
-            </main>
-          )}
-        />
+              </main>
+            )}
+          />
+        </AddonSurfaceRenderer>
         <AddonSlotRenderer slot="custom-page.page.after" props={customPageSlotProps} />
       </div>
     </div>

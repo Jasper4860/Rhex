@@ -93,6 +93,7 @@ function getNicknameValidationMessage(value: string, settings: SiteSettingsData)
 
 interface RegisterFormProps {
   settings: SiteSettingsData
+  addonBeforeFields?: ReactNode
   addonCaptcha?: ReactNode
   addonAfterFields?: ReactNode
   addonExternalAuthEntries?: AddonExternalAuthEntry[]
@@ -100,6 +101,7 @@ interface RegisterFormProps {
 
 export function RegisterForm({
   settings,
+  addonBeforeFields,
   addonCaptcha,
   addonAfterFields,
   addonExternalAuthEntries = [],
@@ -325,6 +327,10 @@ export function RegisterForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      {addonBeforeFields ? (
+        <AuthFormSection>{addonBeforeFields}</AuthFormSection>
+      ) : null}
+
       <AuthFormSection>
         <AuthField htmlFor="register-username" label="用户名" required>
           <InputGroup className="h-11 rounded-2xl bg-background/80" data-invalid={usernameInvalid || undefined}>

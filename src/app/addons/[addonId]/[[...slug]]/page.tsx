@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 
-import { AddonRenderBlock, AddonSlotRenderer, executeAddonPage, executeAddonPageWithInput, isAddonRedirectResult } from "@/addons-host"
+import { AddonRenderBlock, AddonSlotRenderer, AddonSurfaceRenderer, executeAddonPage, executeAddonPageWithInput, isAddonRedirectResult } from "@/addons-host"
 import { HomeSidebarPanels } from "@/components/home/home-sidebar-panels"
 import { SidebarNavigation } from "@/components/sidebar-navigation"
 import { SiteFooter } from "@/components/site-footer"
@@ -113,23 +113,33 @@ export default async function AddonPublicPage({ params, searchParams }: AddonPag
   const mainContent = (
     <main className={showLeftSidebar || showRightSidebar ? "py-1 pb-12 mt-6 min-w-0" : "mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6"}>
       <AddonSlotRenderer slot="addon.page.before" props={addonPageSlotProps} />
-      {showPageHeading ? (
-        <section className="space-y-2">
-          <AddonSlotRenderer slot="addon.page.header.before" props={addonPageSlotProps} />
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{resolved.addon.manifest.id}</p>
-          <h1 className="text-3xl font-semibold tracking-tight">{resolved.registration.title || resolved.addon.manifest.name}</h1>
-          {resolved.registration.description || resolved.addon.manifest.description ? (
-            <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-              {resolved.registration.description || resolved.addon.manifest.description}
-            </p>
+      <AddonSurfaceRenderer surface="addon.page" props={addonPageSlotProps}>
+        <>
+          {showPageHeading ? (
+            <section className="space-y-2">
+              <AddonSlotRenderer slot="addon.page.header.before" props={addonPageSlotProps} />
+              <AddonSurfaceRenderer surface="addon.page.header" props={addonPageSlotProps}>
+                <>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{resolved.addon.manifest.id}</p>
+                  <h1 className="text-3xl font-semibold tracking-tight">{resolved.registration.title || resolved.addon.manifest.name}</h1>
+                  {resolved.registration.description || resolved.addon.manifest.description ? (
+                    <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
+                      {resolved.registration.description || resolved.addon.manifest.description}
+                    </p>
+                  ) : null}
+                </>
+              </AddonSurfaceRenderer>
+              <AddonSlotRenderer slot="addon.page.header.after" props={addonPageSlotProps} />
+            </section>
           ) : null}
-          <AddonSlotRenderer slot="addon.page.header.after" props={addonPageSlotProps} />
-        </section>
-      ) : null}
 
-      <AddonSlotRenderer slot="addon.page.content.before" props={addonPageSlotProps} />
-      <AddonRenderBlock addonId={resolved.addon.manifest.id} blockKey={renderBlockKey} result={renderResult} />
-      <AddonSlotRenderer slot="addon.page.content.after" props={addonPageSlotProps} />
+          <AddonSlotRenderer slot="addon.page.content.before" props={addonPageSlotProps} />
+          <AddonSurfaceRenderer surface="addon.page.content" props={{ ...addonPageSlotProps, renderBlockKey }}>
+            <AddonRenderBlock addonId={resolved.addon.manifest.id} blockKey={renderBlockKey} result={renderResult} />
+          </AddonSurfaceRenderer>
+          <AddonSlotRenderer slot="addon.page.content.after" props={addonPageSlotProps} />
+        </>
+      </AddonSurfaceRenderer>
       <AddonSlotRenderer slot="addon.page.after" props={addonPageSlotProps} />
     </main>
   )

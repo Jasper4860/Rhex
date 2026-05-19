@@ -1,45 +1,15 @@
+import {
+  getAddonSurfaceCatalogEntry,
+  type AddonSurfaceExecutionMode,
+} from "@/addons-host/surface-catalog"
 import type { AddonSurfaceKey } from "@/addons-host/types"
 
-export type AddonSurfaceExecutionMode = "server" | "client" | "hybrid"
-
-const CLIENT_ONLY_ADDON_SURFACES = new Set<AddonSurfaceKey>([
-  "collection.content",
-  "collection.hero",
-  "collection.pending",
-  "comment.author.badges",
-  "comment.author.meta",
-  "comment.author.name",
-  "comment.author.row",
-  "comment.author.verification",
-  "history.panel",
-  "messages.header",
-  "messages.sidebar",
-  "messages.thread",
-  "post.create.editor",
-  "post.create.enhancements",
-  "post.create.form",
-  "post.create.submit",
-  "post.create.tools",
-  "settings.content",
-])
-
-const HYBRID_ADDON_SURFACES = new Set<AddonSurfaceKey>([
-  "messages.page",
-  "settings.page",
-])
+export type { AddonSurfaceExecutionMode } from "@/addons-host/surface-catalog"
 
 export function getAddonSurfaceExecutionMode(
   surface: AddonSurfaceKey,
 ): AddonSurfaceExecutionMode {
-  if (CLIENT_ONLY_ADDON_SURFACES.has(surface)) {
-    return "client"
-  }
-
-  if (HYBRID_ADDON_SURFACES.has(surface)) {
-    return "hybrid"
-  }
-
-  return "server"
+  return getAddonSurfaceCatalogEntry(surface)?.mode ?? "server"
 }
 
 export function isAddonClientOnlySurface(surface: AddonSurfaceKey) {

@@ -26,6 +26,7 @@ import type { SiteSettingsData } from "@/lib/site-settings"
 
 interface LoginFormProps {
   settings: SiteSettingsData
+  addonBeforeFields?: ReactNode
   addonCaptcha?: ReactNode
   addonAfterFields?: ReactNode
   addonExternalAuthEntries?: AddonExternalAuthEntry[]
@@ -33,6 +34,7 @@ interface LoginFormProps {
 
 export function LoginForm({
   settings,
+  addonBeforeFields,
   addonCaptcha,
   addonAfterFields,
   addonExternalAuthEntries = [],
@@ -117,6 +119,10 @@ export function LoginForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      {addonBeforeFields ? (
+        <AuthFormSection>{addonBeforeFields}</AuthFormSection>
+      ) : null}
+
       <AuthFormSection>
         <AuthField htmlFor="login-identity" label="邮箱 / 用户名" required>
           <InputGroup className="h-11 rounded-2xl bg-background/80">

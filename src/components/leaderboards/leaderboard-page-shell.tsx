@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import Link from "next/link"
 import { ArrowRight, Award, Medal, TrendingUp, Trophy, type LucideIcon } from "lucide-react"
 
-import { AddonSlotRenderer } from "@/addons-host"
+import { AddonSlotRenderer, AddonSurfaceRenderer } from "@/addons-host"
 import { ForumPageShell } from "@/components/forum/forum-page-shell"
 import { HomeSidebarPanels } from "@/components/home/home-sidebar-panels"
 import { SiteHeader } from "@/components/site-header"
@@ -198,146 +198,154 @@ export function LeaderboardPageShell<TEntry extends LeaderboardShellEntry>({
       <SiteHeader />
       <div className="mx-auto max-w-[1200px] px-1">
         <AddonSlotRenderer slot="leaderboard.page.before" props={leaderboardSlotProps} />
-        <ForumPageShell
-          zones={chrome.zones}
-          boards={chrome.boards}
-          main={(
-            <main className="mt-6 py-1 pb-12">
-              <div className="space-y-5">
+        <AddonSurfaceRenderer surface="leaderboard.page" props={{ ...leaderboardSlotProps, entries }}>
+          <ForumPageShell
+            zones={chrome.zones}
+            boards={chrome.boards}
+            main={(
+              <main className="mt-6 py-1 pb-12">
+                <div className="space-y-5">
                 <AddonSlotRenderer slot="leaderboard.hero.before" props={leaderboardSlotProps} />
-                <section className="overflow-hidden rounded-xl border border-border">
-                  <div className="flex flex-col gap-4 border-b border-border/70 px-5 py-5 md:px-6">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">{eyebrow}</p>
-                        <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
-                        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
-                      </div>
-              
-                    </div>
-
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {tabs.map((tab) => (
-                          <Link
-                            key={tab.href}
-                            href={tab.href}
-                            className={tab.active
-                              ? "inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2 text-xs font-medium text-background"
-                              : "inline-flex items-center justify-center rounded-full border border-border bg-background px-4 py-2 text-xs font-medium transition-colors hover:bg-accent hover:text-foreground"}
-                          >
-                            {tab.label}
-                          </Link>
-                        ))}
+                <AddonSurfaceRenderer surface="leaderboard.hero" props={leaderboardSlotProps}>
+                  <section className="overflow-hidden rounded-xl border border-border">
+                    <div className="flex flex-col gap-4 border-b border-border/70 px-5 py-5 md:px-6">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">{eyebrow}</p>
+                          <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
+                          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
+                        </div>
+                
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                        <Link href={primaryHref} className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-xs font-medium transition-colors hover:bg-accent hover:text-foreground">
-                          {primaryLabel}
-                        </Link>
-                        {secondaryHref && secondaryLabel ? (
-                          <Link href={secondaryHref} className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-xs font-medium transition-colors hover:bg-accent hover:text-foreground">
-                            {secondaryLabel}
-                            <ArrowRight className="h-3.5 w-3.5" />
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {tabs.map((tab) => (
+                            <Link
+                              key={tab.href}
+                              href={tab.href}
+                              className={tab.active
+                                ? "inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2 text-xs font-medium text-background"
+                                : "inline-flex items-center justify-center rounded-full border border-border bg-background px-4 py-2 text-xs font-medium transition-colors hover:bg-accent hover:text-foreground"}
+                            >
+                              {tab.label}
+                            </Link>
+                          ))}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                          <Link href={primaryHref} className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-xs font-medium transition-colors hover:bg-accent hover:text-foreground">
+                            {primaryLabel}
                           </Link>
-                        ) : null}
+                          {secondaryHref && secondaryLabel ? (
+                            <Link href={secondaryHref} className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-xs font-medium transition-colors hover:bg-accent hover:text-foreground">
+                              {secondaryLabel}
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </section>
+                  </section>
+                </AddonSurfaceRenderer>
                 <AddonSlotRenderer slot="leaderboard.hero.after" props={leaderboardSlotProps} />
 
                 <AddonSlotRenderer slot="leaderboard.content.before" props={leaderboardSlotProps} />
-                <section className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
-                  <div className="grid grid-cols-[70px_minmax(0,1fr)_132px] items-center gap-3 border-b border-border bg-muted/25 px-4 py-3 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-                    <span>排名</span>
-                    <span>用户</span>
-                    <span className="text-right">{scoreColumnLabel}</span>
-                  </div>
+                <AddonSurfaceRenderer surface="leaderboard.content" props={{ ...leaderboardSlotProps, entries }}>
+                  <section className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+                    <div className="grid grid-cols-[70px_minmax(0,1fr)_132px] items-center gap-3 border-b border-border bg-muted/25 px-4 py-3 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                      <span>排名</span>
+                      <span>用户</span>
+                      <span className="text-right">{scoreColumnLabel}</span>
+                    </div>
 
-                  {entries.length === 0 ? (
-                    <div className="px-4 py-10 text-sm text-muted-foreground">{emptyText}</div>
-                  ) : null}
+                    {entries.length === 0 ? (
+                      <div className="px-4 py-10 text-sm text-muted-foreground">{emptyText}</div>
+                    ) : null}
 
-                  {entries.map((entry) => {
-                    const isCurrentUser = currentUserEntry?.userId === entry.userId
-                    const isTopThree = entry.rank <= 3
-                    const topRankVisual = getTopRankVisual(entry.rank)
+                    {entries.map((entry) => {
+                      const isCurrentUser = currentUserEntry?.userId === entry.userId
+                      const isTopThree = entry.rank <= 3
+                      const topRankVisual = getTopRankVisual(entry.rank)
 
-                    return (
-                      <Link
-                        key={`leaderboard-row-${entry.userId}`}
-                        href={`/users/${entry.username}`}
-                        className={isCurrentUser
-                          ? "grid grid-cols-[70px_minmax(0,1fr)_132px] items-center gap-3 border-b border-border/80 bg-amber-50/50 px-4 py-2.5 transition-colors hover:bg-amber-50 dark:bg-amber-400/10 dark:hover:bg-amber-400/15"
-                          : "grid grid-cols-[70px_minmax(0,1fr)_132px] items-center gap-3 border-b border-border/70 px-4 py-2.5 transition-colors hover:bg-accent/35"}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className={cn(
-                            "inline-flex min-w-10 items-center justify-center rounded-full px-2 py-1 text-xs font-semibold",
-                            isTopThree && topRankVisual
-                              ? topRankVisual.badgeClassName
-                              : "bg-secondary text-muted-foreground",
-                          )}>
-                            {renderRankLabel(entry.rank)}
-                          </span>
-                          {isTopThree && topRankVisual ? <topRankVisual.Icon className={cn("h-3.5 w-3.5", topRankVisual.iconClassName)} /> : null}
-                        </div>
+                      return (
+                        <Link
+                          key={`leaderboard-row-${entry.userId}`}
+                          href={`/users/${entry.username}`}
+                          className={isCurrentUser
+                            ? "grid grid-cols-[70px_minmax(0,1fr)_132px] items-center gap-3 border-b border-border/80 bg-amber-50/50 px-4 py-2.5 transition-colors hover:bg-amber-50 dark:bg-amber-400/10 dark:hover:bg-amber-400/15"
+                            : "grid grid-cols-[70px_minmax(0,1fr)_132px] items-center gap-3 border-b border-border/70 px-4 py-2.5 transition-colors hover:bg-accent/35"}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "inline-flex min-w-10 items-center justify-center rounded-full px-2 py-1 text-xs font-semibold",
+                              isTopThree && topRankVisual
+                                ? topRankVisual.badgeClassName
+                                : "bg-secondary text-muted-foreground",
+                            )}>
+                              {renderRankLabel(entry.rank)}
+                            </span>
+                            {isTopThree && topRankVisual ? <topRankVisual.Icon className={cn("h-3.5 w-3.5", topRankVisual.iconClassName)} /> : null}
+                          </div>
 
-                        <div className="flex min-w-0 items-center gap-3">
-                          <UserAvatar name={entry.displayName} avatarPath={entry.avatarPath} size="xs" />
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="truncate text-sm font-medium">{entry.displayName}</p>
-                              {isCurrentUser ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-400/15 dark:text-amber-100">我</span> : null}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                              <span>论坛第 {formatNumber(entry.userId)} 号会员</span>
-                              {renderMeta ? renderMeta(entry) : null}
+                          <div className="flex min-w-0 items-center gap-3">
+                            <UserAvatar name={entry.displayName} avatarPath={entry.avatarPath} size="xs" />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="truncate text-sm font-medium">{entry.displayName}</p>
+                                {isCurrentUser ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-400/15 dark:text-amber-100">我</span> : null}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                                <span>论坛第 {formatNumber(entry.userId)} 号会员</span>
+                                {renderMeta ? renderMeta(entry) : null}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-emerald-600">{renderMetricValue(entry)}</p>
-                          <div className="mt-0.5 text-[11px] leading-5 text-muted-foreground">{renderMetric(entry)}</div>
-                        </div>
-                      </Link>
-                    )
-                  })}
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-emerald-600">{renderMetricValue(entry)}</p>
+                            <div className="mt-0.5 text-[11px] leading-5 text-muted-foreground">{renderMetric(entry)}</div>
+                          </div>
+                        </Link>
+                      )
+                    })}
 
-                  {entries.length > 0 ? (
-                    <div className="flex items-center justify-between gap-3 border-t border-border/70 bg-muted/15 px-4 py-3 text-xs text-muted-foreground">
-                      <span>榜单按实时数据排序，刷新页面可查看最新结果。</span>
-                      <span className="inline-flex items-center gap-1">
-                        <TrendingUp className="h-3.5 w-3.5" />
-                        已展示 {formatNumber(entries.length)} 名
-                      </span>
-                    </div>
-                  ) : null}
-                </section>
+                    {entries.length > 0 ? (
+                      <div className="flex items-center justify-between gap-3 border-t border-border/70 bg-muted/15 px-4 py-3 text-xs text-muted-foreground">
+                        <span>榜单按实时数据排序，刷新页面可查看最新结果。</span>
+                        <span className="inline-flex items-center gap-1">
+                          <TrendingUp className="h-3.5 w-3.5" />
+                          已展示 {formatNumber(entries.length)} 名
+                        </span>
+                      </div>
+                    ) : null}
+                  </section>
+                </AddonSurfaceRenderer>
                 <AddonSlotRenderer slot="leaderboard.content.after" props={leaderboardSlotProps} />
-              </div>
-            </main>
-          )}
-          rightSidebar={(
-            <aside className="mt-6 hidden pb-12 lg:block">
+                </div>
+              </main>
+            )}
+            rightSidebar={(
+              <aside className="mt-6 hidden pb-12 lg:block">
               <AddonSlotRenderer slot="leaderboard.sidebar.before" props={leaderboardSlotProps} />
-              <HomeSidebarPanels
-                user={chrome.sidebarUser}
-                hotTopics={chrome.hotTopics}
-                announcements={chrome.announcements}
-                showAnnouncements={chrome.settings.homeSidebarAnnouncementsEnabled}
-                siteName={chrome.settings.siteName}
-                siteDescription={chrome.settings.siteDescription}
-                siteLogoPath={chrome.settings.siteLogoPath}
-                siteIconPath={chrome.settings.siteIconPath}
-                topPanels={topPanels}
-              />
+              <AddonSurfaceRenderer surface="leaderboard.sidebar" props={leaderboardSlotProps}>
+                <HomeSidebarPanels
+                  user={chrome.sidebarUser}
+                  hotTopics={chrome.hotTopics}
+                  announcements={chrome.announcements}
+                  showAnnouncements={chrome.settings.homeSidebarAnnouncementsEnabled}
+                  siteName={chrome.settings.siteName}
+                  siteDescription={chrome.settings.siteDescription}
+                  siteLogoPath={chrome.settings.siteLogoPath}
+                  siteIconPath={chrome.settings.siteIconPath}
+                  topPanels={topPanels}
+                />
+              </AddonSurfaceRenderer>
               <AddonSlotRenderer slot="leaderboard.sidebar.after" props={leaderboardSlotProps} />
-            </aside>
-          )}
-        />
+              </aside>
+            )}
+          />
+        </AddonSurfaceRenderer>
         <AddonSlotRenderer slot="leaderboard.page.after" props={leaderboardSlotProps} />
       </div>
     </div>

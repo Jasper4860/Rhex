@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
-import { AddonSlotRenderer } from "@/addons-host"
+import { AddonSlotRenderer, AddonSurfaceRenderer } from "@/addons-host"
 import { getHomeAnnouncements } from "@/lib/announcements"
 import { getBoards } from "@/lib/boards"
 import { ForumPageShell } from "@/components/forum/forum-page-shell"
@@ -63,36 +63,38 @@ export default async function TasksPage() {
       <SiteHeader />
       <div className="mx-auto max-w-[1200px] px-1">
         <AddonSlotRenderer slot="tasks.page.before" props={taskSlotProps} />
-        <ForumPageShell
-          zones={zones}
-          boards={boards}
-          main={(
-            <main className="py-1 pb-12 mt-6">
-              <TaskCenterPage
-                data={data}
-                headerBefore={<AddonSlotRenderer slot="tasks.header.before" props={taskSlotProps} />}
-                headerAfter={<AddonSlotRenderer slot="tasks.header.after" props={taskSlotProps} />}
-                contentBefore={<AddonSlotRenderer slot="tasks.content.before" props={taskSlotProps} />}
-                contentAfter={<AddonSlotRenderer slot="tasks.content.after" props={taskSlotProps} />}
-              />
-            </main>
-          )}
-          rightSidebar={(
-            <aside className="mt-6 hidden pb-12 lg:block">
-              <HomeSidebarPanels
-                user={sidebarUser}
-                hotTopics={hotTopics}
-                announcements={announcements}
-                showAnnouncements={settings.homeSidebarAnnouncementsEnabled}
-                createPostHref="/write"
-                siteName={settings.siteName}
-                siteDescription={settings.siteDescription}
-                siteLogoPath={settings.siteLogoPath}
-                siteIconPath={settings.siteIconPath}
-              />
-            </aside>
-          )}
-        />
+        <AddonSurfaceRenderer surface="tasks.page" props={{ ...taskSlotProps, data }}>
+          <ForumPageShell
+            zones={zones}
+            boards={boards}
+            main={(
+              <main className="py-1 pb-12 mt-6">
+                <TaskCenterPage
+                  data={data}
+                  headerBefore={<AddonSlotRenderer slot="tasks.header.before" props={taskSlotProps} />}
+                  headerAfter={<AddonSlotRenderer slot="tasks.header.after" props={taskSlotProps} />}
+                  contentBefore={<AddonSlotRenderer slot="tasks.content.before" props={taskSlotProps} />}
+                  contentAfter={<AddonSlotRenderer slot="tasks.content.after" props={taskSlotProps} />}
+                />
+              </main>
+            )}
+            rightSidebar={(
+              <aside className="mt-6 hidden pb-12 lg:block">
+                <HomeSidebarPanels
+                  user={sidebarUser}
+                  hotTopics={hotTopics}
+                  announcements={announcements}
+                  showAnnouncements={settings.homeSidebarAnnouncementsEnabled}
+                  createPostHref="/write"
+                  siteName={settings.siteName}
+                  siteDescription={settings.siteDescription}
+                  siteLogoPath={settings.siteLogoPath}
+                  siteIconPath={settings.siteIconPath}
+                />
+              </aside>
+            )}
+          />
+        </AddonSurfaceRenderer>
         <AddonSlotRenderer slot="tasks.page.after" props={taskSlotProps} />
       </div>
     </div>

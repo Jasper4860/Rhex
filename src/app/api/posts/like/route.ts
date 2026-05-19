@@ -10,6 +10,12 @@ export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
     apiError(400, "缺少帖子参数")
   }
 
+  const requestUrl = new URL(request.url)
+  await executeAddonActionHook("post.like.before", {
+    postId,
+    userId: currentUser.id,
+  }, { request, pathname: requestUrl.pathname, searchParams: requestUrl.searchParams })
+
   const result = await executePostLikeToggle({
     actor: currentUser,
     postId,
@@ -20,7 +26,6 @@ export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
     },
   })
 
-  const requestUrl = new URL(request.url)
   await executeAddonActionHook("post.like.after", {
     postId,
     userId: currentUser.id,

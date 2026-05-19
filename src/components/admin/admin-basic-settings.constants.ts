@@ -6,6 +6,7 @@ import {
 import {
   POST_LIST_DISPLAY_MODE_DEFAULT,
   POST_LIST_DISPLAY_MODE_GALLERY,
+  POST_LIST_DISPLAY_MODE_WEIBO,
 } from "@/lib/post-list-display"
 
 export const HEAT_COLOR_PRESETS = [
@@ -39,6 +40,7 @@ export const PROFILE_POST_SLUG_GENERATION_MODE_OPTIONS = [
 
 export const PROFILE_HOME_FEED_DISPLAY_MODE_OPTIONS = [
   { value: POST_LIST_DISPLAY_MODE_DEFAULT, label: "普通列表" },
+  { value: POST_LIST_DISPLAY_MODE_WEIBO, label: "微博模式" },
   { value: POST_LIST_DISPLAY_MODE_GALLERY, label: "画廊模式" },
 ] as const
 

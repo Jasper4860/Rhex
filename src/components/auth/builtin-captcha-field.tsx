@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import { RefreshCw, ShieldCheck } from "lucide-react"
-import { useCallback, useId, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } from "react"
 
 import {
   InputGroup,
@@ -27,11 +27,33 @@ type CaptchaResponse = {
   }
 }
 
+function normalizeCaptchaCode(value: string) {
+  return value.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 4)
+}
+
+function isComposingInputEvent(event: ChangeEvent<HTMLInputElement>) {
+  return (event.nativeEvent as InputEvent).isComposing
+}
+
 export function BuiltinCaptchaField({ code, onCodeChange, onTokenChange, onLoadError }: BuiltinCaptchaFieldProps) {
   const inputId = useId()
   const [captchaUrl, setCaptchaUrl] = useState("")
+  const [displayCode, setDisplayCode] = useState(code)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const hasInitializedRef = useRef(false)
+  const isComposingRef = useRef(false)
+
+  useEffect(() => {
+    if (!isComposingRef.current) {
+      setDisplayCode(code)
+    }
+  }, [code])
+
+  const commitCode = useCallback((value: string) => {
+    const normalizedCode = normalizeCaptchaCode(value)
+    setDisplayCode(normalizedCode)
+    onCodeChange(normalizedCode)
+  }, [onCodeChange])
 
   const refreshCaptcha = useCallback(async () => {
     setIsRefreshing(true)
@@ -47,6 +69,7 @@ export function BuiltinCaptchaField({ code, onCodeChange, onTokenChange, onLoadE
 
       setCaptchaUrl(result.data?.imageDataUrl ?? "")
       onTokenChange(result.data?.captchaToken ?? "")
+      setDisplayCode("")
       onCodeChange("")
     } catch {
       onLoadError?.("验证码加载失败")
@@ -105,11 +128,27 @@ export function BuiltinCaptchaField({ code, onCodeChange, onTokenChange, onLoadE
           </InputGroupAddon>
           <InputGroupInput
             id={inputId}
-            value={code}
-            onChange={(event) => onCodeChange(event.target.value.toUpperCase())}
+            value={displayCode}
+            onChange={(event) => {
+              if (isComposingInputEvent(event)) {
+                setDisplayCode(event.target.value)
+                return
+              }
+
+              commitCode(event.target.value)
+            }}
+            onCompositionStart={() => {
+              isComposingRef.current = true
+            }}
+            onCompositionEnd={(event) => {
+              isComposingRef.current = false
+              commitCode(event.currentTarget.value)
+            }}
             placeholder="输入图中验证码"
             autoComplete="off"
             inputMode="text"
+            autoCapitalize="characters"
+            spellCheck={false}
             maxLength={4}
           />
         </InputGroup>

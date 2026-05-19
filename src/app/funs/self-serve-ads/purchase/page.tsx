@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
-import { AddonSlotRenderer } from "@/addons-host"
+import { AddonSlotRenderer, AddonSurfaceRenderer } from "@/addons-host"
 import { SiteHeader } from "@/components/site-header"
 
 import { SelfServeAdsPurchasePage } from "@/components/self-serve-ads-purchase-page"
@@ -50,14 +50,18 @@ export default async function SelfServeAdsPurchaseRoute(props: PageProps<"/funs/
       <SiteHeader />
       <div className="mx-auto max-w-[960px] px-4 py-8">
         <AddonSlotRenderer slot="funs.app.page.before" props={funsAppSlotProps} />
-        <AddonSlotRenderer slot="funs.app.content.before" props={funsAppSlotProps} />
-        <SelfServeAdsPurchasePage
-          slotType={slotType}
-          slotIndex={slotIndex}
-          pointName={settings.pointName}
-          prices={buildSelfServeAdPriceMap(config)}
-        />
-        <AddonSlotRenderer slot="funs.app.content.after" props={funsAppSlotProps} />
+        <AddonSurfaceRenderer surface="funs.app.page" props={funsAppSlotProps}>
+          <AddonSlotRenderer slot="funs.app.content.before" props={funsAppSlotProps} />
+          <AddonSurfaceRenderer surface="funs.app.content" props={funsAppSlotProps}>
+            <SelfServeAdsPurchasePage
+              slotType={slotType}
+              slotIndex={slotIndex}
+              pointName={settings.pointName}
+              prices={buildSelfServeAdPriceMap(config)}
+            />
+          </AddonSurfaceRenderer>
+          <AddonSlotRenderer slot="funs.app.content.after" props={funsAppSlotProps} />
+        </AddonSurfaceRenderer>
         <AddonSlotRenderer slot="funs.app.page.after" props={funsAppSlotProps} />
       </div>
     </div>

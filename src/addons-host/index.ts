@@ -39,8 +39,14 @@ export {
 } from "@/addons-host/runtime/hooks"
 export {
   ADDON_EXTENSION_POINT_CATALOG,
+  isKnownAddonSurfaceName,
   listAddonExtensionPointCatalog,
 } from "@/addons-host/hook-catalog"
+export {
+  ADDON_SURFACE_CATALOG,
+  getAddonSurfaceCatalogEntry,
+  listAddonSurfaceCatalog,
+} from "@/addons-host/surface-catalog"
 export {
   findAddonApiRoute,
   findAddonPageRoute,

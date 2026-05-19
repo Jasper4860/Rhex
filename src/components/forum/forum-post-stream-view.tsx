@@ -1,11 +1,13 @@
 "use client"
 
+import { AddonSurfaceClientRenderer } from "@/addons-host/client/addon-surface-client-renderer"
 import { ForumPostSortToggle } from "@/components/forum/forum-post-sort-toggle"
 import { ForumPostListItem } from "@/components/forum/forum-post-list-item"
 import { PostGalleryGrid } from "@/components/post/post-gallery-grid"
+import { PostWeiboFeed } from "@/components/post/post-weibo-feed"
 import type { TaxonomyPostSortLinks } from "@/lib/forum-taxonomy-sort"
 import type { PostStreamDisplayItem } from "@/lib/forum-post-stream-display"
-import { normalizePostListDisplayMode, type PostListDisplayMode } from "@/lib/post-list-display"
+import { normalizePostListDisplayMode, POST_LIST_DISPLAY_MODE_GALLERY, POST_LIST_DISPLAY_MODE_WEIBO, type PostListDisplayMode } from "@/lib/post-list-display"
 
 interface ForumPostStreamViewProps {
   items: PostStreamDisplayItem[]
@@ -52,8 +54,21 @@ export function ForumPostStreamView({
             {sortLinks ? <ForumPostSortToggle {...sortLinks} /> : null}
           </div>
         ) : null}
-        {resolvedListDisplayMode === "GALLERY" ? (
+        {resolvedListDisplayMode === POST_LIST_DISPLAY_MODE_GALLERY ? (
           <PostGalleryGrid items={normalPosts} showBoard={showBoard} postLinkDisplayMode={postLinkDisplayMode} />
+        ) : resolvedListDisplayMode === POST_LIST_DISPLAY_MODE_WEIBO ? (
+          <AddonSurfaceClientRenderer
+            surface="post.weibo.feed"
+            surfaceProps={{
+              items: normalPosts,
+              source: "post-stream",
+              showBoard,
+              showPinBadge: true,
+              postLinkDisplayMode,
+              sortLinks,
+            }}
+            fallback={<PostWeiboFeed items={normalPosts} showBoard={showBoard} postLinkDisplayMode={postLinkDisplayMode} />}
+          />
         ) : normalPosts.map((post, index) => (
           <ForumPostListItem
             key={post.id}

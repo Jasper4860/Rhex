@@ -1,5 +1,8 @@
 import type { SitePostItem } from "@/lib/posts"
 import { resolvePostHeatStyle } from "@/lib/post-heat"
+import { resolvePostListPreviewMedia, type PostListPreviewMedia } from "@/lib/post-list-media"
+import { buildPostListPreviewContent } from "@/lib/post-list-preview-content"
+import type { PostListTipSummary } from "@/lib/post-list-tipping"
 import { getSiteSettings } from "@/lib/site-settings"
 import { getVipNameClass } from "@/lib/vip-status"
 
@@ -8,7 +11,9 @@ export interface PostStreamDisplayItem {
   slug: string
   title: string
   excerpt: string
+  contentMarkdown?: string
   coverImage?: string | null
+  previewMedia?: PostListPreviewMedia | null
   type?: string
   typeLabel: string
   pinScope?: string | null
@@ -37,12 +42,21 @@ export interface PostStreamDisplayItem {
   latestReplyAuthorUsername?: string | null
   latestReplyCommentId?: string | null
   commentCount: number
+  likeCount?: number
+  favoriteCount?: number
+  tipCount?: number
+  tipTotalPoints?: number
+  tipping?: PostListTipSummary
+  viewCount?: number
   commentAccentColor: string
+  contentPreviewMarkdown?: string
+  contentPreviewHtml?: string
 }
 
 type PostStreamDisplaySettings = Pick<
   Awaited<ReturnType<typeof getSiteSettings>>,
   "heatViewWeight" | "heatCommentWeight" | "heatLikeWeight" | "heatTipCountWeight" | "heatTipPointsWeight" | "heatStageThresholds" | "heatStageColors"
+  | "markdownEmojiMap"
 >
 
 export function getVisiblePinLabel(
@@ -82,12 +96,21 @@ export function mapSitePostsToDisplayItems(
       tipPoints: post.stats.tipPoints,
     }, settings)
 
+    const previewMedia = resolvePostListPreviewMedia(post.contentMarkdown, post.coverImage)
+    const previewContent = buildPostListPreviewContent({
+      contentMarkdown: post.contentMarkdown,
+      previewMedia,
+      markdownEmojiMap: settings.markdownEmojiMap,
+    })
+
     return {
       id: post.id,
       slug: post.slug,
       title: post.title,
       excerpt: post.excerpt,
+      contentMarkdown: post.contentMarkdown,
       coverImage: post.coverImage,
+      previewMedia,
       type: post.type,
       typeLabel: post.typeLabel,
       pinScope: post.pinScope,
@@ -116,7 +139,14 @@ export function mapSitePostsToDisplayItems(
       latestReplyAuthorUsername: post.latestReplyAuthorUsername ?? null,
       latestReplyCommentId: post.latestReplyCommentId ?? null,
       commentCount: post.stats.comments,
+      likeCount: post.stats.likes,
+      favoriteCount: post.stats.favorites,
+      tipCount: post.stats.tips,
+      tipTotalPoints: post.stats.tipPoints,
+      viewCount: post.stats.views,
       commentAccentColor: commentHeat.color,
+      contentPreviewMarkdown: previewContent.markdown,
+      contentPreviewHtml: previewContent.html,
     }
   })
 }

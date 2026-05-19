@@ -13,7 +13,10 @@ import type { PostStreamDisplayItem } from "@/lib/forum-post-stream-display"
 import { getVisiblePinLabel } from "@/lib/forum-post-stream-display"
 import { usePublishedTimeForTaxonomySort, type TaxonomyPostSort } from "@/lib/forum-taxonomy-sort"
 import { resolvePostCoverImage } from "@/lib/post-cover"
+import { getPublicPostContentText } from "@/lib/post-content"
 import { resolvePostHeatStyle } from "@/lib/post-heat"
+import { resolvePostListPreviewMedia } from "@/lib/post-list-media"
+import { buildPostListPreviewContent } from "@/lib/post-list-preview-content"
 import { getPostTypeLabel } from "@/lib/post-types"
 import { parsePostRewardPoolConfigFromContent } from "@/lib/post-red-packets"
 import type { SitePostItem } from "@/lib/posts"
@@ -29,6 +32,7 @@ type FeedHeatSettings = Pick<
   | "heatTipPointsWeight"
   | "heatStageThresholds"
   | "heatStageColors"
+  | "markdownEmojiMap"
 >
 
 interface AddonFeedHookInput {
@@ -38,6 +42,7 @@ interface AddonFeedHookInput {
   payload?: {
     source: "feed" | "post-stream"
     sort: string
+    displayMode?: string
     pathname?: string
   }
 }
@@ -111,10 +116,36 @@ async function resolveHookedFeedPosts(
   return Array.isArray(hooked.value) ? hooked.value : ordered
 }
 
+async function applyPostListDisplayItemsHook<TItem extends { id: string }>(input: {
+  items: TItem[]
+  source: "feed" | "post-stream"
+  sort: string
+  displayMode?: string
+  pathname?: string
+  request?: Request
+  searchParams?: URLSearchParams
+}) {
+  const hooked = await executeAddonAsyncWaterfallHook("post-list.display.items", input.items, {
+    pathname: input.pathname,
+    request: input.request,
+    searchParams: input.searchParams,
+    payload: {
+      source: input.source,
+      sort: input.sort,
+      displayMode: input.displayMode,
+      pathname: input.pathname,
+      itemIds: input.items.map((item) => item.id),
+    },
+  })
+
+  return Array.isArray(hooked.value) ? (hooked.value as TItem[]) : input.items
+}
+
 export async function buildHookedFeedDisplayItems(input: {
   items: ForumFeedItem[]
   sort: Exclude<FeedSort, "weekly">
   settings: FeedHeatSettings
+  listDisplayMode?: string
   pathname?: string
   request?: Request
   searchParams?: URLSearchParams
@@ -129,13 +160,22 @@ export async function buildHookedFeedDisplayItems(input: {
       payload: {
         source: "feed",
         sort: input.sort,
+        displayMode: input.listDisplayMode,
         pathname: input.pathname,
       },
     },
   )
 
-  return hookedPosts.map((post) => {
+  const displayItems = hookedPosts.map((post) => {
     const legacy = legacyItemsById.get(post.id)
+    const contentMarkdown = getPublicPostContentText(post.content)
+    const coverImage = legacy?.coverImage ?? resolvePostCoverImage(post.content, post.coverPath)
+    const previewMedia = resolvePostListPreviewMedia(contentMarkdown, coverImage)
+    const previewContent = buildPostListPreviewContent({
+      contentMarkdown,
+      previewMedia,
+      markdownEmojiMap: input.settings.markdownEmojiMap,
+    })
     const rewardConfig = parsePostRewardPoolConfigFromContent(post.content)
     const publishedAtRaw = resolveAddonPostDate(post.publishedAt, post.createdAt) ?? post.createdAt
     const lastRepliedAtRaw = resolveAddonPostDate(post.lastCommentedAt, post.publishedAt ?? post.createdAt) ?? publishedAtRaw
@@ -195,10 +235,29 @@ export async function buildHookedFeedDisplayItems(input: {
       latestReplyAuthorUsername,
       latestReplyCommentId,
       commentCount: post.commentCount,
+      likeCount: post.likeCount,
+      favoriteCount: post.favoriteCount,
+      tipCount: post.tipCount,
+      tipTotalPoints: post.tipTotalPoints,
+      viewCount: post.viewCount,
       commentAccentColor: commentHeat.color,
-      coverImage: legacy?.coverImage ?? resolvePostCoverImage(post.content, post.coverPath),
+      coverImage,
+      previewMedia,
       excerpt: legacy?.summary ?? post.summary ?? post.title,
+      contentMarkdown,
+      contentPreviewMarkdown: previewContent.markdown,
+      contentPreviewHtml: previewContent.html,
     } satisfies FeedDisplayItem
+  })
+
+  return applyPostListDisplayItemsHook({
+    items: displayItems,
+    source: "feed",
+    sort: input.sort,
+    displayMode: input.listDisplayMode,
+    pathname: input.pathname,
+    request: input.request,
+    searchParams: input.searchParams,
   })
 }
 
@@ -206,6 +265,7 @@ export async function buildHookedPostStreamDisplayItems(input: {
   posts: SitePostItem[]
   settings: FeedHeatSettings
   sort: TaxonomyPostSort
+  listDisplayMode?: string
   visiblePinScopes: Array<"GLOBAL" | "ZONE" | "BOARD">
   pathname?: string
   request?: Request
@@ -221,13 +281,22 @@ export async function buildHookedPostStreamDisplayItems(input: {
       payload: {
         source: "post-stream",
         sort: input.sort,
+        displayMode: input.listDisplayMode,
         pathname: input.pathname,
       },
     },
   )
 
-  return hookedPosts.map((post) => {
+  const displayItems = hookedPosts.map((post) => {
     const legacy = legacyPostsById.get(post.id)
+    const contentMarkdown = getPublicPostContentText(post.content)
+    const coverImage = legacy?.coverImage ?? resolvePostCoverImage(post.content, post.coverPath)
+    const previewMedia = resolvePostListPreviewMedia(contentMarkdown, coverImage)
+    const previewContent = buildPostListPreviewContent({
+      contentMarkdown,
+      previewMedia,
+      markdownEmojiMap: input.settings.markdownEmojiMap,
+    })
     const rewardConfig = parsePostRewardPoolConfigFromContent(post.content)
     const publishedAtRaw = resolveAddonPostDate(post.publishedAt, post.createdAt) ?? post.createdAt
     const lastRepliedAtRaw = resolveAddonPostDate(post.lastCommentedAt, post.publishedAt ?? post.createdAt) ?? publishedAtRaw
@@ -252,7 +321,9 @@ export async function buildHookedPostStreamDisplayItems(input: {
       slug: post.slug,
       title: post.title,
       excerpt: legacy?.excerpt ?? post.summary ?? post.title,
-      coverImage: legacy?.coverImage ?? resolvePostCoverImage(post.content, post.coverPath),
+      contentMarkdown,
+      coverImage,
+      previewMedia,
       type: post.type,
       typeLabel: legacy?.typeLabel ?? getPostTypeLabel(post.type),
       pinScope: post.pinScope,
@@ -285,7 +356,24 @@ export async function buildHookedPostStreamDisplayItems(input: {
       latestReplyAuthorUsername,
       latestReplyCommentId,
       commentCount: post.commentCount,
+      likeCount: post.likeCount,
+      favoriteCount: post.favoriteCount,
+      tipCount: post.tipCount,
+      tipTotalPoints: post.tipTotalPoints,
+      viewCount: post.viewCount,
       commentAccentColor: commentHeat.color,
+      contentPreviewMarkdown: previewContent.markdown,
+      contentPreviewHtml: previewContent.html,
     } satisfies PostStreamDisplayItem
+  })
+
+  return applyPostListDisplayItemsHook({
+    items: displayItems,
+    source: "post-stream",
+    sort: input.sort,
+    displayMode: input.listDisplayMode,
+    pathname: input.pathname,
+    request: input.request,
+    searchParams: input.searchParams,
   })
 }

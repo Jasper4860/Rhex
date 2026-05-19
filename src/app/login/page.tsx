@@ -2,7 +2,12 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
-import { AddonRenderBlock, executeAddonSlot } from "@/addons-host"
+import {
+  AddonRenderBlock,
+  AddonSlotRenderer,
+  AddonSurfaceRenderer,
+  executeAddonSlot,
+} from "@/addons-host"
 import { AuthPanelNotice, AuthShell } from "@/components/auth/auth-shell"
 import { LoginForm } from "@/components/auth/login-form"
 import { listAddonExternalAuthEntries } from "@/lib/addon-external-auth-providers"
@@ -21,10 +26,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function LoginPage(props: PageProps<"/login">) {
   const searchParams = await props.searchParams
-  const [user, settings, addonExternalAuthEntries, addonCaptchaBlocks, addonAfterFieldBlocks] = await Promise.all([
+  const [
+    user,
+    settings,
+    addonExternalAuthEntries,
+    addonBeforeFieldBlocks,
+    addonCaptchaBlocks,
+    addonAfterFieldBlocks,
+  ] = await Promise.all([
     getCurrentUser(),
     getSiteSettings(),
     listAddonExternalAuthEntries(),
+    executeAddonSlot("auth.login.form.before"),
     executeAddonSlot("auth.login.captcha"),
     executeAddonSlot("auth.login.form.after"),
   ])
@@ -34,13 +47,22 @@ export default async function LoginPage(props: PageProps<"/login">) {
     redirect("/")
   }
 
-  return (
+  const authSlotProps = {
+    authError,
+    externalAuthEntries: addonExternalAuthEntries,
+    settings,
+  }
+  const page = (
     <AuthShell
       showcaseName={settings.siteName}
       showShowcase={settings.authPageShowcaseEnabled}
       panelTitle="登录论坛"
       panelDescription="输入邮箱或用户名和密码，继续你的社区浏览与互动。"
       beforeForm={authError ? <AuthPanelNotice tone="destructive" title="登录失败">{authError}</AuthPanelNotice> : null}
+      panelBefore={<AddonSlotRenderer slot="auth.login.panel.before" props={authSlotProps} />}
+      panelAfter={<AddonSlotRenderer slot="auth.login.panel.after" props={authSlotProps} />}
+      panelSurface="auth.login.panel"
+      surfaceProps={authSlotProps}
       footer={(
         <div className="grid w-full grid-cols-2 items-center gap-4 text-sm text-muted-foreground">
           <p>
@@ -52,13 +74,26 @@ export default async function LoginPage(props: PageProps<"/login">) {
         </div>
       )}
     >
-      <LoginForm
-        settings={settings}
-        addonCaptcha={renderAddonBlocks(addonCaptchaBlocks)}
-        addonAfterFields={renderAddonBlocks(addonAfterFieldBlocks)}
-        addonExternalAuthEntries={addonExternalAuthEntries}
-      />
+      <AddonSurfaceRenderer surface="auth.login.form" props={authSlotProps}>
+        <LoginForm
+          settings={settings}
+          addonBeforeFields={renderAddonBlocks(addonBeforeFieldBlocks)}
+          addonCaptcha={renderAddonBlocks(addonCaptchaBlocks)}
+          addonAfterFields={renderAddonBlocks(addonAfterFieldBlocks)}
+          addonExternalAuthEntries={addonExternalAuthEntries}
+        />
+      </AddonSurfaceRenderer>
     </AuthShell>
+  )
+
+  return (
+    <>
+      <AddonSlotRenderer slot="auth.login.page.before" props={authSlotProps} />
+      <AddonSurfaceRenderer surface="auth.login.page" props={authSlotProps}>
+        {page}
+      </AddonSurfaceRenderer>
+      <AddonSlotRenderer slot="auth.login.page.after" props={authSlotProps} />
+    </>
   )
 }
 

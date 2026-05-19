@@ -10,7 +10,7 @@ import { SearchForm } from "@/components/search-form"
 import { resolveSiteIconPath } from "@/lib/site-branding"
 import { getSiteSettings } from "@/lib/site-settings"
 import { getZones } from "@/lib/zones"
-import { AddonSlotRenderer } from "@/addons-host"
+import { AddonSlotRenderer, AddonSurfaceRenderer } from "@/addons-host"
 
 function SiteLogoMark({ logoPath, iconPath }: { logoPath?: string | null; iconPath?: string | null }) {
   if (logoPath) {
@@ -49,49 +49,52 @@ export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/80 backdrop-blur-sm supports-backdrop-filter:bg-background/60">
       <div className="mx-auto max-w-[1200px] px-1">
-        <div className="grid h-14 grid-cols-1 gap-6 lg:grid-cols-12">
-          <div className="-mr-6 hidden h-14 items-center lg:col-span-2 lg:flex">
-            <AddonSlotRenderer slot="layout.header.left" />
-            <Link href="/" className="flex items-center gap-2 text-xl leading-none">
-              <SiteLogoMark logoPath={settings.siteLogoPath} iconPath={settings.siteIconPath} />
-              {settings.siteLogoText && settings.siteLogoText.trim() !== "" ? (
-                <div className="hidden font-bold tracking-tight sm:inline-block">{settings.siteLogoText}</div>
-              ) : null}
-            </Link>
-          </div>
-
-          <div className="flex h-14 items-center justify-between gap-3 lg:col-span-10">
-            <div className="flex items-center gap-2 lg:hidden">
-              <Link href="/" className="flex items-center gap-2 text-base font-bold leading-none">
+        <AddonSlotRenderer slot="layout.header.before" props={{ settings }} />
+        <AddonSurfaceRenderer surface="layout.header" props={{ settings }}>
+          <div className="grid h-14 grid-cols-1 gap-6 lg:grid-cols-12">
+            <div className="-mr-6 hidden h-14 items-center lg:col-span-2 lg:flex">
+              <AddonSlotRenderer slot="layout.header.left" props={{ settings }} />
+              <Link href="/" className="flex items-center gap-2 text-xl leading-none">
                 <SiteLogoMark logoPath={settings.siteLogoPath} iconPath={settings.siteIconPath} />
-                <span className="sr-only">{settings.siteLogoText}</span>
+                {settings.siteLogoText && settings.siteLogoText.trim() !== "" ? (
+                  <div className="hidden font-bold tracking-tight sm:inline-block">{settings.siteLogoText}</div>
+                ) : null}
               </Link>
-              <MobileHeaderQuickActions
-                checkInEnabled={settings.checkInEnabled}
-                appLinks={settings.headerAppLinks}
-                search={settings.search}
-                zones={zones}
-                boards={boards}
-              />
             </div>
 
-            <div className="hidden flex-1 md:block">
-              <div className="ml-4 max-w-md">
-                <Suspense fallback={<div className="h-9 w-full rounded-full border border-border bg-muted/50" aria-hidden="true" />}>
-                  <SearchForm compact appLinks={settings.headerAppLinks} appIconName={settings.headerAppIconName} search={settings.search} />
-                </Suspense>
+            <div className="flex h-14 items-center justify-between gap-3 lg:col-span-10">
+              <div className="flex items-center gap-2 lg:hidden">
+                <Link href="/" className="flex items-center gap-2 text-base font-bold leading-none">
+                  <SiteLogoMark logoPath={settings.siteLogoPath} iconPath={settings.siteIconPath} />
+                  <span className="sr-only">{settings.siteLogoText}</span>
+                </Link>
+                <MobileHeaderQuickActions
+                  checkInEnabled={settings.checkInEnabled}
+                  appLinks={settings.headerAppLinks}
+                  search={settings.search}
+                  zones={zones}
+                  boards={boards}
+                />
               </div>
-              <AddonSlotRenderer slot="layout.header.center" />
 
-            </div>
+              <div className="hidden flex-1 md:block">
+                <div className="ml-4 max-w-md">
+                  <Suspense fallback={<div className="h-9 w-full rounded-full border border-border bg-muted/50" aria-hidden="true" />}>
+                    <SearchForm compact appLinks={settings.headerAppLinks} appIconName={settings.headerAppIconName} search={settings.search} />
+                  </Suspense>
+                </div>
+                <AddonSlotRenderer slot="layout.header.center" props={{ settings }} />
+              </div>
 
-            <div className="ml-auto flex h-14 items-center gap-1.5">
-              <AddonSlotRenderer slot="layout.header.right" />
-              <ThemeToggle />
-              <HeaderUserActions messageEnabled={settings.messageEnabled} />
+              <div className="ml-auto flex h-14 items-center gap-1.5">
+                <AddonSlotRenderer slot="layout.header.right" props={{ settings }} />
+                <ThemeToggle />
+                <HeaderUserActions messageEnabled={settings.messageEnabled} />
+              </div>
             </div>
           </div>
-        </div>
+        </AddonSurfaceRenderer>
+        <AddonSlotRenderer slot="layout.header.after" props={{ settings }} />
       </div>
     </header>
   )

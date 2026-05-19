@@ -25,7 +25,7 @@ import {
 } from "@/components/admin/admin-structure.shared"
 import type { ZoneItem } from "@/lib/admin-structure-management"
 import type { StructureModeratorItem } from "@/lib/admin-structure-management"
-import { POST_LIST_DISPLAY_MODE_DEFAULT, POST_LIST_DISPLAY_MODE_GALLERY } from "@/lib/post-list-display"
+import { POST_LIST_DISPLAY_MODE_DEFAULT, POST_LIST_DISPLAY_MODE_GALLERY, POST_LIST_DISPLAY_MODE_WEIBO } from "@/lib/post-list-display"
 import { POST_LIST_LOAD_MODE_INFINITE, POST_LIST_LOAD_MODE_PAGINATION } from "@/lib/post-list-load-mode"
 import { Plus } from "lucide-react"
 
@@ -199,6 +199,7 @@ export function StructurePolicyTab({
             <SelectField label="帖子列表形式" value={form.postListDisplayMode} onValueChange={(value) => updateField("postListDisplayMode", value)} options={[
               { value: "", label: isBoard ? "继承分区" : "默认列表" },
               { value: POST_LIST_DISPLAY_MODE_DEFAULT, label: "普通列表" },
+              { value: POST_LIST_DISPLAY_MODE_WEIBO, label: "微博模式" },
               { value: POST_LIST_DISPLAY_MODE_GALLERY, label: "画廊模式" },
             ]} />
             <p className="text-xs leading-6 text-muted-foreground">{isBoard ? "留空时自动继承分区；显式设置后优先使用节点自己的列表形式。" : "留空时使用站点默认普通列表；设置后该分区下未覆盖的节点会继承这里。"}</p>

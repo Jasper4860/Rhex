@@ -1,8 +1,14 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
+import type { ReactNode } from "react"
 
-import { AddonRenderBlock, executeAddonSlot } from "@/addons-host"
+import {
+  AddonRenderBlock,
+  AddonSlotRenderer,
+  AddonSurfaceRenderer,
+  executeAddonSlot,
+} from "@/addons-host"
 import { AuthPanelNotice, AuthShell } from "@/components/auth/auth-shell"
 import { RegisterForm } from "@/components/auth/register-form"
 import { listAddonExternalAuthEntries } from "@/lib/addon-external-auth-providers"
@@ -21,10 +27,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RegisterPage(props: PageProps<"/register">) {
   const searchParams = await props.searchParams
-  const [user, settings, addonExternalAuthEntries, addonCaptchaBlocks, addonAfterFieldBlocks] = await Promise.all([
+  const [
+    user,
+    settings,
+    addonExternalAuthEntries,
+    addonBeforeFieldBlocks,
+    addonCaptchaBlocks,
+    addonAfterFieldBlocks,
+  ] = await Promise.all([
     getCurrentUser(),
     getSiteSettings(),
     listAddonExternalAuthEntries(),
+    executeAddonSlot("auth.register.form.before"),
     executeAddonSlot("auth.register.captcha"),
     executeAddonSlot("auth.register.form.after"),
   ])
@@ -33,13 +47,32 @@ export default async function RegisterPage(props: PageProps<"/register">) {
     redirect("/")
   }
 
+  const authSlotProps = {
+    externalAuthEntries: addonExternalAuthEntries,
+    registrationEnabled: settings.registrationEnabled,
+    settings,
+  }
+  const renderPage = (page: ReactNode, props = authSlotProps) => (
+    <>
+      <AddonSlotRenderer slot="auth.register.page.before" props={props} />
+      <AddonSurfaceRenderer surface="auth.register.page" props={props}>
+        {page}
+      </AddonSurfaceRenderer>
+      <AddonSlotRenderer slot="auth.register.page.after" props={props} />
+    </>
+  )
+
   if (!settings.registrationEnabled) {
-    return (
+    return renderPage(
       <AuthShell
         showcaseName={settings.siteName}
         showShowcase={settings.authPageShowcaseEnabled}
         panelTitle="注册暂未开放"
         panelDescription="稍后再回来看看，或先使用现有账号继续访问社区。"
+        panelBefore={<AddonSlotRenderer slot="auth.register.panel.before" props={authSlotProps} />}
+        panelAfter={<AddonSlotRenderer slot="auth.register.panel.after" props={authSlotProps} />}
+        panelSurface="auth.register.panel"
+        surfaceProps={authSlotProps}
         footer={(
           <p className="text-sm text-muted-foreground">
             已有账户？<Link href="/login" className="font-medium text-foreground hover:underline">去登录</Link>
@@ -56,13 +89,23 @@ export default async function RegisterPage(props: PageProps<"/register">) {
   const inviterUsername = readSearchParam(searchParams?.invite) ?? readSearchParam(searchParams?.inviter) ?? ""
   const inviteCode = readSearchParam(searchParams?.code) ?? ""
   const authError = readSearchParam(searchParams?.authError) ?? ""
+  const registerSlotProps = {
+    ...authSlotProps,
+    authError,
+    inviteCode,
+    inviterUsername,
+  }
 
-  return (
+  return renderPage(
     <AuthShell
       showcaseName={settings.siteName}
       showShowcase={settings.authPageShowcaseEnabled}
       panelTitle="创建论坛账户"
       panelDescription="花一分钟创建账户，马上开始你的浏览、回复和收藏。"
+      panelBefore={<AddonSlotRenderer slot="auth.register.panel.before" props={registerSlotProps} />}
+      panelAfter={<AddonSlotRenderer slot="auth.register.panel.after" props={registerSlotProps} />}
+      panelSurface="auth.register.panel"
+      surfaceProps={registerSlotProps}
       beforeForm={(
         <>
           {authError ? <AuthPanelNotice tone="destructive" title="注册未完成">{authError}</AuthPanelNotice> : null}
@@ -84,13 +127,17 @@ export default async function RegisterPage(props: PageProps<"/register">) {
         </p>
       )}
     >
-      <RegisterForm
-        settings={settings}
-        addonCaptcha={renderAddonBlocks(addonCaptchaBlocks)}
-        addonAfterFields={renderAddonBlocks(addonAfterFieldBlocks)}
-        addonExternalAuthEntries={addonExternalAuthEntries}
-      />
-    </AuthShell>
+      <AddonSurfaceRenderer surface="auth.register.form" props={registerSlotProps}>
+        <RegisterForm
+          settings={settings}
+          addonBeforeFields={renderAddonBlocks(addonBeforeFieldBlocks)}
+          addonCaptcha={renderAddonBlocks(addonCaptchaBlocks)}
+          addonAfterFields={renderAddonBlocks(addonAfterFieldBlocks)}
+          addonExternalAuthEntries={addonExternalAuthEntries}
+        />
+      </AddonSurfaceRenderer>
+    </AuthShell>,
+    registerSlotProps,
   )
 }
 

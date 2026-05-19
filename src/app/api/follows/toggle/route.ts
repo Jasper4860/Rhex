@@ -32,6 +32,15 @@ export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
     })
   }
 
+  const requestUrl = new URL(request.url)
+  if (targetType === "user") {
+    await executeAddonActionHook("user.follow.toggle.before", {
+      followerId: currentUser.id,
+      followeeId: String(targetId),
+      desiredFollowing: desiredFollowed,
+    }, { request, pathname: requestUrl.pathname, searchParams: requestUrl.searchParams })
+  }
+
   const result = await toggleFollowTarget({
     userId: currentUser.id,
     targetType,
@@ -96,7 +105,6 @@ export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
   }
 
   if (targetType === "user") {
-    const requestUrl = new URL(request.url)
     await executeAddonActionHook("user.follow.toggle.after", {
       followerId: currentUser.id,
       followeeId: String(targetId),

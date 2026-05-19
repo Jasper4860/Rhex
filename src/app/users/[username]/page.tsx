@@ -4,7 +4,7 @@ import { notFound } from "next/navigation"
 import { Crown, Flag, MessageCircleMore, ShieldCheck } from "lucide-react"
 import type { CSSProperties } from "react"
 
-import { AddonSlotRenderer } from "@/addons-host"
+import { AddonSlotRenderer, AddonSurfaceRenderer } from "@/addons-host"
 import { AccessDeniedCard } from "@/components/access-denied-card"
 import { ForumPageShell } from "@/components/forum/forum-page-shell"
 import { PageNumberPagination } from "@/components/page-number-pagination"
@@ -180,20 +180,27 @@ export default async function UserPage(props: PageProps<"/users/[username]">) {
   }
 
   const profileAccess = await getUserProfileAccessState(currentUser?.id, user.id)
+  const userSlotProps = {
+    userId: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    viewerId: currentUser?.id ?? null,
+    isOwner: currentUser?.id === user.id,
+  }
 
   if (!profileAccess.allowed) {
     return (
       <div className="min-h-screen bg-background">
         <SiteHeader />
         <main className="mx-auto max-w-[960px] px-4 py-8">
-          <AddonSlotRenderer slot="user.page.before" />
+          <AddonSlotRenderer slot="user.page.before" props={userSlotProps} />
           <AccessDeniedCard
             title="当前主页暂不可访问"
             description="该用户已对你的访问做出限制，因此你无法查看其主页内容、动态与互动信息。"
             reason={profileAccess.reason}
             isLoggedIn={Boolean(currentUser)}
           />
-          <AddonSlotRenderer slot="user.page.after" />
+          <AddonSlotRenderer slot="user.page.after" props={userSlotProps} />
         </main>
       </div>
     )
@@ -322,15 +329,17 @@ export default async function UserPage(props: PageProps<"/users/[username]">) {
     <div className="min-h-screen  text-foreground dark:bg-[#0f1115]">
       <SiteHeader />
       <div className="mx-auto max-w-[1200px] px-1">
-        <AddonSlotRenderer slot="user.page.before" />
-        <ForumPageShell
-          zones={zones}
-          boards={boards}
-          main={(
-            <main className={cn("mt-6 pb-12", isRestrictedUser && "grayscale")}>
-              <div className="flex flex-col gap-0">
-                <AddonSlotRenderer slot="user.profile.before" />
-                <UserProfileOverviewCard
+        <AddonSlotRenderer slot="user.page.before" props={userSlotProps} />
+        <AddonSurfaceRenderer surface="user.page" props={{ ...userSlotProps, profileAccess }}>
+          <ForumPageShell
+            zones={zones}
+            boards={boards}
+            main={(
+              <main className={cn("mt-6 pb-12", isRestrictedUser && "grayscale")}>
+                <div className="flex flex-col gap-0">
+                  <AddonSlotRenderer slot="user.profile.before" props={userSlotProps} />
+                  <AddonSurfaceRenderer surface="user.profile" props={{ ...userSlotProps, user }}>
+                    <UserProfileOverviewCard
                   className="rounded-b-none border-b-0"
                   avatar={(
                     <UserAvatar
@@ -445,11 +454,13 @@ export default async function UserPage(props: PageProps<"/users/[username]">) {
                     inactiveLabel: "拉黑",
                   } : null}
                   restrictionNotice={restrictionDescription ? <p className="rounded-[18px] border border-border/70 bg-secondary/60 px-3 py-2 text-xs leading-6 text-muted-foreground">{restrictionDescription}</p> : null}
-                />
-                <AddonSlotRenderer slot="user.profile.after" />
+                    />
+                  </AddonSurfaceRenderer>
+                  <AddonSlotRenderer slot="user.profile.after" props={userSlotProps} />
 
-                <AddonSlotRenderer slot="user.activity.before" />
-                <UserRecentActivityPanel
+                  <AddonSlotRenderer slot="user.activity.before" props={userSlotProps} />
+                  <AddonSurfaceRenderer surface="user.activity" props={{ ...userSlotProps, activityTab }}>
+                    <UserRecentActivityPanel
                   className="rounded-t-none"
                   description={canViewRecentActivity ? "" : ""}
                   showSummary={false}
@@ -542,46 +553,50 @@ export default async function UserPage(props: PageProps<"/users/[username]">) {
                         ),
                     },
                   ]}
-                />
-                <AddonSlotRenderer slot="user.activity.after" />
-              </div>
-            </main>
-          )}
-          rightSidebar={(
-            <aside className={cn("mt-6 hidden pb-12 lg:block", isRestrictedUser && "grayscale")}>
-              <AddonSlotRenderer slot="user.sidebar.before" />
-              <section className="sticky top-20 overflow-hidden rounded-xl border border-border bg-card shadow-xs">
-                <div className="divide-y divide-border/80">
-                  <div className="p-6">
-                    <UserProfileBadgeShowcase badges={badgeItems} />
-                  </div>
-                  <div className="p-6">
-                    <UserActiveBoardsPanel boards={activeBoards} emptyText={activeBoardsEmptyText} />
-                  </div>
-                  <div className="p-6">
-                    <div className="flex flex-col gap-3">
-                    <div>
-                      <h2 className="text-sm font-semibold text-foreground">身份标签</h2>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {identityTags.map((tag) => (
-                        <span
-                          key={tag.label}
-                          className={identityTagClassNames[tag.tone]}
-                        >
-                          {tag.label}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  </div>
+                    />
+                  </AddonSurfaceRenderer>
+                  <AddonSlotRenderer slot="user.activity.after" props={userSlotProps} />
                 </div>
-              </section>
-              <AddonSlotRenderer slot="user.sidebar.after" />
-            </aside>
-          )}
-        />
-        <AddonSlotRenderer slot="user.page.after" />
+              </main>
+            )}
+            rightSidebar={(
+              <aside className={cn("mt-6 hidden pb-12 lg:block", isRestrictedUser && "grayscale")}>
+                <AddonSlotRenderer slot="user.sidebar.before" props={userSlotProps} />
+                <AddonSurfaceRenderer surface="user.sidebar" props={{ ...userSlotProps, badgeCount: badgeItems.length }}>
+                  <section className="sticky top-20 overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+                    <div className="divide-y divide-border/80">
+                      <div className="p-6">
+                        <UserProfileBadgeShowcase badges={badgeItems} />
+                      </div>
+                      <div className="p-6">
+                        <UserActiveBoardsPanel boards={activeBoards} emptyText={activeBoardsEmptyText} />
+                      </div>
+                      <div className="p-6">
+                        <div className="flex flex-col gap-3">
+                        <div>
+                          <h2 className="text-sm font-semibold text-foreground">身份标签</h2>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {identityTags.map((tag) => (
+                            <span
+                              key={tag.label}
+                              className={identityTagClassNames[tag.tone]}
+                            >
+                              {tag.label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      </div>
+                    </div>
+                  </section>
+                </AddonSurfaceRenderer>
+                <AddonSlotRenderer slot="user.sidebar.after" props={userSlotProps} />
+              </aside>
+            )}
+          />
+        </AddonSurfaceRenderer>
+        <AddonSlotRenderer slot="user.page.after" props={userSlotProps} />
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 
-import { AddonSlotRenderer } from "@/addons-host"
+import { AddonSlotRenderer, AddonSurfaceRenderer } from "@/addons-host"
 import { SiteHeader } from "@/components/site-header"
 import { getCurrentUser } from "@/lib/auth"
 import { getSiteSettings } from "@/lib/site-settings"
@@ -30,9 +30,13 @@ export default async function YinYangContractFunPage() {
       <SiteHeader />
       <div className="mx-auto max-w-[1280px] px-4 py-8 mt-8">
         <AddonSlotRenderer slot="funs.app.page.before" props={funsAppSlotProps} />
-        <AddonSlotRenderer slot="funs.app.content.before" props={funsAppSlotProps} />
-        <YinYangContractPage initialData={initialData} canPlay={Boolean(user)} />
-        <AddonSlotRenderer slot="funs.app.content.after" props={funsAppSlotProps} />
+        <AddonSurfaceRenderer surface="funs.app.page" props={funsAppSlotProps}>
+          <AddonSlotRenderer slot="funs.app.content.before" props={funsAppSlotProps} />
+          <AddonSurfaceRenderer surface="funs.app.content" props={funsAppSlotProps}>
+            <YinYangContractPage initialData={initialData} canPlay={Boolean(user)} />
+          </AddonSurfaceRenderer>
+          <AddonSlotRenderer slot="funs.app.content.after" props={funsAppSlotProps} />
+        </AddonSurfaceRenderer>
         <AddonSlotRenderer slot="funs.app.page.after" props={funsAppSlotProps} />
       </div>
     </div>

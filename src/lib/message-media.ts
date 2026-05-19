@@ -21,6 +21,7 @@ export type MessageContentBlock =
 const MESSAGE_FILE_LINE_PATTERN = /^file::(.+?):((?:https?:\/\/|\/).+)$/i
 const MESSAGE_FILE_LINE_GLOBAL_PATTERN = /^file::.+?:((?:https?:\/\/|\/).+)$/gm
 const MESSAGE_IMAGE_MARKDOWN_PATTERN = /!\[[^\]\r\n]*]\((?:[^)\r\n]+)\)/g
+const MESSAGE_IMAGE_MARKDOWN_LINE_PATTERN = /^!\[[^\]\r\n]*]\((?:[^)\r\n]+)\)$/
 
 function normalizeMessageFileName(value: string) {
   return value.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").replace(/:/g, "-").trim()
@@ -66,6 +67,15 @@ export function containsMessageFileToken(content: string) {
 
 export function containsMessageImageSyntax(content: string) {
   return /!\[[^\]\r\n]*]\((?:[^)\r\n]+)\)/.test(content)
+}
+
+export function isImageOnlyMessageContent(content: string) {
+  const lines = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  return lines.length > 0 && lines.every((line) => MESSAGE_IMAGE_MARKDOWN_LINE_PATTERN.test(line))
 }
 
 export function buildMessageFileToken(fileName: string, url: string) {

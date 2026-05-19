@@ -93,6 +93,12 @@ export function PostAuctionPanel({
     isSealedBid,
     timing,
   })
+  const auctionNoticeText = resolveAuctionNoticeText({
+    auction,
+    isSealedBid,
+    pointName,
+    timing,
+  })
 
   async function loadParticipantPage(page: number) {
     setParticipantsLoading(true)
@@ -307,18 +313,14 @@ export function PostAuctionPanel({
               <p className="mt-4 text-sm text-muted-foreground">当前还没有人参与，欢迎第一个出价。</p>
             )}
 
-            <div className="mt-5 flex flex-col gap-3 border-t border-border/80 pt-4 text-sm text-muted-foreground">
-              <div className="flex items-start gap-2">
-                <Info className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>
-                  {isSealedBid && timing.hasEnded
-                    ? `竞拍已结束，当前已公开全部出价；本场按${auction.pricingRuleLabel}确定最终成交。`
-                    : isSealedBid
-                    ? `${auction.pricingRuleLabel}，同价按出价时间先后决定优先顺序。`
-                    : `新出价至少需达到 ${formatNumber(auction.minNextBidAmount)} ${pointName}，同价按时间先后决定优先顺序。`}
-                </p>
+            {auctionNoticeText ? (
+              <div className="mt-5 flex flex-col gap-3 border-t border-border/80 pt-4 text-sm text-muted-foreground">
+                <div className="flex items-start gap-2">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>{auctionNoticeText}</p>
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {showWinnerContentSection ? (
               <>
@@ -613,6 +615,32 @@ function resolveAuctionTimelineValue(auction: AuctionSummary, timing: Pick<Aucti
   }
 
   return timing.countdown
+}
+
+function resolveAuctionNoticeText({
+  auction,
+  isSealedBid,
+  pointName,
+  timing,
+}: {
+  auction: AuctionSummary
+  isSealedBid: boolean
+  pointName: string
+  timing: Pick<AuctionTimingState, "hasEnded">
+}) {
+  if (isSealedBid && timing.hasEnded) {
+    return `竞拍已结束，当前已公开全部出价；本场按${auction.pricingRuleLabel}确定最终成交。`
+  }
+
+  if (isSealedBid) {
+    return `${auction.pricingRuleLabel}，同价按出价时间先后决定优先顺序。`
+  }
+
+  if (!timing.hasEnded) {
+    return `新出价至少需达到 ${formatNumber(auction.minNextBidAmount)} ${pointName}，同价按时间先后决定优先顺序。`
+  }
+
+  return null
 }
 
 function resolveAuctionReadonlyActionLabel({

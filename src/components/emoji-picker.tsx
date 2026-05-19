@@ -21,27 +21,44 @@ const GRID_COLUMNS_CLASSNAME: Record<number, string> = {
   6: "grid-cols-6",
 }
 
+function resolveColumns(itemCount: number, columns?: number) {
+  if (columns) {
+    return columns
+  }
+
+  if (itemCount >= 24) {
+    return 6
+  }
+
+  if (itemCount >= 12) {
+    return 5
+  }
+
+  return 4
+}
+
 export function EmojiPicker({
   items,
   title = "选择一个表情",
-  columns = 4,
+  columns,
   className,
   panelClassName,
   buttonClassName,
   iconClassName,
   onSelect,
 }: EmojiPickerProps) {
-  const gridColumnsClassName = GRID_COLUMNS_CLASSNAME[columns] ?? GRID_COLUMNS_CLASSNAME[4]
+  const resolvedColumns = resolveColumns(items.length, columns)
+  const gridColumnsClassName = GRID_COLUMNS_CLASSNAME[resolvedColumns] ?? GRID_COLUMNS_CLASSNAME[4]
 
   return (
-    <div className={cn("space-y-2", panelClassName)}>
+    <div className={cn("flex flex-col gap-2", panelClassName)}>
       <div className="text-xs text-muted-foreground">{title}</div>
-      <div className={cn("grid gap-2", gridColumnsClassName, className)}>
+      <div className={cn("grid max-h-80 gap-1.5 overflow-y-auto pr-1", gridColumnsClassName, className)}>
         {items.map((item) => (
           <button
             key={item.key}
             type="button"
-            className={cn("flex items-center justify-center rounded-xl bg-secondary/40 px-3 py-2 text-sm transition hover:bg-accent", buttonClassName)}
+            className={cn("flex min-h-9 items-center justify-center rounded-xl bg-secondary/40 px-2 py-1.5 text-sm transition hover:bg-accent", buttonClassName)}
             onClick={() => onSelect(item.value)}
             title={item.label}
             aria-label={item.label}

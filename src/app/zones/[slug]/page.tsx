@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 
-import { AddonSlotRenderer } from "@/addons-host"
+import { AddonSlotRenderer, AddonSurfaceRenderer } from "@/addons-host"
 import { AccessDeniedCard } from "@/components/access-denied-card"
 import { CollapsibleInfoCard } from "@/components/collapsible-info-card"
 import { ForumPageShell } from "@/components/forum/forum-page-shell"
@@ -139,6 +139,7 @@ export default async function ZonePage(props: PageProps<"/zones/[slug]">) {
     posts,
     settings,
     sort: currentSort,
+    listDisplayMode: zone.postListDisplayMode,
     visiblePinScopes: ["GLOBAL", "ZONE"],
     pathname: `/zones/${zone.slug}`,
     searchParams: buildAddonHookSearchParams(searchParams),
@@ -172,108 +173,115 @@ export default async function ZonePage(props: PageProps<"/zones/[slug]">) {
       <SiteHeader />
       <div className="mx-auto max-w-[1200px] px-1">
         <AddonSlotRenderer slot="zone.page.before" props={zoneSlotProps} />
-        <ForumPageShell
-          zones={allZones}
-          boards={allBoards}
-          activeZoneSlug={zone.slug}
-          main={(
-            <main className="pb-12 py-1 mt-5">
-            <div className="space-y-3">
+        <AddonSurfaceRenderer surface="zone.page" props={zoneSlotProps}>
+          <ForumPageShell
+            zones={allZones}
+            boards={allBoards}
+            activeZoneSlug={zone.slug}
+            main={(
+              <main className="pb-12 py-1 mt-5">
+              <div className="space-y-3">
 
               <AddonSlotRenderer slot="zone.hero.before" props={zoneSlotProps} />
-              <CollapsibleInfoCard
-                badge="论坛分区"
-                title={zone.name}
-                icon={zone.icon}
-                description={zone.description}
-                summary={`当前分区共覆盖 ${zoneBoards.length} 个节点，累计 ${zone.count} 篇内容`}
-                summaryActions={<RssSubscribeButton href={`/zones/${zone.slug}/rss.xml`} label="RSS" />}
-                pills={[
+              <AddonSurfaceRenderer surface="zone.hero" props={zoneSlotProps}>
+                <CollapsibleInfoCard
+                  badge="论坛分区"
+                  title={zone.name}
+                  icon={zone.icon}
+                  description={zone.description}
+                  summary={`当前分区共覆盖 ${zoneBoards.length} 个节点，累计 ${zone.count} 篇内容`}
+                  summaryActions={<RssSubscribeButton href={`/zones/${zone.slug}/rss.xml`} label="RSS" />}
+                  pills={[
 
-                  {
-                    id: `zone-${zone.id}`,
-                    label: "全部",
-                    icon: zone.icon,
-                    href: `/zones/${params.slug}`,
-                    active: true,
-                  },
-                  ...zoneBoards.map((board: (typeof zoneBoards)[number]) => ({
+                    {
+                      id: `zone-${zone.id}`,
+                      label: "全部",
+                      icon: zone.icon,
+                      href: `/zones/${params.slug}`,
+                      active: true,
+                    },
+                    ...zoneBoards.map((board: (typeof zoneBoards)[number]) => ({
 
-                    id: board.id,
-                    label: board.name,
-                    icon: board.icon,
-                    href: `/boards/${board.slug}`,
-                    active: false,
-                  })),
-                ]}
-              />
+                      id: board.id,
+                      label: board.name,
+                      icon: board.icon,
+                      href: `/boards/${board.slug}`,
+                      active: false,
+                    })),
+                  ]}
+                />
+              </AddonSurfaceRenderer>
               <AddonSlotRenderer slot="zone.hero.after" props={zoneSlotProps} />
 
+              <AddonSurfaceRenderer surface="zone.content" props={{ ...zoneSlotProps, posts }}>
+                {!permission.allowed ? (
 
-              {!permission.allowed ? (
+                  <AccessDeniedCard title="当前分区暂不可访问" description={`该分区设置了${settings.pointName}、等级或 VIP 浏览门槛，未满足条件的用户无法查看分区内容。`} reason={permission.message || "当前没有访问权限"} isLoggedIn={Boolean(currentUser)} />
+                ) : (
+                  <>
 
-                <AccessDeniedCard title="当前分区暂不可访问" description={`该分区设置了${settings.pointName}、等级或 VIP 浏览门槛，未满足条件的用户无法查看分区内容。`} reason={permission.message || "当前没有访问权限"} isLoggedIn={Boolean(currentUser)} />
-              ) : (
-                <>
+                    <AddonSlotRenderer slot="zone.content.before" props={zoneSlotProps} />
+                    {useInfinitePostList ? (
+                      <InfiniteForumPostStream
+                        apiPath={zonePostsApiPath}
+                        initialItems={postDisplayItems}
+                        initialPage={page}
+                        initialHasNextPage={hasNextPage}
+                        listDisplayMode={zone.postListDisplayMode}
+                        showPinnedDivider={page === 1}
+                        postLinkDisplayMode={settings.postLinkDisplayMode}
+                        sortLinks={sortLinks}
+                      />
+                    ) : (
+                      <ForumPostStreamView
+                        items={postDisplayItems}
+                        listDisplayMode={zone.postListDisplayMode}
+                        showPinnedDivider={page === 1}
+                        postLinkDisplayMode={settings.postLinkDisplayMode}
+                        sortLinks={sortLinks}
+                      />
+                    )}
 
-                  <AddonSlotRenderer slot="zone.content.before" props={zoneSlotProps} />
-                  {useInfinitePostList ? (
-                    <InfiniteForumPostStream
-                      apiPath={zonePostsApiPath}
-                      initialItems={postDisplayItems}
-                      initialPage={page}
-                      initialHasNextPage={hasNextPage}
-                      listDisplayMode={zone.postListDisplayMode}
-                      showPinnedDivider={page === 1}
-                      postLinkDisplayMode={settings.postLinkDisplayMode}
-                      sortLinks={sortLinks}
-                    />
-                  ) : (
-                    <ForumPostStreamView
-                      items={postDisplayItems}
-                      listDisplayMode={zone.postListDisplayMode}
-                      showPinnedDivider={page === 1}
-                      postLinkDisplayMode={settings.postLinkDisplayMode}
-                      sortLinks={sortLinks}
-                    />
-                  )}
+                    {posts.length === 0 ? <div className="rounded-md border bg-background p-8 text-sm text-muted-foreground">{emptyStateText}</div> : null}
 
-                  {posts.length === 0 ? <div className="rounded-md border bg-background p-8 text-sm text-muted-foreground">{emptyStateText}</div> : null}
-
-                  {useInfinitePostList ? null : (
-                    <PageNumberPagination
-                      page={page}
-                      totalPages={totalPages}
-                      hasPrevPage={hasPrevPage}
-                      hasNextPage={hasNextPage}
-                      buildHref={(targetPage) => buildZonePageHref(params.slug, targetPage, currentSort)}
-                    />
-                  )}
-                  <AddonSlotRenderer slot="zone.content.after" props={zoneSlotProps} />
-                </>
-              )}
-            </div>
-            </main>
-          )}
-          rightSidebar={(
-            <aside className="mt-6 hidden pb-12 lg:block">
+                    {useInfinitePostList ? null : (
+                      <PageNumberPagination
+                        page={page}
+                        totalPages={totalPages}
+                        hasPrevPage={hasPrevPage}
+                        hasNextPage={hasNextPage}
+                        buildHref={(targetPage) => buildZonePageHref(params.slug, targetPage, currentSort)}
+                      />
+                    )}
+                    <AddonSlotRenderer slot="zone.content.after" props={zoneSlotProps} />
+                  </>
+                )}
+              </AddonSurfaceRenderer>
+              </div>
+              </main>
+            )}
+            rightSidebar={(
+              <aside className="mt-6 hidden pb-12 lg:block">
               <AddonSlotRenderer slot="zone.sidebar.before" props={zoneSlotProps} />
-              <HomeSidebarPanels
-                user={sidebarUser}
-                hotTopics={hotTopics}
-                postLinkDisplayMode={settings.postLinkDisplayMode}
-                announcements={announcements}
-                showAnnouncements={settings.homeSidebarAnnouncementsEnabled}
-                createPostHref={zoneBoards[0] ? `/write?board=${zoneBoards[0].slug}` : "/write"}
-                siteName={settings.siteName}
-                siteDescription={settings.siteDescription}
-                siteLogoPath={settings.siteLogoPath}
-                siteIconPath={settings.siteIconPath}
-              />
+              <AddonSurfaceRenderer surface="zone.sidebar" props={zoneSlotProps}>
+                <HomeSidebarPanels
+                  user={sidebarUser}
+                  hotTopics={hotTopics}
+                  postLinkDisplayMode={settings.postLinkDisplayMode}
+                  announcements={announcements}
+                  showAnnouncements={settings.homeSidebarAnnouncementsEnabled}
+                  createPostHref={zoneBoards[0] ? `/write?board=${zoneBoards[0].slug}` : "/write"}
+                  siteName={settings.siteName}
+                  siteDescription={settings.siteDescription}
+                  siteLogoPath={settings.siteLogoPath}
+                  siteIconPath={settings.siteIconPath}
+                />
+              </AddonSurfaceRenderer>
               <AddonSlotRenderer slot="zone.sidebar.after" props={zoneSlotProps} />
-            </aside>
-          )}
-        />
+              </aside>
+            )}
+          />
+        </AddonSurfaceRenderer>
         <AddonSlotRenderer slot="zone.page.after" props={zoneSlotProps} />
       </div>
     </div>

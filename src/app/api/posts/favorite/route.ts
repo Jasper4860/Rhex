@@ -9,6 +9,12 @@ import { executeAddonActionHook } from "@/addons-host/runtime/hooks"
 export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
   const body = await readJsonBody(request)
   const postId = requireStringField(body, "postId", "缺少帖子参数")
+  const requestUrl = new URL(request.url)
+
+  await executeAddonActionHook("post.favorite.toggle.before", {
+    postId,
+    userId: currentUser.id,
+  }, { request, pathname: requestUrl.pathname, searchParams: requestUrl.searchParams })
 
   const result = await togglePostFavorite({
     userId: currentUser.id,
@@ -42,7 +48,6 @@ export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
     favored: result.favored,
   })
 
-  const requestUrl = new URL(request.url)
   await executeAddonActionHook("post.favorite.toggle.after", {
     postId,
     userId: currentUser.id,

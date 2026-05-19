@@ -48,6 +48,7 @@ import { getHomeSidebarHotTopics, resolveSidebarUser } from "@/lib/home-sidebar"
 import { groupHomeSidebarPanels } from "@/lib/home-sidebar-layout"
 import { getHomeSidebarStats } from "@/lib/home-sidebar-stats"
 import { POST_LIST_LOAD_MODE_INFINITE } from "@/lib/post-list-load-mode"
+import { attachPostListTipSummaries } from "@/lib/post-list-tipping"
 import { getRssHomeDisplaySettings } from "@/lib/rss-harvest"
 import { getRssUniverseFeedPage } from "@/lib/rss-public-feed"
 import {
@@ -250,13 +251,16 @@ export async function HomeFeedPage({
                   ? "/following"
                   : "/"
 
-          return buildHookedFeedDisplayItems({
+          const displayItems = await buildHookedFeedDisplayItems({
             items: postFeedPage.items,
             sort: currentSort,
             settings,
+            listDisplayMode: settings.homeFeedPostListDisplayMode,
             pathname: feedPathname,
             searchParams: addonHookSearchParams,
           })
+
+          return attachPostListTipSummaries(displayItems, currentUser?.id)
         })()
       : null
 
@@ -314,6 +318,12 @@ export async function HomeFeedPage({
           : currentSort === "universe"
             ? "feed.universe.after"
             : "feed.latest.after"
+  const feedSlotProps = {
+    addonTabSlug,
+    currentPage,
+    settings,
+    sort: currentSort,
+  }
 
   const feedPanel = (
     <div className="overflow-hidden rounded-md bg-background">
@@ -433,74 +443,80 @@ export async function HomeFeedPage({
       <SiteHeader />
 
       <div className="mx-auto max-w-[1200px] px-1">
-        <AddonSlotRenderer slot="feed.page.before" />
-        <ForumPageShell
-          zones={zones}
-          boards={boards}
-          main={(
-            <div className="pb-12 py-1">
-              {currentSort ? <AddonSlotRenderer slot={sortBeforeSlot} /> : null}
-              {currentSort ? (
-                <AddonSurfaceRenderer
-                  surface={sortBeforeSlot.replace(".before", "")}
-                  props={{ currentPage, sort: currentSort, settings }}
-                >
+        <AddonSlotRenderer slot="feed.page.before" props={feedSlotProps} />
+        <AddonSurfaceRenderer surface="feed.page" props={feedSlotProps}>
+          <ForumPageShell
+            zones={zones}
+            boards={boards}
+            main={(
+              <div className="pb-12 py-1">
+                {currentSort ? <AddonSlotRenderer slot={sortBeforeSlot} props={feedSlotProps} /> : null}
+                {currentSort ? (
+                  <AddonSurfaceRenderer
+                    surface={sortBeforeSlot.replace(".before", "")}
+                    props={feedSlotProps}
+                  >
+                    <>
+                      {mainTopSlot ? <div className="mb-4 mt-6">{mainTopSlot}</div> : null}
+                      <AddonSlotRenderer slot="feed.main.before" props={feedSlotProps} />
+                      <AddonSurfaceRenderer surface="feed.main" props={feedSlotProps}>
+                        {feedPanel}
+                      </AddonSurfaceRenderer>
+                      <AddonSlotRenderer slot="feed.main.after" props={feedSlotProps} />
+                    </>
+                  </AddonSurfaceRenderer>
+                ) : (
                   <>
                     {mainTopSlot ? <div className="mb-4 mt-6">{mainTopSlot}</div> : null}
-                    <AddonSlotRenderer slot="feed.main.before" />
-                    {feedPanel}
-                    <AddonSlotRenderer slot="feed.main.after" />
+                    <AddonSlotRenderer slot="feed.main.before" props={feedSlotProps} />
+                    <AddonSurfaceRenderer surface="feed.main" props={feedSlotProps}>
+                      {feedPanel}
+                    </AddonSurfaceRenderer>
+                    <AddonSlotRenderer slot="feed.main.after" props={feedSlotProps} />
                   </>
+                )}
+                {currentSort ? <AddonSlotRenderer slot={sortAfterSlot} props={feedSlotProps} /> : null}
+              </div>
+            )}
+            rightSidebar={(
+              <div className="mt-6 hidden pb-12 lg:block">
+                <AddonSlotRenderer slot="feed.sidebar.before" props={feedSlotProps} />
+                <AddonSurfaceRenderer
+                  surface="feed.sidebar"
+                  props={{
+                    announcements,
+                    friendLinks,
+                    hotTopics,
+                    settings,
+                    sidebarPanels,
+                    sidebarStats,
+                  }}
+                >
+                  <HomeSidebarPanels
+                    user={sidebarUser}
+                    hotTopics={hotTopics}
+                    postLinkDisplayMode={settings.postLinkDisplayMode}
+                    announcements={announcements}
+                    showAnnouncements={settings.homeSidebarAnnouncementsEnabled}
+                    friendLinks={friendLinks.compact}
+                    friendLinksEnabled={settings.friendLinksEnabled}
+                    topPanels={sidebarPanels.top}
+                    middlePanels={sidebarPanels.middle}
+                    bottomPanels={sidebarPanels.bottom}
+                    stats={sidebarStats}
+                    siteName={settings.siteName}
+                    siteDescription={settings.siteDescription}
+                    siteLogoPath={settings.siteLogoPath}
+                    siteIconPath={settings.siteIconPath}
+                    selfServeAdsSurface={false}
+                  />
                 </AddonSurfaceRenderer>
-              ) : (
-                <>
-                  {mainTopSlot ? <div className="mb-4 mt-6">{mainTopSlot}</div> : null}
-                  <AddonSlotRenderer slot="feed.main.before" />
-                  {feedPanel}
-                  <AddonSlotRenderer slot="feed.main.after" />
-                </>
-              )}
-              {currentSort ? <AddonSlotRenderer slot={sortAfterSlot} /> : null}
-            </div>
-          )}
-          rightSidebar={(
-            <div className="mt-6 hidden pb-12 lg:block">
-              <AddonSlotRenderer slot="feed.sidebar.before" />
-              <AddonSurfaceRenderer
-                surface="feed.sidebar"
-                props={{
-                  announcements,
-                  friendLinks,
-                  hotTopics,
-                  settings,
-                  sidebarPanels,
-                  sidebarStats,
-                }}
-              >
-                <HomeSidebarPanels
-                  user={sidebarUser}
-                  hotTopics={hotTopics}
-                  postLinkDisplayMode={settings.postLinkDisplayMode}
-                  announcements={announcements}
-                  showAnnouncements={settings.homeSidebarAnnouncementsEnabled}
-                  friendLinks={friendLinks.compact}
-                  friendLinksEnabled={settings.friendLinksEnabled}
-                  topPanels={sidebarPanels.top}
-                  middlePanels={sidebarPanels.middle}
-                  bottomPanels={sidebarPanels.bottom}
-                  stats={sidebarStats}
-                  siteName={settings.siteName}
-                  siteDescription={settings.siteDescription}
-                  siteLogoPath={settings.siteLogoPath}
-                  siteIconPath={settings.siteIconPath}
-                  selfServeAdsSurface={false}
-                />
-              </AddonSurfaceRenderer>
-              <AddonSlotRenderer slot="feed.sidebar.after" />
-            </div>
-          )}
-        />
-        <AddonSlotRenderer slot="feed.page.after" />
+                <AddonSlotRenderer slot="feed.sidebar.after" props={feedSlotProps} />
+              </div>
+            )}
+          />
+        </AddonSurfaceRenderer>
+        <AddonSlotRenderer slot="feed.page.after" props={feedSlotProps} />
       </div>
     </div>
   )

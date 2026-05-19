@@ -2,6 +2,7 @@ import { apiSuccess, createRouteHandler } from "@/lib/api-route"
 import { buildHookedFeedDisplayItems } from "@/lib/addon-feed-posts"
 import { getCurrentUser } from "@/lib/auth"
 import { getLatestFeed, type FeedSort } from "@/lib/forum-feed"
+import { attachPostListTipSummaries } from "@/lib/post-list-tipping"
 import { getSiteSettings } from "@/lib/site-settings"
 
 function parsePage(request: Request) {
@@ -27,16 +28,19 @@ export const GET = createRouteHandler(async ({ request }) => {
         ? "/following"
         : "/"
 
+  const items = await buildHookedFeedDisplayItems({
+    items: result.items,
+    sort,
+    settings,
+    listDisplayMode: settings.homeFeedPostListDisplayMode,
+    pathname,
+    request,
+    searchParams: new URL(request.url).searchParams,
+  })
+
   return apiSuccess({
     ...result,
-    items: await buildHookedFeedDisplayItems({
-      items: result.items,
-      sort,
-      settings,
-      pathname,
-      request,
-      searchParams: new URL(request.url).searchParams,
-    }),
+    items: await attachPostListTipSummaries(items, currentUser?.id),
   })
 }, {
   errorMessage: "获取首页帖子失败",

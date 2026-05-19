@@ -143,6 +143,7 @@ export interface SitePostItem {
 
   excerpt: string
   coverImage?: string | null
+  contentMarkdown: string
   content: string[]
   commentsVisibleToAuthorOnly?: boolean
   contentBlocks?: Array<{

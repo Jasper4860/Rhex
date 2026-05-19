@@ -10,6 +10,7 @@ import { applyAnonymousIdentityToPost, getAnonymousMaskDisplayIdentity } from "@
 import { extractPinnedPostIds } from "@/lib/pinned-posts"
 
 import { resolvePostCoverImage } from "@/lib/post-cover"
+import { getPublicPostContentText } from "@/lib/post-content"
 import { parsePostRewardPoolConfigFromContent } from "@/lib/post-red-packets"
 import { getPostTypeLabel, type LocalPostType } from "@/lib/post-types"
 import type { PostRewardPoolMode } from "@/lib/post-reward-pool-config"
@@ -24,6 +25,7 @@ export interface ForumFeedItem {
   slug: string
   title: string
   summary: string
+  contentMarkdown: string
   coverImage?: string | null
   boardName: string
   boardSlug: string
@@ -165,6 +167,7 @@ function mapFeedPost(post: FeedPostRecord | PinnedFeedPostRecord, anonymousMaskI
   const feedPost = post as unknown as FeedPost
   const latestReply = feedPost.comments?.[0]
   const postType = (feedPost.type ?? "NORMAL") as LocalPostType
+  const publicContent = getPublicPostContentText(feedPost.content)
   const rewardPoolConfig = feedPost.redPacket ? parsePostRewardPoolConfigFromContent(feedPost.content) : null
   const maskedAuthor = applyAnonymousIdentityToPost({
     isAnonymous: Boolean(feedPost.isAnonymous),
@@ -187,6 +190,7 @@ function mapFeedPost(post: FeedPostRecord | PinnedFeedPostRecord, anonymousMaskI
     slug: feedPost.slug,
     title: feedPost.title,
     summary: feedPost.summary ?? feedPost.title,
+    contentMarkdown: publicContent,
     coverImage: resolvePostCoverImage(feedPost.content, feedPost.coverPath),
     boardName: feedPost.board.name,
     boardSlug: feedPost.board.slug,

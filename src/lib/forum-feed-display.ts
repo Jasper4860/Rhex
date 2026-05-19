@@ -1,5 +1,8 @@
 import type { FeedSort, ForumFeedItem } from "@/lib/forum-feed"
 import { resolvePostHeatStyle } from "@/lib/post-heat"
+import { resolvePostListPreviewMedia, type PostListPreviewMedia } from "@/lib/post-list-media"
+import { buildPostListPreviewContent } from "@/lib/post-list-preview-content"
+import type { PostListTipSummary } from "@/lib/post-list-tipping"
 import type { PostRewardPoolMode } from "@/lib/post-reward-pool-config"
 import { getSiteSettings } from "@/lib/site-settings"
 import { getVipNameClass, isVipActive } from "@/lib/vip-status"
@@ -35,14 +38,25 @@ export interface FeedDisplayItem {
   latestReplyAuthorUsername?: string | null
   latestReplyCommentId?: string | null
   commentCount: number
+  likeCount?: number
+  favoriteCount?: number
+  tipCount?: number
+  tipTotalPoints?: number
+  tipping?: PostListTipSummary
+  viewCount?: number
   commentAccentColor: string
   coverImage?: string | null
+  previewMedia?: PostListPreviewMedia | null
   excerpt: string
+  contentMarkdown?: string
+  contentPreviewMarkdown?: string
+  contentPreviewHtml?: string
 }
 
 type FeedDisplaySettings = Pick<
   Awaited<ReturnType<typeof getSiteSettings>>,
   "heatViewWeight" | "heatCommentWeight" | "heatLikeWeight" | "heatTipCountWeight" | "heatTipPointsWeight" | "heatStageThresholds" | "heatStageColors"
+  | "markdownEmojiMap"
 >
 
 export function getFeedPinLabel(pinScope?: string | null) {
@@ -67,6 +81,13 @@ export function mapForumFeedItemsToDisplayItems(
       tipPoints: item.tipTotalPoints,
     }, settings)
     const authorIsVip = isVipActive({ vipLevel: item.authorVipLevel, vipExpiresAt: item.authorVipExpiresAt })
+
+    const previewMedia = resolvePostListPreviewMedia(item.contentMarkdown, item.coverImage)
+    const previewContent = buildPostListPreviewContent({
+      contentMarkdown: item.contentMarkdown,
+      previewMedia,
+      markdownEmojiMap: settings.markdownEmojiMap,
+    })
 
     return {
       id: item.id,
@@ -101,9 +122,17 @@ export function mapForumFeedItemsToDisplayItems(
       latestReplyAuthorUsername: item.latestReplyAuthorUsername ?? null,
       latestReplyCommentId: item.latestReplyCommentId ?? null,
       commentCount: item.commentCount,
+      likeCount: item.likeCount,
+      tipCount: item.tipCount,
+      tipTotalPoints: item.tipTotalPoints,
+      viewCount: item.viewCount,
       commentAccentColor: commentHeat.color,
       coverImage: item.coverImage,
+      previewMedia,
       excerpt: item.summary,
+      contentMarkdown: item.contentMarkdown,
+      contentPreviewMarkdown: previewContent.markdown,
+      contentPreviewHtml: previewContent.html,
     }
   })
 }

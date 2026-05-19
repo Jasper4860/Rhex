@@ -174,6 +174,7 @@ export function mapListPost(post: ListPostSource, anonymousMaskIdentity: Anonymo
 
     excerpt: post.summary ?? publicContent.slice(0, 120),
     coverImage: resolvePostCoverImage(post.content, post.coverPath),
+    contentMarkdown: publicContent,
     content: publicContent.split("\n\n").filter(Boolean),
     type: (post.type as LocalPostType) ?? "NORMAL",
     typeLabel: getPostTypeLabel((post.type as LocalPostType) ?? "NORMAL"),

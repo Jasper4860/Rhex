@@ -85,8 +85,10 @@ export const MessageBubbleContent = memo(function MessageBubbleContent({
 }: MessageBubbleContentProps) {
   const blocks = splitMessageContentBlocks(content)
 
+  const shouldShrinkToImage = Boolean(imageOnly && blocks.length === 1 && blocks[0]?.type === "markdown")
+
   return (
-    <div className="flex min-w-0 max-w-full flex-col gap-2.5">
+    <div className={cn("flex min-w-0 max-w-full flex-col gap-2.5", shouldShrinkToImage && "w-fit")}>
       {blocks.map((block, index) => {
         if (block.type === "markdown") {
           return (
@@ -99,6 +101,7 @@ export const MessageBubbleContent = memo(function MessageBubbleContent({
               imageOnly={blocks.length === 1 ? imageOnly : undefined}
               className={cn(
                 "message-markdown [&_p]:!my-0 [&_p]:leading-6 [&_ul]:my-1.5 [&_ol]:my-1.5 [&_li]:my-0 prose-headings:my-0 prose-blockquote:my-2 prose-pre:my-2 prose-p:text-inherit prose-headings:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-blockquote:text-inherit prose-li:text-inherit prose-a:text-inherit",
+                shouldShrinkToImage && "w-fit",
                 isMine && "text-inherit **:text-inherit [&_.md-list]:text-inherit [&_.md-task-list_.task-list-item_label]:text-inherit [&_.md-task-list_.task-list-item:has(input[type='checkbox']:checked)]:text-inherit [&_.md-callout-title]:text-inherit",
               )}
             />

@@ -589,10 +589,29 @@
   .message-markdown img.my-4 {
     display: block;
     width: auto;
+    margin: 0 !important;
     max-width: min(100%, 20em);
     max-height: min(22rem, 48vh);
     object-fit: contain;
     border-radius: 1rem;
+  }
+  .message-markdown.markdown-body--image-only {
+    display: inline-flex;
+    width: fit-content;
+    max-width: min(100%, 20em);
+    line-height: 1;
+  }
+  .message-markdown.markdown-body--image-only > * {
+    width: fit-content;
+    max-width: 100%;
+  }
+  .message-markdown.markdown-body--image-only p:has(> img:only-child),
+  .message-markdown.markdown-body--image-only p:has(> a:only-child > img:only-child) {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 !important;
+    line-height: 1;
   }
   .message-markdown p:has(> img:only-child),
   .message-markdown p:has(> a:only-child > img:only-child) {
@@ -606,7 +625,12 @@
   }
   .message-markdown.markdown-body--image-only img.my-3,
   .message-markdown.markdown-body--image-only img.my-4 {
+    width: min(100%, 20em);
+    height: min(20em, 48vh);
     max-width: min(100%, 20em);
+    max-height: min(20em, 48vh);
+    object-fit: cover;
+    object-position: left center;
   }
   .markdown-body .md-emoji-image .md-emoji-icon {
     display: block;

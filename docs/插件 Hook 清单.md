@@ -13,6 +13,7 @@
 
 - `provider` 类能力不在这份 hook 清单里单独枚举；例如 `payment`、`navigation`、`editor`、`upload`、`home-feed` 都属于“由宿主按 kind 消费的 provider 扩展”
 - 新增首页 tabs / 首页主内容切换时，应优先看主文档里的 `home-feed provider`，而不是把它误解成 `slot` 或 `surface`
+- 内建 `surface` 现在有独立目录：`src/addons-host/surface-catalog.ts`。它会并入 `ADDON_EXTENSION_POINT_CATALOG`，可被后台、文档生成器或插件开发工具统一枚举。
 
 ## 通用规则
 
@@ -20,11 +21,13 @@
 - 同 `order` 下按 `addonId:key` 稳定排序
 - `slot` 返回 `AddonRenderResult | null`
 - `surface` 返回 `AddonRenderResult | null`
+- `surface` 支持 `server` / `client` / `hybrid` 三种执行模式；模式元数据以 `ADDON_SURFACE_CATALOG` 为准
 - `action hook` 返回 `void`
 - `waterfall / asyncWaterfall` 返回下一个值；返回 `undefined` 时保留上一个值
 - hook 执行失败时，宿主默认记录 lifecycle log 并继续后续插件
 - `before` action hook 在宿主显式传入 `throwOnError: true` 时可中断主流程
 - `surface` 只会选择一个插件生效；命中失败时自动回退宿主默认 UI
+- 注册未知 `surface` 不会被阻断，但会进入插件 `warnings`；新插件应优先选择本清单中已声明的内建点位
 - 宿主通过 `<AddonSlotRenderer slot="..." props={{ ... }} />` 或 `<AddonSurfaceRenderer surface="..." props={{ ... }} />` 调用时，当前点位上下文会进入 `context.props`
 - 同一插件重复注册同一个 `hook + key` 时，只保留第一次注册；重复项会进入插件 `warnings`，不会覆盖已注册处理器
 
@@ -53,6 +56,8 @@
 | `report.create.before` | report | 举报创建前执行副作用或拦截逻辑 | `void` |
 | `report.create.after` | report | 举报创建成功后执行副作用逻辑（含 report 快照） | `void` |
 | `task.complete.after` | task | 任务完成并结算奖励后执行副作用逻辑（含 task / progress 快照与奖励结果） | `void` |
+| `check-in.submit.before` | check-in | 签到或补签写入前执行副作用或拦截逻辑 | `void` |
+| `check-in.submit.after` | check-in | 签到或补签成功后执行副作用逻辑（含奖励、积分与连续签到结果） | `void` |
 | `payment.paid.before` | payment | 支付到账后的宿主处理前执行副作用逻辑 | `void` |
 | `payment.paid.after` | payment | 支付到账后执行副作用逻辑 | `void` |
 | `invite-code.purchase.before` | invite | 邀请码购买扣点前执行副作用或拦截逻辑 | `void` |
@@ -72,13 +77,17 @@
 | `post.delete.before` | post | 帖子删除前执行副作用或拦截逻辑 | `void` |
 | `post.delete.after` | post | 帖子删除成功后执行副作用逻辑 | `void` |
 | `post.status.changed.after` | post | 帖子状态（上架/下架/精华/置顶等）变更后执行副作用 | `void` |
+| `post.like.before` | post | 帖子点赞/取消点赞前执行副作用 | `void` |
 | `post.like.after` | post | 帖子点赞/取消点赞后执行副作用 | `void` |
+| `post.favorite.toggle.before` | post | 帖子收藏/取消收藏前执行副作用 | `void` |
 | `post.favorite.toggle.after` | post | 帖子收藏/取消收藏后执行副作用 | `void` |
 | `comment.update.before` | comment | 评论更新写入前执行副作用或拦截逻辑 | `void` |
 | `comment.update.after` | comment | 评论更新成功后执行副作用逻辑（含最新 comment 快照） | `void` |
 | `comment.delete.before` | comment | 评论删除前执行副作用或拦截逻辑 | `void` |
 | `comment.delete.after` | comment | 评论删除成功后执行副作用逻辑 | `void` |
+| `comment.like.before` | comment | 评论点赞/取消点赞前执行副作用 | `void` |
 | `comment.like.after` | comment | 评论点赞/取消点赞后执行副作用 | `void` |
+| `user.follow.toggle.before` | user | 关注/取消关注前执行副作用 | `void` |
 | `user.follow.toggle.after` | user | 关注/取消关注后执行副作用 | `void` |
 | `notification.create.before` | notification | 站内通知写入前执行副作用或拦截逻辑 | `void` |
 | `notification.create.after` | notification | 通知写入成功后执行副作用逻辑（含 notification 快照） | `void` |
@@ -99,6 +108,8 @@
 - `report.create.after` 的 payload 当前会携带结构化 `report` 快照；`contentAdjusted` 会同时反映 `report.reasonDetail.value` 改写和宿主敏感词替换。
 - `user.update.after` 的 payload 当前会携带结构化 `profile` 快照；`contentAdjusted` 会同时反映资料字段的插件改写和宿主敏感词替换。
 - `task.complete.after` 只会在本轮任务首次完成并完成奖励结算后触发；重复事件、重复点赞、已完成任务不会再次派发。
+- `check-in.submit.before` 会以 `throwOnError: true` 执行，可阻断普通签到或补签；payload 含 `userId/username/action/date/reward/pointName`，补签额外含 `makeUpCost`。
+- `check-in.submit.after` 只在签到动作成功返回前触发；payload 含 `finalReward/points/currentStreak/maxStreak/alreadyCheckedIn`，其中 `alreadyCheckedIn` 可用于识别普通签到重复提交。
 
 ## Waterfall
 
@@ -135,7 +146,8 @@
 | `navigation.primary.items` | navigation | 串行改写站点主导航项数组 | `NavigationItem[]` |
 | `home.sidebar.hot-topics.items` | home | 串行改写首页右栏热点帖子列表 | `HomeSidebarHotTopic[]` |
 | `settings.post-management.tabs` | settings | 串行扩展用户设置页“帖子管理”的插件 tab 列表 | `AddonSettingsPostManagementTab[]` |
-| `feed.posts.items` | post | 串行改写帖子流（首页 / 分类 / 搜索结果列表），可插入广告位、置顶项、重排序 | `AddonPostRecord[]` |
+| `feed.posts.items` | post | 串行改写原始帖子流（首页 / 分类 / 搜索结果列表），可插入广告位、置顶项、重排序；payload 含 `displayMode` | `AddonPostRecord[]` |
+| `post-list.display.items` | post | 串行改写帖子列表展示项（映射后，包含微博模式预览媒体 / HTML / 统计等），可微调卡片数据或插入轻量展示项 | `PostListDisplayItem[]` |
 | `search.results.rerank` | search | 串行对搜索结果重排序（含 query / scope 上下文） | `AddonSearchResultItem[]` |
 | `notification.dispatch.targets` | notification | 串行改写单条通知的分发目标（站内 / 邮件 / 其他通道） | `AddonNotificationDispatchTarget[]` |
 | `sitemap.entries` | seo | 串行扩展 sitemap.xml 条目列表 | `AddonSitemapEntry[]` |
@@ -156,19 +168,22 @@
 
 当前已接入的一批常用 surface 包括：
 
-- 页面主体类：`about.page`、`announcements.page`、`auth.complete.page`、`auth.forgot-password.page`、`auth.passkey.page`、`badge.page`、`board.page`、`collections.page`、`funs.page`、`help.page`、`history.page`、`notifications.page`、`prison.page`、`search.page`、`settings.page`、`tag.page`、`tags.page`、`terms.page`、`topup.page`、`topup.result.page`、`vip.page`、`write.page`
-- 头部 / Hero 类：`about.hero`、`announcement.hero`、`announcements.hero`、`auth.complete.panel`、`auth.forgot-password.panel`、`auth.passkey.panel`、`badge.hero`、`board.hero`、`collections.hero`、`friend-links.hero`、`search.hero`、`terms.hero`、`vip.hero`、`write.header`
+- 页面主体类：`addon.page`、`about.page`、`announcements.page`、`auth.complete.page`、`auth.forgot-password.page`、`auth.login.page`、`auth.passkey.page`、`auth.register.page`、`badge.page`、`board.page`、`collections.page`、`custom-page.page`、`feed.page`、`friend-links.page`、`funs.page`、`funs.app.page`、`help.page`、`history.page`、`leaderboard.page`、`notifications.page`、`prison.page`、`search.page`、`settings.page`、`tag.page`、`tags.page`、`tasks.page`、`terms.page`、`topup.page`、`topup.result.page`、`user.page`、`vip.page`、`write.page`、`zone.page`
+- 头部 / Hero 类：`addon.page.header`、`about.hero`、`announcement.hero`、`announcements.hero`、`auth.complete.panel`、`auth.forgot-password.panel`、`auth.login.panel`、`auth.passkey.panel`、`auth.register.panel`、`badge.hero`、`board.hero`、`collections.hero`、`friend-links.hero`、`leaderboard.hero`、`search.hero`、`tasks.header`、`terms.hero`、`vip.hero`、`write.header`、`zone.hero`
 - 帖子作者类：`post.header`、`post.author.row`、`post.author.meta`、`post.author.verification`、`post.author.name`、`post.author.badges`
 - 评论作者类：`comment.author.row`、`comment.author.meta`、`comment.author.verification`、`comment.author.name`、`comment.author.badges`
-- 内容 / 列表类：`about.highlights`、`about.principles`、`announcement.content`、`announcements.content`、`board.content`、`faq.content`、`friend-links.content`、`notifications.list`、`post.create.form`、`post.create.tools`、`post.create.editor`、`post.create.enhancements`、`post.create.submit`、`prison.content`、`search.results`、`settings.content`、`settings.profile`、`settings.invite`、`settings.post-management`、`settings.board-applications`、`settings.level`、`settings.badges`、`settings.verifications`、`settings.points`、`settings.follows`、`tag.content`、`terms.content`、`topup.payment`、`topup.redeem`、`topup.result.panel`、`vip.actions`、`vip.levels`
-- 侧栏 / 辅助区块类：`about.sidebar`、`badge.sidebar`、`board.sidebar`、`collections.sidebar`、`funs.sidebar`、`help.sidebar`、`prison.sidebar`、`tag.sidebar`、`tags.sidebar`、`terms.sidebar`
-- 交互区块类：`layout.footer`、`messages.page`、`messages.header`、`messages.sidebar`、`messages.thread`、`collection.hero`、`collection.pending`、`collection.content`、`history.panel`
+- 内容 / 列表类：`addon.page.content`、`about.highlights`、`about.principles`、`announcement.content`、`announcements.content`、`auth.login.form`、`auth.register.form`、`board.content`、`custom-page.content`、`faq.content`、`feed.main`、`friend-links.content`、`funs.app.content`、`leaderboard.content`、`notifications.list`、`post.body`、`post.create.form`、`post.create.tools`、`post.create.editor`、`post.create.enhancements`、`post.create.submit`、`post.weibo.feed`、`prison.content`、`search.results`、`settings.content`、`settings.profile`、`settings.invite`、`settings.post-management`、`settings.board-applications`、`settings.level`、`settings.badges`、`settings.verifications`、`settings.points`、`settings.follows`、`tag.content`、`tasks.content`、`terms.content`、`topup.payment`、`topup.redeem`、`topup.result.panel`、`user.activity`、`user.profile`、`vip.actions`、`vip.levels`、`zone.content`
+- 侧栏 / 辅助区块类：`about.sidebar`、`badge.sidebar`、`board.sidebar`、`collections.sidebar`、`custom-page.sidebar`、`funs.sidebar`、`help.sidebar`、`leaderboard.sidebar`、`prison.sidebar`、`tag.sidebar`、`tags.sidebar`、`terms.sidebar`、`user.sidebar`、`zone.sidebar`
+- 交互区块类：`layout.header`、`layout.footer`、`messages.page`、`messages.header`、`messages.sidebar`、`messages.thread`、`collection.hero`、`collection.pending`、`collection.content`、`history.panel`
+
+完整内建清单以 `ADDON_SURFACE_CATALOG` 为准。除上面常用分组外，当前还声明了 `custom-page.*`、`zone.*`、`feed.*`、`collection.page/sidebar` 等页面点位。
 
 说明：
 
 - 服务端静态区块一般通过 `render(context)` 接管
 - `messages.page`、`settings.page` 属于 hybrid surface：先尝试服务端 `render(context)`，未命中再回退到 `clientModule`
-- `messages.header`、`messages.sidebar`、`messages.thread`、`collection.hero`、`collection.pending`、`collection.content`、`history.panel`、`settings.content`、`post.create.form`、`post.create.tools`、`post.create.editor`、`post.create.enhancements`、`post.create.submit`、`comment.author.row`、`comment.author.meta`、`comment.author.verification`、`comment.author.name`、`comment.author.badges` 属于 client-only surface：只支持 `clientModule`
+- `messages.header`、`messages.sidebar`、`messages.thread`、`collection.hero`、`collection.pending`、`collection.content`、`history.panel`、`settings.content`、`tasks.header`、`tasks.content`、`post.weibo.feed`、`post.create.form`、`post.create.tools`、`post.create.editor`、`post.create.enhancements`、`post.create.submit`、`comment.author.row`、`comment.author.meta`、`comment.author.verification`、`comment.author.name`、`comment.author.badges` 属于 client-only surface：只支持 `clientModule`
+- `post.weibo.feed` 的 `context.props` 包含 `items`、`source`（`feed` / `post-stream`）、`showBoard`、`showPinBadge`、`postLinkDisplayMode`，在节点 / 分区帖子流里还会包含 `sortLinks`
 - 如果某个只有单边 slot、纯插入位、或宿主没有默认内容的点位，通常不会对应 surface
 
 ## Slot
@@ -178,8 +193,18 @@
 | Slot | 说明 |
 | --- | --- |
 | `auth.login.captcha` | 在登录表单验证码区域插入 UI |
+| `auth.login.page.before` | 在登录页主体前插入 UI |
+| `auth.login.page.after` | 在登录页主体后插入 UI |
+| `auth.login.panel.before` | 在登录面板前插入 UI |
+| `auth.login.panel.after` | 在登录面板后插入 UI |
+| `auth.login.form.before` | 在登录表单字段前插入 UI |
 | `auth.login.form.after` | 在登录表单字段后插入 UI |
 | `auth.register.captcha` | 在注册表单验证码区域插入 UI |
+| `auth.register.page.before` | 在注册页主体前插入 UI |
+| `auth.register.page.after` | 在注册页主体后插入 UI |
+| `auth.register.panel.before` | 在注册面板前插入 UI |
+| `auth.register.panel.after` | 在注册面板后插入 UI |
+| `auth.register.form.before` | 在注册表单字段前插入 UI |
 | `auth.register.form.after` | 在注册表单字段后插入 UI |
 | `post.create.captcha` | 在发帖页验证码区域插入 UI |
 
@@ -200,6 +225,8 @@
 | --- | --- |
 | `layout.head.before` | 在全站 head 前段插入资源或标记 |
 | `layout.head.after` | 在全站 head 尾段插入资源或标记 |
+| `layout.header.before` | 在站点头部主体前插入内容 |
+| `layout.header.after` | 在站点头部主体后插入内容 |
 | `layout.header.left` | 在站点头部左侧插入内容 |
 | `layout.header.center` | 在站点头部中部插入内容 |
 | `layout.header.right` | 在站点头部右侧插入内容 |

@@ -215,7 +215,7 @@ export function VerificationCenter({ types, approvedVerification }: Verification
               <h4 className="text-base font-semibold">可申请认证</h4>
               <span className="text-sm text-muted-foreground">共 {types.length} 项</span>
             </div>
-            <div className="-mx-1 mt-4 flex gap-3 overflow-x-auto px-1 pb-1 xl:mx-0 xl:flex-col xl:overflow-visible xl:px-0 xl:pb-0">
+            <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:flex-col">
               {types.map((item) => {
                 const isApprovedType = approvedTypeId === item.id
                 const isDisabledItem = hasApprovedVerification && !isApprovedType
@@ -234,7 +234,7 @@ export function VerificationCenter({ types, approvedVerification }: Verification
                       setSelectedTypeId(item.id)
                       resetDraft(item)
                     }}
-                    className={isApprovedType ? "w-72 max-w-[82vw] shrink-0 rounded-xl border border-emerald-300 bg-emerald-50/70 p-4 text-left xl:w-full xl:max-w-none dark:border-emerald-500/30 dark:bg-emerald-500/10" : isActiveItem ? "w-72 max-w-[82vw] shrink-0 rounded-xl border border-foreground bg-accent/60 p-4 text-left xl:w-full xl:max-w-none" : isDisabledItem ? "w-72 max-w-[82vw] shrink-0 rounded-xl border border-border bg-background/60 p-4 text-left opacity-55 xl:w-full xl:max-w-none" : "w-72 max-w-[82vw] shrink-0 rounded-xl border border-border bg-background p-4 text-left hover:bg-accent/40 xl:w-full xl:max-w-none"}
+                    className={isApprovedType ? "w-full min-w-0 rounded-xl border border-emerald-300 bg-emerald-50/70 p-4 text-left dark:border-emerald-500/30 dark:bg-emerald-500/10" : isActiveItem ? "w-full min-w-0 rounded-xl border border-foreground bg-accent/60 p-4 text-left" : isDisabledItem ? "w-full min-w-0 rounded-xl border border-border bg-background/60 p-4 text-left opacity-55" : "w-full min-w-0 rounded-xl border border-border bg-background p-4 text-left hover:bg-accent/40"}
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-xl" style={{ backgroundColor: `${item.color}18`, color: item.color }}>
@@ -486,4 +486,3 @@ function renderStatusPill(status?: VerificationApplicationStatus | null) {
 
   return <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600"><ShieldCheck className="h-3 w-3" />已取消</span>
 }
-

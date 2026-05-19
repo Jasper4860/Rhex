@@ -69,6 +69,7 @@ import { toast } from "@/components/ui/toast"
 import type { BoardItem, ZoneItem } from "@/lib/admin-structure-management"
 import { formatNumber } from "@/lib/formatters"
 import { DEFAULT_ALLOWED_POST_TYPES, normalizePostTypes } from "@/lib/post-types"
+import { POST_LIST_DISPLAY_MODE_DEFAULT, POST_LIST_DISPLAY_MODE_GALLERY, POST_LIST_DISPLAY_MODE_WEIBO } from "@/lib/post-list-display"
 import { POST_LIST_LOAD_MODE_PAGINATION } from "@/lib/post-list-load-mode"
 import { cn } from "@/lib/utils"
 
@@ -468,7 +469,7 @@ function BoardRow({
           <Badge variant="outline">VIP {board.minPostVipLevel ?? 0}</Badge>
           <Badge variant="outline">{board.moderatorsCanWithdrawTreasury ? "版主可提金库" : "仅管理员提金库"}</Badge>
           <Badge variant="outline">{getBoardHomeFeedVisibilityLabel(board)}</Badge>
-          <Badge variant="outline">列表 {board.postListDisplayMode === "GALLERY" ? "画廊" : board.postListDisplayMode === "DEFAULT" ? "普通" : "继承分区"}</Badge>
+          <Badge variant="outline">列表 {getPostListDisplayModeLabel(board.postListDisplayMode)}</Badge>
           <Badge variant="outline">加载 {board.postListLoadMode === "INFINITE" ? "无限下拉" : board.postListLoadMode === "PAGINATION" ? "分页" : "继承分区"}</Badge>
         </div>
       </TableCell>
@@ -503,6 +504,22 @@ function getBoardUserPermissionLabel(value: boolean | null, effectiveValue: bool
   }
 
   return value ? `用户可${action}` : `仅管理员/版主${action}`
+}
+
+function getPostListDisplayModeLabel(value: string | null) {
+  if (value === POST_LIST_DISPLAY_MODE_GALLERY) {
+    return "画廊"
+  }
+
+  if (value === POST_LIST_DISPLAY_MODE_WEIBO) {
+    return "微博"
+  }
+
+  if (value === POST_LIST_DISPLAY_MODE_DEFAULT) {
+    return "普通"
+  }
+
+  return "继承分区"
 }
 
 function StructureModal({

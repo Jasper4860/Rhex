@@ -61,7 +61,7 @@ import { toAbsoluteSiteUrl } from "@/lib/site-origin"
 import { getZones } from "@/lib/zones"
 import { getCanonicalPostPath } from "@/lib/post-links"
 import { canManageBoard, getAvailablePinScopes, isSiteAdmin as isSiteAdminActor, resolveAdminActorFromSessionUser } from "@/lib/moderator-permissions"
-import { AddonSlotRenderer } from "@/addons-host"
+import { AddonSlotRenderer, AddonSurfaceRenderer } from "@/addons-host"
 
 function buildUrlSearchParams(
   input?: Record<string, string | string[] | undefined>,
@@ -549,35 +549,48 @@ export default async function PostPage(props: PageProps<"/posts/[slug]">) {
 
                         <div className="mt-8 space-y-5 text-[15px] leading-8 text-foreground/90 dark:text-foreground/85">
                           <AddonSlotRenderer slot="post.body.before" />
-                          {(displayPost.contentBlocks ?? []).map((block) => (
-                            block.type === "PUBLIC"
-                              ? <MarkdownContent key={block.id} content={block.text} html={normalizedRenderedContentBlockHtmlById.get(block.id)} markdownEmojiMap={settings.markdownEmojiMap} expandImagesWhenImageOnly imageOnly={isImageOnlyMarkdown(block.text, settings.markdownEmojiMap)} collapseLongCodeBlocks />
+                          <AddonSurfaceRenderer
+                            surface="post.body"
+                            props={{
+                              postId: displayPost.id,
+                              postSlug: displayPost.slug,
+                              title: displayPost.title,
+                              currentUserId: currentUser?.id ?? null,
+                              contentBlockCount: displayPost.contentBlocks?.length ?? 0,
+                              attachmentCount: displayAttachments.length,
+                              hasPoll: Boolean(displayPost.poll),
+                            }}
+                          >
+                            {(displayPost.contentBlocks ?? []).map((block) => (
+                              block.type === "PUBLIC"
+                                ? <MarkdownContent key={block.id} content={block.text} html={normalizedRenderedContentBlockHtmlById.get(block.id)} markdownEmojiMap={settings.markdownEmojiMap} expandImagesWhenImageOnly imageOnly={isImageOnlyMarkdown(block.text, settings.markdownEmojiMap)} collapseLongCodeBlocks />
 
-                              : (
-                                <RestrictedPostBlock
-                                  key={block.id}
-                                  type={block.type}
-                                  postId={displayPost.id}
-                                  blockId={block.id}
-                                  text={block.text}
-                                  html={normalizedRenderedContentBlockHtmlById.get(block.id)}
-                                  visible={block.visible}
-                                  currentUserId={currentUser?.id}
-                                  pointName={settings.pointName}
-                                  replyThreshold={block.replyThreshold}
-                                  price={block.price}
-                                  purchaseCount={block.purchaseCount}
-                                  userReplyCount={userReplyCount}
-                                  isOwnerOrAdmin={isOwnerOrManager}
-                                  markdownEmojiMap={settings.markdownEmojiMap}
+                                : (
+                                  <RestrictedPostBlock
+                                    key={block.id}
+                                    type={block.type}
+                                    postId={displayPost.id}
+                                    blockId={block.id}
+                                    text={block.text}
+                                    html={normalizedRenderedContentBlockHtmlById.get(block.id)}
+                                    visible={block.visible}
+                                    currentUserId={currentUser?.id}
+                                    pointName={settings.pointName}
+                                    replyThreshold={block.replyThreshold}
+                                    price={block.price}
+                                    purchaseCount={block.purchaseCount}
+                                    userReplyCount={userReplyCount}
+                                    isOwnerOrAdmin={isOwnerOrManager}
+                                    markdownEmojiMap={settings.markdownEmojiMap}
 
-                                />
-                              )
-                          ))}
+                                  />
+                                )
+                            ))}
 
 
-                       {displayPost.poll ? <PollPanel postId={displayPost.id} totalVotes={displayPost.poll.totalVotes} hasVoted={displayPost.poll.hasVoted} expiresAt={displayPost.poll.expiresAt} options={displayPost.poll.options} /> : null}
-                        {displayAttachments.length > 0 ? <PostAttachmentList attachments={displayAttachments} pointName={settings.pointName} /> : null}
+                            {displayPost.poll ? <PollPanel postId={displayPost.id} totalVotes={displayPost.poll.totalVotes} hasVoted={displayPost.poll.hasVoted} expiresAt={displayPost.poll.expiresAt} options={displayPost.poll.options} /> : null}
+                            {displayAttachments.length > 0 ? <PostAttachmentList attachments={displayAttachments} pointName={settings.pointName} /> : null}
+                          </AddonSurfaceRenderer>
                         <AddonSlotRenderer slot="post.body.after" />
                         {displayPost.lottery || displayPost.auction ? (
                           <div className="space-y-4">

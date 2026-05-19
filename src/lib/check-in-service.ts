@@ -1,4 +1,5 @@
 import type { CurrentUserRecord } from "@/db/current-user"
+import { executeAddonActionHook } from "@/addons-host/runtime/hooks"
 import { prisma } from "@/db/client"
 import { executeUserCheckIn, listUserCheckInLogsInRange, updateUserCheckInReward } from "@/db/check-in-queries"
 import { countTaskDefinitions } from "@/db/task-definition-queries"
@@ -361,6 +362,15 @@ export async function submitCheckInAction(user: CurrentUserRecord, body: unknown
   })
 
   if (payload.action === "check-in") {
+    await executeAddonActionHook("check-in.submit.before", {
+      userId: user.id,
+      username: user.username,
+      action: "check-in",
+      date: todayKey,
+      reward,
+      pointName: snapshot.pointName,
+    }, { throwOnError: true })
+
     const result = await executeCheckIn({
       userId: user.id,
       dateKey: todayKey,
@@ -392,6 +402,20 @@ export async function submitCheckInAction(user: CurrentUserRecord, body: unknown
     }
 
     const streakSummary = await getUserCheckInStreakSummary(user.id)
+
+    await executeAddonActionHook("check-in.submit.after", {
+      userId: user.id,
+      username: user.username,
+      action: "check-in",
+      date: todayKey,
+      reward,
+      finalReward,
+      points: finalPoints,
+      currentStreak: streakSummary.currentStreak,
+      maxStreak: streakSummary.maxStreak,
+      alreadyCheckedIn: result.alreadyCheckedIn,
+      pointName: snapshot.pointName,
+    })
 
     return {
       points: finalPoints,
@@ -437,6 +461,16 @@ export async function submitCheckInAction(user: CurrentUserRecord, body: unknown
     apiError(409, `${snapshot.pointName}不足，无法补签`)
   }
 
+  await executeAddonActionHook("check-in.submit.before", {
+    userId: user.id,
+    username: user.username,
+    action: "make-up",
+    date: targetDateKey,
+    reward,
+    pointName: snapshot.pointName,
+    makeUpCost,
+  }, { throwOnError: true })
+
   const result = await executeCheckIn({
     userId: user.id,
     dateKey: targetDateKey,
@@ -467,6 +501,21 @@ export async function submitCheckInAction(user: CurrentUserRecord, body: unknown
   }
 
   const streakSummary = await getUserCheckInStreakSummary(user.id)
+
+  await executeAddonActionHook("check-in.submit.after", {
+    userId: user.id,
+    username: user.username,
+    action: "make-up",
+    date: targetDateKey,
+    reward,
+    finalReward,
+    points: finalPoints,
+    currentStreak: streakSummary.currentStreak,
+    maxStreak: streakSummary.maxStreak,
+    alreadyCheckedIn: false,
+    pointName: snapshot.pointName,
+    makeUpCost,
+  })
 
   return {
     points: finalPoints,

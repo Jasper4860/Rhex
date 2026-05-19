@@ -2,6 +2,8 @@ import type { LucideIcon } from "lucide-react"
 import { CircleAlert } from "lucide-react"
 import type { ReactNode } from "react"
 
+import { AddonSurfaceRenderer } from "@/addons-host"
+import type { AddonSurfaceKey, AddonSurfaceProps } from "@/addons-host/types"
 import { AuthShowcase } from "@/components/auth/auth-showcase"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -20,6 +22,10 @@ interface AuthShellProps {
   panelTitle: string
   panelDescription: string
   beforeForm?: ReactNode
+  panelBefore?: ReactNode
+  panelAfter?: ReactNode
+  panelSurface?: AddonSurfaceKey
+  surfaceProps?: AddonSurfaceProps
   footer: ReactNode
   children: ReactNode
 }
@@ -37,9 +43,38 @@ export async function AuthShell({
   panelTitle,
   panelDescription,
   beforeForm,
+  panelBefore,
+  panelAfter,
+  panelSurface,
+  surfaceProps,
   footer,
   children,
 }: AuthShellProps) {
+  const panel = (
+    <Card className="auth-panel rounded-[32px] border border-border/70 py-0">
+      <CardHeader className="gap-2 px-6 pt-6 lg:px-7 lg:pt-7">
+        <CardTitle className="text-2xl font-semibold tracking-tight">{panelTitle}</CardTitle>
+        <CardDescription className="text-sm leading-6">
+          {panelDescription}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6 px-6 pb-6 lg:px-7">
+        {beforeForm ? <div className="flex flex-col gap-3">{beforeForm}</div> : null}
+        {children}
+      </CardContent>
+      <CardFooter className="flex-col items-stretch gap-3 border-border/70 px-6 py-5 lg:px-7">
+        {footer}
+      </CardFooter>
+    </Card>
+  )
+  const panelSurfaceContent = panelSurface ? (
+    <AddonSurfaceRenderer surface={panelSurface} props={surfaceProps}>
+      {panel}
+    </AddonSurfaceRenderer>
+  ) : (
+    panel
+  )
+
   return (
     <div className="auth-page min-h-screen">
       <SiteHeader />
@@ -57,21 +92,11 @@ export async function AuthShell({
             </section>
           ) : null}
 
-          <Card className="auth-panel rounded-[32px] border border-border/70 py-0">
-            <CardHeader className="gap-2 px-6 pt-6 lg:px-7 lg:pt-7">
-              <CardTitle className="text-2xl font-semibold tracking-tight">{panelTitle}</CardTitle>
-              <CardDescription className="text-sm leading-6">
-                {panelDescription}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-6 px-6 pb-6 lg:px-7">
-              {beforeForm ? <div className="flex flex-col gap-3">{beforeForm}</div> : null}
-              {children}
-            </CardContent>
-            <CardFooter className="flex-col items-stretch gap-3 border-border/70 px-6 py-5 lg:px-7">
-              {footer}
-            </CardFooter>
-          </Card>
+          <div className="flex flex-col gap-3">
+            {panelBefore}
+            {panelSurfaceContent}
+            {panelAfter}
+          </div>
         </div>
       </main>
     </div>

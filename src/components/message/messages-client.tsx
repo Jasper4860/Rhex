@@ -12,7 +12,7 @@ import { MessageThreadPanel, type LocalMessageSentPayload } from "@/components/m
 import { showConfirm } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/rbutton"
 import { toast } from "@/components/ui/toast"
-import { summarizeMessagePreview } from "@/lib/message-media"
+import { isImageOnlyMessageContent, summarizeMessagePreview } from "@/lib/message-media"
 import {
   isSiteChatConversationId,
   SITE_CHAT_CONVERSATION_ID,
@@ -716,6 +716,7 @@ export function MessagesClient({
           senderName: isOwnMessage && !isSiteChatConversation ? "我" : payload.senderDisplayName ?? fallbackParticipant?.displayName ?? "新消息",
           senderAvatarPath: payload.senderAvatarPath ?? fallbackParticipant?.avatarPath ?? null,
           isMine: isOwnMessage,
+          bodyImageOnly: isImageOnlyMessageContent(payload.content),
         }
 
         setIncomingMessagesByConversation((current) => ({
@@ -965,7 +966,7 @@ function buildMessageCenterView(initialData: MessageCenterData | null, activeCon
         ...(conversation.id === activeConversationId ? { subtitle: conversation.kind === "SITE_CHAT" ? SITE_CHAT_SUBTITLE : "实时会话", unreadCount: 0 } : {}),
         ...(latestRuntimeMessage
           ? {
-              preview: latestRuntimeMessage.body,
+              preview: summarizeMessagePreview(latestRuntimeMessage.body),
               updatedAt: latestRuntimeMessage.createdAt,
               unreadCount: conversation.id === activeConversationId ? 0 : latestRuntimeMessage.isMine ? 0 : (livePatch?.unreadCount ?? conversation.unreadCount),
             }

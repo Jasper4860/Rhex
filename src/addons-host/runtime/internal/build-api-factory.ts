@@ -21,6 +21,7 @@ import {
 import {
   isKnownAddonActionHookName,
   isKnownAddonAsyncWaterfallHookName,
+  isKnownAddonSurfaceName,
   isKnownAddonWaterfallHookName,
 } from "@/addons-host/hook-catalog"
 import { getAddonSurfaceExecutionMode } from "@/addons-host/surface-modes"
@@ -170,6 +171,18 @@ export function createAddonBuildApi(manifest: AddonManifest, warnings: string[])
         : ""
       const hasRender = typeof registration.render === "function"
       const surfaceMode = getAddonSurfaceExecutionMode(normalizedSurface)
+
+      if (!normalizedSurface) {
+        throw new Error(`addon "${manifest.id}" surface registration requires a non-empty surface`)
+      }
+
+      if (!isKnownAddonSurfaceName(normalizedSurface)) {
+        warnAndSkipDuplicate(
+          warnings,
+          seenWarnings,
+          `unknown surface "${normalizedSurface}" in addon "${manifest.id}"; registration kept for compatibility but no built-in host surface currently declares this key`,
+        )
+      }
 
       if (surfaceMode === "client" && hasRender && !normalizedClientModule) {
         throw new Error(

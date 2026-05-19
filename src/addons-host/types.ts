@@ -16,6 +16,8 @@ export const ADDON_SLOT_KEYS = [
   "addon.page.content.after",
   "layout.head.before",
   "layout.head.after",
+  "layout.header.before",
+  "layout.header.after",
   "layout.header.left",
   "layout.header.center",
   "layout.header.right",
@@ -269,6 +271,16 @@ export const ADDON_SLOT_KEYS = [
   "auth.forgot-password.page.after",
   "auth.forgot-password.panel.before",
   "auth.forgot-password.panel.after",
+  "auth.login.page.before",
+  "auth.login.page.after",
+  "auth.login.panel.before",
+  "auth.login.panel.after",
+  "auth.login.form.before",
+  "auth.register.page.before",
+  "auth.register.page.after",
+  "auth.register.panel.before",
+  "auth.register.panel.after",
+  "auth.register.form.before",
   "auth.passkey.page.before",
   "auth.passkey.page.after",
   "auth.passkey.panel.before",
@@ -341,6 +353,8 @@ export const ADDON_ACTION_HOOK_NAMES = [
   "report.create.before",
   "report.create.after",
   "task.complete.after",
+  "check-in.submit.before",
+  "check-in.submit.after",
   "payment.paid.before",
   "payment.paid.after",
   "invite-code.purchase.before",
@@ -363,15 +377,19 @@ export const ADDON_ACTION_HOOK_NAMES = [
   "post.delete.before",
   "post.delete.after",
   "post.status.changed.after",
+  "post.like.before",
   "post.like.after",
+  "post.favorite.toggle.before",
   "post.favorite.toggle.after",
   // 评论
   "comment.update.before",
   "comment.update.after",
   "comment.delete.before",
   "comment.delete.after",
+  "comment.like.before",
   "comment.like.after",
   // 用户关系
+  "user.follow.toggle.before",
   "user.follow.toggle.after",
   // 通知
   "notification.create.before",
@@ -417,6 +435,7 @@ export const ADDON_ASYNC_WATERFALL_HOOK_NAMES = [
   "settings.post-management.tabs",
   // ─── v2 扩展 ───
   "feed.posts.items",
+  "post-list.display.items",
   "search.results.rerank",
   "notification.dispatch.targets",
   "sitemap.entries",
@@ -1418,11 +1437,19 @@ export interface AddonActionHookPayloadMap {
     previousStatus: AddonReadablePostStatus
     nextStatus: AddonReadablePostStatus
   }
+  "post.like.before": {
+    postId: string
+    userId: string
+  }
   "post.like.after": {
     postId: string
     userId: string
     liked: boolean
     likeCount?: number
+  }
+  "post.favorite.toggle.before": {
+    postId: string
+    userId: string
   }
   "post.favorite.toggle.after": {
     postId: string
@@ -1450,6 +1477,10 @@ export interface AddonActionHookPayloadMap {
     commentId: string
     editorId: string
     reason?: string
+  }
+  "comment.like.before": {
+    commentId: string
+    userId: string
   }
   "comment.like.after": {
     commentId: string
@@ -1535,7 +1566,35 @@ export interface AddonActionHookPayloadMap {
     task: AddonTaskDefinitionRecord
     progress: AddonUserTaskProgressRecord
   }
+  "check-in.submit.before": {
+    userId: number
+    username: string
+    action: "check-in" | "make-up"
+    date: string
+    reward: number
+    pointName: string
+    makeUpCost?: number
+  }
+  "check-in.submit.after": {
+    userId: number
+    username: string
+    action: "check-in" | "make-up"
+    date: string
+    reward: number
+    finalReward: number
+    points: number
+    currentStreak: number
+    maxStreak: number
+    alreadyCheckedIn: boolean
+    pointName: string
+    makeUpCost?: number
+  }
   // ─── 用户关系 ───
+  "user.follow.toggle.before": {
+    followerId: string
+    followeeId: string
+    desiredFollowing?: boolean
+  }
   "user.follow.toggle.after": {
     followerId: string
     followeeId: string
@@ -1705,6 +1764,12 @@ export interface AddonWaterfallHookPayloadMap {
 
 export interface AddonAsyncWaterfallHookValueMap {
   "feed.posts.items": AddonPostRecord[]
+  "post-list.display.items": Array<{
+    id: string
+    slug?: string
+    title?: string
+    [key: string]: unknown
+  }>
   "search.results.rerank": Array<{
     id: string
     score: number
@@ -1729,7 +1794,15 @@ export interface AddonAsyncWaterfallHookPayloadMap {
   "feed.posts.items": {
     source: "feed" | "post-stream"
     sort: string
+    displayMode?: string
     pathname?: string
+  }
+  "post-list.display.items": {
+    source: "feed" | "post-stream"
+    sort: string
+    displayMode?: string
+    pathname?: string
+    itemIds: string[]
   }
   "search.results.rerank": {
     query: string

@@ -151,6 +151,7 @@ export default async function BoardPage(props: PageProps<"/boards/[slug]">) {
     posts,
     settings,
     sort: currentSort,
+    listDisplayMode: board.postListDisplayMode,
     visiblePinScopes: ["GLOBAL", "ZONE", "BOARD"],
     pathname: `/boards/${board.slug}`,
     searchParams: buildAddonHookSearchParams(searchParams),
