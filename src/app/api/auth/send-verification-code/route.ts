@@ -1,12 +1,14 @@
 import { apiError, apiSuccess, createRouteHandler, readJsonBody, requireStringField } from "@/lib/api-route"
 import { isEmailInWhitelist, normalizeEmailAddress } from "@/lib/email"
-import { sendRegisterVerificationEmail } from "@/lib/mailer"
+import { canSendBusinessEmail, sendRegisterVerificationEmail } from "@/lib/mailer"
 import { findUserByPhone } from "@/db/password-reset-queries"
 import { isValidMainlandPhone, normalizePhoneNumber } from "@/lib/phone"
 import { getRequestIp } from "@/lib/request-ip"
 import { logRouteWriteSuccess } from "@/lib/route-metadata"
 import { isVerificationChannel, VerificationChannel } from "@/lib/shared/verification-channel"
 import { getServerSiteSettings } from "@/lib/site-settings"
+import { verifySmsSendCaptcha } from "@/lib/sms-send-captcha"
+import { SMS_CODE_COOLDOWN_MS, SMS_CODE_COOLDOWN_SECONDS } from "@/lib/sms-verification"
 import { sendVerificationCode } from "@/lib/verification"
 import { canSendSms, sendSmsVerificationCode } from "@/lib/sms"
 import { createRequestWriteGuardOptions } from "@/lib/write-guard-policies"
@@ -43,6 +45,7 @@ export const POST = createRouteHandler(async ({ request }) => {
   const target = channel === VerificationChannel.EMAIL
     ? normalizeEmailAddress(requireStringField(body, "target", "缺少验证码参数"))
     : normalizePhoneNumber(requireStringField(body, "target", "缺少验证码参数"))
+  let smsSettings: Awaited<ReturnType<typeof getServerSiteSettings>> | null = null
 
 
   if (!channel || !target) {
@@ -66,6 +69,8 @@ export const POST = createRouteHandler(async ({ request }) => {
   }
 
   if (channel === VerificationChannel.PHONE) {
+    smsSettings = await getServerSiteSettings()
+
     if (!(await canSendSms())) {
       apiError(400, "当前站点未配置短信发送能力")
     }
@@ -91,14 +96,35 @@ export const POST = createRouteHandler(async ({ request }) => {
     }
   }
 
-  return withRequestWriteGuard(createRequestWriteGuardOptions("auth-send-verification-code", {
+  const guardOptions = createRequestWriteGuardOptions("auth-send-verification-code", {
     request,
     input: {
       channel,
       target,
       purpose,
     },
-  }), async () => {
+  })
+  const smsGuardOptions = channel === VerificationChannel.PHONE
+    ? {
+        ...guardOptions,
+        cooldownMs: SMS_CODE_COOLDOWN_MS,
+        cooldownMessage: `短信验证码已发送，请 ${SMS_CODE_COOLDOWN_SECONDS} 秒后再试`,
+      }
+    : guardOptions
+
+  return withRequestWriteGuard(smsGuardOptions, async () => {
+    if (channel === VerificationChannel.PHONE) {
+      await verifySmsSendCaptcha({
+        body,
+        request,
+        settings: smsSettings ?? await getServerSiteSettings(),
+      })
+    }
+
+    if (channel === VerificationChannel.EMAIL && !(await canSendBusinessEmail("registerVerification"))) {
+      apiError(400, "当前站点未配置邮件发送能力或已关闭注册验证码邮件")
+    }
+
     const result = await sendVerificationCode({
       channel,
       target,
@@ -132,6 +158,7 @@ export const POST = createRouteHandler(async ({ request }) => {
 
     return apiSuccess({
       expiresAt: result.expiresAt,
+      ...(channel === VerificationChannel.PHONE ? { cooldownSeconds: SMS_CODE_COOLDOWN_SECONDS } : {}),
     }, channel === VerificationChannel.EMAIL ? "验证码已发送到邮箱" : "验证码已发送到手机")
 
   })

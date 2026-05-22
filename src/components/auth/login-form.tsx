@@ -2,13 +2,14 @@
 
 import { useRouter } from "next/navigation"
 import type { ReactNode } from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck, Smartphone, UserRound } from "lucide-react"
 
 import { AuthField, AuthFormSection, AuthInlineMessage } from "@/components/auth/auth-form-primitives"
 import { BuiltinCaptchaField } from "@/components/auth/builtin-captcha-field"
 import { ExternalAuthEntry } from "@/components/auth/external-auth-entry"
 import { PowCaptchaField } from "@/components/auth/pow-captcha-field"
+import { SmsCaptchaDialog, type SmsCaptchaPayload } from "@/components/auth/sms-captcha-dialog"
 import { TurnstileCaptchaField } from "@/components/auth/turnstile-captcha-field"
 import { useCurrentUser } from "@/components/current-user-provider"
 import { Button } from "@/components/ui/button"
@@ -23,9 +24,11 @@ import { toast } from "@/components/ui/toast"
 import { collectAddonAuthFieldsFromFormData } from "@/lib/addon-auth-fields"
 import type { AddonExternalAuthEntry } from "@/lib/addon-external-auth-providers"
 import type { SiteSettingsData } from "@/lib/site-settings"
+import { SMS_CODE_COOLDOWN_SECONDS } from "@/lib/sms-verification"
 
 interface LoginFormProps {
   settings: SiteSettingsData
+  smsAvailable: boolean
   addonBeforeFields?: ReactNode
   addonCaptcha?: ReactNode
   addonAfterFields?: ReactNode
@@ -34,6 +37,7 @@ interface LoginFormProps {
 
 export function LoginForm({
   settings,
+  smsAvailable,
   addonBeforeFields,
   addonCaptcha,
   addonAfterFields,
@@ -52,6 +56,8 @@ export function LoginForm({
   const [message, setMessage] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [sendingPhoneCode, setSendingPhoneCode] = useState(false)
+  const [phoneCodeCountdown, setPhoneCodeCountdown] = useState(0)
+  const [smsCaptchaOpen, setSmsCaptchaOpen] = useState(false)
 
   const captchaMode = settings.loginCaptchaMode
   const useTurnstile = captchaMode === "TURNSTILE" && Boolean(settings.turnstileSiteKey)
@@ -60,9 +66,26 @@ export function LoginForm({
   const hasAlternativeAuth = settings.authGithubEnabled || settings.authGoogleEnabled || settings.authPasskeyEnabled || addonExternalAuthEntries.length > 0
   const hasCaptchaSection = useTurnstile || useBuiltinCaptcha || usePowCaptcha || Boolean(addonCaptcha)
 
-  async function handleSendPhoneCode() {
+  useEffect(() => {
+    if (phoneCodeCountdown <= 0) {
+      return
+    }
+
+    const timer = window.setInterval(() => {
+      setPhoneCodeCountdown((current) => Math.max(0, current - 1))
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [phoneCodeCountdown])
+
+  async function sendPhoneCode(captchaPayload: SmsCaptchaPayload = {}) {
     if (!login.trim()) {
       setMessage("请先输入手机号")
+      return
+    }
+
+    if (!smsAvailable) {
+      setMessage("当前站点未配置短信发送能力")
       return
     }
 
@@ -79,6 +102,7 @@ export function LoginForm({
           channel: "PHONE",
           target: login,
           purpose: "login",
+          ...captchaPayload,
         }),
       })
       const result = await response.json()
@@ -88,11 +112,37 @@ export function LoginForm({
       }
 
       setMessage(result.message ?? "验证码已发送到手机")
+      setSmsCaptchaOpen(false)
+      setPhoneCodeCountdown(Number(result.data?.cooldownSeconds ?? SMS_CODE_COOLDOWN_SECONDS))
     } catch (error) {
+      setSmsCaptchaOpen(false)
       setMessage(error instanceof Error ? error.message : "短信验证码发送失败")
     } finally {
       setSendingPhoneCode(false)
     }
+  }
+
+  function handleSendPhoneCode() {
+    if (!login.trim()) {
+      setMessage("请先输入手机号")
+      return
+    }
+
+    if (!smsAvailable) {
+      setMessage("当前站点未配置短信发送能力")
+      return
+    }
+
+    if (phoneCodeCountdown > 0 || sendingPhoneCode) {
+      return
+    }
+
+    if (settings.smsCaptchaMode === "OFF") {
+      void sendPhoneCode()
+      return
+    }
+
+    setSmsCaptchaOpen(true)
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -166,7 +216,9 @@ export function LoginForm({
       <AuthFormSection>
         <div className="flex gap-2">
           <Button type="button" variant={loginMode === "password" ? "default" : "outline"} onClick={() => setLoginMode("password")}>密码登录</Button>
-          <Button type="button" variant={loginMode === "phone-code" ? "default" : "outline"} onClick={() => setLoginMode("phone-code")}>短信登录</Button>
+          {smsAvailable ? (
+            <Button type="button" variant={loginMode === "phone-code" ? "default" : "outline"} onClick={() => setLoginMode("phone-code")}>短信登录</Button>
+          ) : null}
         </div>
 
         <AuthField htmlFor="login-identity" label={loginMode === "password" ? "邮箱 / 用户名 / 手机号" : "手机号"} required>
@@ -228,11 +280,11 @@ export function LoginForm({
                 <InputGroupButton
                   type="button"
                   variant="secondary"
-                  onClick={() => void handleSendPhoneCode()}
-                  disabled={sendingPhoneCode || !login}
+                  onClick={handleSendPhoneCode}
+                  disabled={sendingPhoneCode || phoneCodeCountdown > 0 || !login}
                 >
                   {sendingPhoneCode ? <Spinner data-icon="inline-start" /> : null}
-                  {sendingPhoneCode ? "发送中" : "发送验证码"}
+                  {sendingPhoneCode ? "发送中" : phoneCodeCountdown > 0 ? `${phoneCodeCountdown}s` : "发送验证码"}
                 </InputGroupButton>
               </InputGroupAddon>
             </InputGroup>
@@ -295,6 +347,15 @@ export function LoginForm({
       </div>
 
       {hasAlternativeAuth ? <ExternalAuthEntry settings={settings} mode="login" addonEntries={addonExternalAuthEntries} /> : null}
+
+      <SmsCaptchaDialog
+        open={smsCaptchaOpen}
+        mode={settings.smsCaptchaMode}
+        siteKey={settings.turnstileSiteKey}
+        sending={sendingPhoneCode}
+        onClose={() => setSmsCaptchaOpen(false)}
+        onVerified={(payload) => sendPhoneCode(payload)}
+      />
     </form>
   )
 }

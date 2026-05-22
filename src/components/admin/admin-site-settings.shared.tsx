@@ -5,6 +5,7 @@ import { Loader2, Upload } from "lucide-react"
 
 import { Button } from "@/components/ui/rbutton"
 import { buildDefaultRegistrationEmailTemplateSettings, normalizeRegistrationEmailTemplateSettings } from "@/lib/email-template-settings"
+import { normalizeEmailBusinessSwitchSettings, type EmailBusinessSwitchSettings } from "@/lib/email-business-switches"
 import { COMMENT_LOAD_MODE_INFINITE, COMMENT_LOAD_MODE_PAGINATION, type CommentLoadMode } from "@/lib/comment-load-mode"
 import { POST_LIST_LOAD_MODE_INFINITE, POST_LIST_LOAD_MODE_PAGINATION, type PostListLoadMode } from "@/lib/post-list-load-mode"
 import { normalizePostListDisplayMode, POST_LIST_DISPLAY_MODE_DEFAULT, type PostListDisplayMode } from "@/lib/post-list-display"
@@ -123,6 +124,7 @@ export interface AdminBasicSettingsInitialSettings {
   registerGenderRequired: boolean
   registerInviterEnabled: boolean
   registrationEmailTemplates: RegistrationEmailTemplateSettings
+  emailBusinessSwitches: EmailBusinessSwitchSettings
   authGithubEnabled: boolean
   authGoogleEnabled: boolean
   authPasskeyEnabled: boolean
@@ -134,6 +136,7 @@ export interface AdminBasicSettingsInitialSettings {
   passkeyRpName?: string | null
   passkeyOrigin?: string | null
   smsEnabled: boolean
+  smsCaptchaMode: "OFF" | "TURNSTILE" | "BUILTIN" | "POW"
   smsAliyunAccessKeyId?: string | null
   smsAliyunAccessKeySecret?: string | null
   smsAliyunEndpoint: string
@@ -286,6 +289,7 @@ export interface AdminBasicSettingsDraft {
   paymentOrderSuccessEmailSubject: string
   paymentOrderSuccessEmailText: string
   paymentOrderSuccessEmailHtml: string
+  emailBusinessSwitches: EmailBusinessSwitchSettings
   authGithubEnabled: boolean
   authGoogleEnabled: boolean
   authPasskeyEnabled: boolean
@@ -297,6 +301,7 @@ export interface AdminBasicSettingsDraft {
   passkeyRpName: string
   passkeyOrigin: string
   smsEnabled: boolean
+  smsCaptchaMode: "OFF" | "TURNSTILE" | "BUILTIN" | "POW"
   smsAliyunAccessKeyId: string
   smsAliyunAccessKeySecret: string
   smsAliyunEndpoint: string
@@ -362,6 +367,7 @@ export function createAdminBasicSettingsDraft(initialSettings: AdminBasicSetting
     initialSettings.registrationEmailTemplates,
     buildDefaultRegistrationEmailTemplateSettings(initialSettings.siteName),
   )
+  const emailBusinessSwitches = normalizeEmailBusinessSwitchSettings(initialSettings.emailBusinessSwitches)
   const postCreateConditions = interactionGates.actions.POST_CREATE?.conditions ?? []
   const commentCreateConditions = interactionGates.actions.COMMENT_CREATE?.conditions ?? []
   const postCreateRequireEmailVerified = postCreateConditions.some((condition) => condition.type === "EMAIL_VERIFIED")
@@ -519,6 +525,7 @@ export function createAdminBasicSettingsDraft(initialSettings: AdminBasicSetting
     paymentOrderSuccessEmailSubject: registrationEmailTemplates.paymentOrderSuccessNotification.subject,
     paymentOrderSuccessEmailText: registrationEmailTemplates.paymentOrderSuccessNotification.text,
     paymentOrderSuccessEmailHtml: registrationEmailTemplates.paymentOrderSuccessNotification.html,
+    emailBusinessSwitches,
     authGithubEnabled: coerceBoolean(initialSettings.authGithubEnabled, false),
     authGoogleEnabled: coerceBoolean(initialSettings.authGoogleEnabled, false),
     authPasskeyEnabled: coerceBoolean(initialSettings.authPasskeyEnabled, false),
@@ -530,6 +537,7 @@ export function createAdminBasicSettingsDraft(initialSettings: AdminBasicSetting
     passkeyRpName: initialSettings.passkeyRpName ?? "",
     passkeyOrigin: initialSettings.passkeyOrigin ?? "",
     smsEnabled: coerceBoolean(initialSettings.smsEnabled, false),
+    smsCaptchaMode: initialSettings.smsCaptchaMode ?? "OFF",
     smsAliyunAccessKeyId: initialSettings.smsAliyunAccessKeyId ?? "",
     smsAliyunAccessKeySecret: initialSettings.smsAliyunAccessKeySecret ?? "",
     smsAliyunEndpoint: initialSettings.smsAliyunEndpoint || "dysmsapi.aliyuncs.com",
@@ -640,6 +648,7 @@ export function buildAdminBasicSettingsPayload(draft: AdminBasicSettingsDraft, m
       paymentOrderSuccessEmailSubject: draft.paymentOrderSuccessEmailSubject,
       paymentOrderSuccessEmailText: draft.paymentOrderSuccessEmailText,
       paymentOrderSuccessEmailHtml: draft.paymentOrderSuccessEmailHtml,
+      emailBusinessSwitches: draft.emailBusinessSwitches,
       authGithubEnabled: draft.authGithubEnabled,
       authGoogleEnabled: draft.authGoogleEnabled,
       authPasskeyEnabled: draft.authPasskeyEnabled,
@@ -651,6 +660,7 @@ export function buildAdminBasicSettingsPayload(draft: AdminBasicSettingsDraft, m
       passkeyRpName: draft.passkeyRpName,
       passkeyOrigin: draft.passkeyOrigin,
       smsEnabled: draft.smsEnabled,
+      smsCaptchaMode: draft.smsCaptchaMode,
       smsAliyunAccessKeyId: draft.smsAliyunAccessKeyId,
       smsAliyunAccessKeySecret: draft.smsAliyunAccessKeySecret,
       smsAliyunEndpoint: draft.smsAliyunEndpoint,

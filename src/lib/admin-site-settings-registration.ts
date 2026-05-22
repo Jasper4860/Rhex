@@ -11,6 +11,7 @@ import {
   mergeRegisterPasswordPolicySettings,
   mergeRegistrationEmailTemplateSettings,
   mergeRegistrationRewardSettings,
+  mergeEmailBusinessSwitchSettings,
   mergeSiteSecuritySettings,
   mergeSmsProviderSettings,
   mergeUsernameSensitiveWordSettings,
@@ -20,10 +21,12 @@ import {
   resolveRegisterNicknameLengthSettings,
   resolveRegisterPasswordPolicySettings,
   resolveRegistrationRewardSettings,
+  resolveEmailBusinessSwitchSettings,
   resolveSiteSecuritySettings,
   resolveSmsProviderSettings,
   resolveUsernameSensitiveWordSettings,
 } from "@/lib/site-settings-app-state"
+import { normalizeEmailBusinessSwitchSettings } from "@/lib/email-business-switches"
 import { mergeAuthProviderSensitiveConfig, mergeCaptchaSensitiveConfig, mergeSmsSensitiveConfig } from "@/lib/site-settings-sensitive-state"
 import { normalizeCaptchaMode } from "@/lib/shared/config-parsers"
 import { normalizeUsernameSensitiveWords } from "@/lib/username-sensitive-words"
@@ -47,6 +50,9 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
   const existingRegistrationEmailTemplateSettings = resolveRegistrationEmailTemplateSettings({
     appStateJson: existing.appStateJson,
     siteNameFallback: existing.siteName,
+  })
+  const existingEmailBusinessSwitches = resolveEmailBusinessSwitchSettings({
+    appStateJson: existing.appStateJson,
   })
   const existingRegisterInviteCodeHelpSettings = resolveRegisterInviteCodeHelpSettings({
     appStateJson: existing.appStateJson,
@@ -134,6 +140,9 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
     appStateJson: existing.appStateJson,
   })
   const smsEnabled = Boolean(body.smsEnabled)
+  const smsCaptchaMode = "smsCaptchaMode" in body
+    ? normalizeCaptchaMode(body.smsCaptchaMode)
+    : existingSmsProviderSettings.captchaMode
   const smsAliyunAccessKeyId = readOptionalStringField(body, "smsAliyunAccessKeyId") || null
   const smsAliyunAccessKeySecret = readOptionalStringField(body, "smsAliyunAccessKeySecret") || null
   const smsAliyunEndpoint = readOptionalStringField(body, "smsAliyunEndpoint") || existingSmsProviderSettings.aliyunEndpoint
@@ -171,6 +180,10 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
   const paymentOrderSuccessEmailSubject = readOptionalStringField(body, "paymentOrderSuccessEmailSubject") || existingRegistrationEmailTemplateSettings.paymentOrderSuccessNotification.subject
   const paymentOrderSuccessEmailText = readOptionalStringField(body, "paymentOrderSuccessEmailText") || existingRegistrationEmailTemplateSettings.paymentOrderSuccessNotification.text
   const paymentOrderSuccessEmailHtml = readOptionalStringField(body, "paymentOrderSuccessEmailHtml") || existingRegistrationEmailTemplateSettings.paymentOrderSuccessNotification.html
+  const emailBusinessSwitches = normalizeEmailBusinessSwitchSettings(
+    "emailBusinessSwitches" in body ? body.emailBusinessSwitches : undefined,
+    existingEmailBusinessSwitches,
+  )
 
   if (registrationRequireInviteCode && !registerInviteCodeEnabled) {
     apiError(400, "注册要求必须填写邀请码时，不能关闭邀请码输入框显示")
@@ -184,7 +197,10 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
     apiError(400, "邀请码输入框链接仅支持以 /、http:// 或 https:// 开头")
   }
 
-  if ((registerCaptchaMode === "TURNSTILE" || loginCaptchaMode === "TURNSTILE") && (!turnstileSiteKey || !turnstileSecretKey)) {
+  if (
+    (registerCaptchaMode === "TURNSTILE" || loginCaptchaMode === "TURNSTILE" || smsCaptchaMode === "TURNSTILE")
+    && (!turnstileSiteKey || !turnstileSecretKey)
+  ) {
     apiError(400, "启用 Turnstile 验证码时，必须同时填写 Turnstile Site Key 和 Secret Key")
   }
 
@@ -272,14 +288,16 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
     enabled: registerEmailWhitelistEnabled,
     domains: registerEmailWhitelistDomains,
   })
-  const appStateJson = mergeSmsProviderSettings(appStateWithRegisterEmailWhitelist, {
+  const appStateWithSmsProvider = mergeSmsProviderSettings(appStateWithRegisterEmailWhitelist, {
     enabled: smsEnabled,
+    captchaMode: smsCaptchaMode,
     aliyunEndpoint: smsAliyunEndpoint,
     aliyunRegionId: smsAliyunRegionId,
     aliyunSignName: smsAliyunSignName ?? "",
     aliyunTemplateCode: smsAliyunTemplateCode ?? "",
     aliyunCodeParamName: smsAliyunCodeParamName,
   })
+  const appStateJson = mergeEmailBusinessSwitchSettings(appStateWithSmsProvider, emailBusinessSwitches)
   const currentSensitiveStateJson = ("sensitiveStateJson" in existing ? existing.sensitiveStateJson : null) ?? null
   const sensitiveStateWithAuthProvider = mergeAuthProviderSensitiveConfig(currentSensitiveStateJson, {
     githubClientId,
@@ -291,7 +309,7 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
     passkeyOrigin,
   })
   const sensitiveStateWithCaptcha = mergeCaptchaSensitiveConfig(sensitiveStateWithAuthProvider, {
-    turnstileSecretKey: registerCaptchaMode === "TURNSTILE" || loginCaptchaMode === "TURNSTILE"
+    turnstileSecretKey: registerCaptchaMode === "TURNSTILE" || loginCaptchaMode === "TURNSTILE" || smsCaptchaMode === "TURNSTILE"
       ? turnstileSecretKey
       : null,
   })
@@ -309,7 +327,7 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
     inviteCodePurchaseEnabled,
     registerCaptchaMode,
     loginCaptchaMode,
-    turnstileSiteKey: registerCaptchaMode === "TURNSTILE" || loginCaptchaMode === "TURNSTILE" ? turnstileSiteKey : null,
+    turnstileSiteKey: registerCaptchaMode === "TURNSTILE" || loginCaptchaMode === "TURNSTILE" || smsCaptchaMode === "TURNSTILE" ? turnstileSiteKey : null,
     registerEmailEnabled,
     registerEmailRequired,
     registerEmailVerification,

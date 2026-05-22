@@ -15,6 +15,7 @@ import { Modal } from "@/components/ui/modal"
 import { Button } from "@/components/ui/rbutton"
 import { toast } from "@/components/ui/toast"
 import { adminPost } from "@/lib/admin-client"
+import { EMAIL_BUSINESS_SWITCH_DEFINITIONS, type EmailBusinessSwitchKey } from "@/lib/email-business-switches"
 import { renderEmailTemplate } from "@/lib/email-template-settings"
 import { getPasswordStrengthDescription, getPasswordStrengthLabel, PASSWORD_STRENGTH_VALUES, type PasswordStrength } from "@/lib/password-policy"
 
@@ -246,6 +247,13 @@ export function AdminRegistrationSettingsForm({
     }
   }
 
+  function updateEmailBusinessSwitch(key: EmailBusinessSwitchKey, enabled: boolean) {
+    updateDraftField("emailBusinessSwitches", {
+      ...draft.emailBusinessSwitches,
+      [key]: enabled,
+    })
+  }
+
   return (
     <>
       {activeSubTab === "invite" ? (
@@ -281,7 +289,7 @@ export function AdminRegistrationSettingsForm({
         <div className="rounded-xl border border-border p-5 space-y-4">
           <div>
             <h3 className="text-sm font-semibold">注册防机器人验证码</h3>
-            <p className="mt-1 text-xs leading-6 text-muted-foreground">支持关闭、Cloudflare Turnstile、自建图形验证码与 PoW 工作量证明四种模式。</p>
+            <p className="mt-1 text-xs leading-6 text-muted-foreground">支持关闭、Cloudflare Turnstile、自建图形验证码与 PoW 工作量证明四种模式。短信发送前校验模式在“短信配置”中单独控制。</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <CaptchaModeField label="注册验证码模式" value={draft.registerCaptchaMode} onChange={(value) => updateDraftField("registerCaptchaMode", value)} />
@@ -479,6 +487,31 @@ export function AdminRegistrationSettingsForm({
         </div>
       ) : null}
 
+      {activeSubTab === "email-switches" ? (
+        <div className="rounded-xl border border-border p-5 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold">业务邮件开关</h3>
+            <p className="mt-1 text-xs leading-6 text-muted-foreground">系统级控制每类业务邮件是否发送；关闭某一项只影响对应业务，其它保持开启的业务邮件会继续正常发送。</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {EMAIL_BUSINESS_SWITCH_DEFINITIONS.map((item) => (
+              <AdminBooleanSelectField
+                key={item.key}
+                label={item.label}
+                checked={draft.emailBusinessSwitches[item.key]}
+                onChange={(value) => updateEmailBusinessSwitch(item.key, value)}
+                description={item.description}
+              />
+            ))}
+          </div>
+          {!draft.smtpEnabled ? (
+            <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-800">
+              当前尚未启用 SMTP。业务邮件开关会保存，但只有 SMTP 邮件发送配置完整并启用后，开启的业务邮件才会实际发出。
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {activeSubTab === "auth" ? (
         <>
           <div className="rounded-xl border border-border p-5 space-y-4">
@@ -581,10 +614,11 @@ Passkey Origin = ${resolvedPasskeyOrigin}`}</code></pre>
         <div className="rounded-xl border border-border p-5 space-y-4">
           <div>
             <h3 className="text-sm font-semibold">短信发送配置</h3>
-            <p className="mt-1 text-xs leading-6 text-muted-foreground">配置宿主内置阿里云短信发送器，用于手机注册、短信登录、手机绑定和手机找回密码。插件注册 `sms` provider 后会优先接管发送。</p>
+            <p className="mt-1 text-xs leading-6 text-muted-foreground">配置宿主内置阿里云短信发送器，用于手机注册、短信登录、手机绑定和手机找回密码。插件注册 `sms` provider 后会优先接管发送；发送前校验用于降低短信轰炸风险。</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <AdminBooleanSelectField label="启用内置阿里云短信" checked={draft.smsEnabled} onChange={(value) => updateDraftField("smsEnabled", value)} />
+            <CaptchaModeField label="短信发送前校验" value={draft.smsCaptchaMode} onChange={(value) => updateDraftField("smsCaptchaMode", value)} />
             <TextField label="AccessKey ID" value={draft.smsAliyunAccessKeyId} onChange={(value) => updateDraftField("smsAliyunAccessKeyId", value)} placeholder="填写阿里云 AccessKey ID" />
             <TextField label="AccessKey Secret" type="password" value={draft.smsAliyunAccessKeySecret} onChange={(value) => updateDraftField("smsAliyunAccessKeySecret", value)} placeholder="填写阿里云 AccessKey Secret" />
             <TextField label="Endpoint" value={draft.smsAliyunEndpoint} onChange={(value) => updateDraftField("smsAliyunEndpoint", value)} placeholder="dysmsapi.aliyuncs.com" />

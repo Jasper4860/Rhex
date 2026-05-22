@@ -16,6 +16,7 @@ import { logRouteWriteSuccess } from "@/lib/route-metadata"
 import { createSessionToken, getSessionCookieName, getSessionCookieOptions } from "@/lib/session"
 import { getServerSiteSettings } from "@/lib/site-settings"
 import { VerificationChannel } from "@/lib/shared/verification-channel"
+import { canSendSms } from "@/lib/sms"
 import { verifyTurnstileToken } from "@/lib/turnstile"
 import { validateLoginPayload } from "@/lib/validators"
 import { verifyCode } from "@/lib/verification"
@@ -52,6 +53,10 @@ export const POST = createRouteHandler(async ({ request }) => {
     request,
     input: undefined,
   }), async () => {
+    if ((loginMode === "phone-code" || phoneCode) && !(await canSendSms())) {
+      apiError(400, "当前站点未配置短信发送能力")
+    }
+
     if (settings.loginCaptchaMode === "TURNSTILE") {
       if (!settings.turnstileSiteKey || !settings.turnstileSecretKey) {
         apiError(500, "站点未完成 Turnstile 验证码配置，请联系管理员")

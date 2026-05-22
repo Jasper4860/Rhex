@@ -1,5 +1,7 @@
 import nodemailer from "nodemailer"
 
+import { enqueueBackgroundJob } from "@/lib/background-jobs"
+import { isEmailBusinessSwitchEnabled, type EmailBusinessSwitchKey } from "@/lib/email-business-switches"
 import { renderEmailTemplate } from "@/lib/email-template-settings"
 import { getServerSiteSettings } from "@/lib/site-settings"
 
@@ -32,9 +34,22 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#39;")
 }
 
+function hasMailerConfig(settings: Awaited<ReturnType<typeof getServerSiteSettings>>) {
+  return Boolean(settings.smtpEnabled && settings.smtpHost && settings.smtpPort && settings.smtpUser && settings.smtpPass && settings.smtpFrom)
+}
+
 export async function canSendEmail() {
   const settings = await getServerSiteSettings()
-  return Boolean(settings.smtpEnabled && settings.smtpHost && settings.smtpPort && settings.smtpUser && settings.smtpPass && settings.smtpFrom)
+  return hasMailerConfig(settings)
+}
+
+export async function canSendBusinessEmail(key: EmailBusinessSwitchKey) {
+  const settings = await getServerSiteSettings()
+  return hasMailerConfig(settings) && isEmailBusinessSwitchEnabled(settings.emailBusinessSwitches, key)
+}
+
+async function shouldDeliverBusinessEmail(key: EmailBusinessSwitchKey) {
+  return canSendBusinessEmail(key)
 }
 
 function assertMailerConfig(config: MailerTransportConfig): asserts config is ResolvedMailerTransportConfig {
@@ -80,7 +95,14 @@ async function createMailerContext(config?: MailerTransportConfig) {
 }
 
 
-export async function sendRegisterVerificationEmail(input: { to: string; code: string }) {
+export function sendRegisterVerificationEmail(input: { to: string; code: string }) {
+  return enqueueBackgroundJob("email.register-verification", input)
+}
+
+export async function deliverRegisterVerificationEmail(input: { to: string; code: string }) {
+  if (!(await shouldDeliverBusinessEmail("registerVerification"))) {
+    return
+  }
   const { settings, transporter } = await createMailerContext()
   const variables = {
     siteName: settings.siteName,
@@ -97,7 +119,14 @@ export async function sendRegisterVerificationEmail(input: { to: string; code: s
   })
 }
 
-export async function sendResetPasswordVerificationEmail(input: { to: string; code: string; username: string }) {
+export function sendResetPasswordVerificationEmail(input: { to: string; code: string; username: string }) {
+  return enqueueBackgroundJob("email.reset-password-verification", input)
+}
+
+export async function deliverResetPasswordVerificationEmail(input: { to: string; code: string; username: string }) {
+  if (!(await shouldDeliverBusinessEmail("resetPasswordVerification"))) {
+    return
+  }
   const { settings, transporter } = await createMailerContext()
   const variables = {
     siteName: settings.siteName,
@@ -114,7 +143,14 @@ export async function sendResetPasswordVerificationEmail(input: { to: string; co
   })
 }
 
-export async function sendPasswordChangeVerificationEmail(input: { to: string; code: string; username: string }) {
+export function sendPasswordChangeVerificationEmail(input: { to: string; code: string; username: string }) {
+  return enqueueBackgroundJob("email.password-change-verification", input)
+}
+
+export async function deliverPasswordChangeVerificationEmail(input: { to: string; code: string; username: string }) {
+  if (!(await shouldDeliverBusinessEmail("passwordChangeVerification"))) {
+    return
+  }
   const { settings, transporter } = await createMailerContext()
   const variables = {
     siteName: settings.siteName,
@@ -131,7 +167,7 @@ export async function sendPasswordChangeVerificationEmail(input: { to: string; c
   })
 }
 
-export async function sendLoginIpChangeAlertEmail(input: {
+export function sendLoginIpChangeAlertEmail(input: {
   to: string
   username: string
   displayName?: string | null
@@ -140,6 +176,21 @@ export async function sendLoginIpChangeAlertEmail(input: {
   loginAt: string
   userAgent?: string | null
 }) {
+  return enqueueBackgroundJob("email.login-ip-change-alert", input)
+}
+
+export async function deliverLoginIpChangeAlertEmail(input: {
+  to: string
+  username: string
+  displayName?: string | null
+  previousIp: string
+  currentIp: string
+  loginAt: string
+  userAgent?: string | null
+}) {
+  if (!(await shouldDeliverBusinessEmail("loginIpChangeAlert"))) {
+    return
+  }
   const { settings, transporter } = await createMailerContext()
   const accountName = input.displayName?.trim() || input.username
   const userAgent = input.userAgent?.trim() || "未知设备"
@@ -177,7 +228,7 @@ export async function sendLoginIpChangeAlertEmail(input: {
   })
 }
 
-export async function sendPaymentGatewayOrderSuccessEmail(input: {
+export function sendPaymentGatewayOrderSuccessEmail(input: {
   to: string
   merchantOrderNo: string
   bizScene: string
@@ -193,6 +244,28 @@ export async function sendPaymentGatewayOrderSuccessEmail(input: {
   bonusPoints?: number | null
   totalPoints?: number | null
 }) {
+  return enqueueBackgroundJob("email.payment-gateway-order-success", input)
+}
+
+export async function deliverPaymentGatewayOrderSuccessEmail(input: {
+  to: string
+  merchantOrderNo: string
+  bizScene: string
+  orderSubject: string
+  amountFen: number
+  currency: string
+  providerCode: string
+  channelCode: string
+  paidAt: string
+  username: string
+  pointName?: string | null
+  points?: number | null
+  bonusPoints?: number | null
+  totalPoints?: number | null
+}) {
+  if (!(await shouldDeliverBusinessEmail("paymentOrderSuccess"))) {
+    return
+  }
   const { settings, transporter } = await createMailerContext()
   const variables = {
     siteName: settings.siteName,
@@ -220,12 +293,26 @@ export async function sendPaymentGatewayOrderSuccessEmail(input: {
   })
 }
 
-export async function sendUserNotificationEmail(input: {
+export function sendUserNotificationEmail(input: {
   to: string
   subject: string
   text: string
   html: string
+  businessKey?: EmailBusinessSwitchKey
 }) {
+  return enqueueBackgroundJob("email.generic", input)
+}
+
+export async function deliverUserNotificationEmail(input: {
+  to: string
+  subject: string
+  text: string
+  html: string
+  businessKey?: EmailBusinessSwitchKey
+}) {
+  if (input.businessKey && !(await shouldDeliverBusinessEmail(input.businessKey))) {
+    return
+  }
   const { settings, transporter } = await createMailerContext()
 
   await transporter.sendMail({
@@ -237,7 +324,20 @@ export async function sendUserNotificationEmail(input: {
   })
 }
 
-export async function sendSmtpTestEmail(input: {
+export function sendSmtpTestEmail(input: {
+  to: string
+  siteName?: string | null
+  smtpHost?: string | null
+  smtpPort?: number | null
+  smtpUser?: string | null
+  smtpPass?: string | null
+  smtpFrom?: string | null
+  smtpSecure?: boolean
+}) {
+  return enqueueBackgroundJob("email.smtp-test", input)
+}
+
+export async function deliverSmtpTestEmail(input: {
   to: string
   siteName?: string | null
   smtpHost?: string | null

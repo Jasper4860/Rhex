@@ -70,11 +70,14 @@ interface CommentThreadCommentItemProps {
   onEnableReplyBox: (target: CommentReplyTarget) => void
   onAcceptAnswer: (commentId: string) => Promise<void>
   onRunAdminAction: (action: string, targetId: string, extra?: Record<string, unknown>) => Promise<void>
+  onOfflineComment: (commentId: string) => Promise<void>
   onTogglePinnedComment: (commentId: string, nextAction: "pin" | "unpin") => Promise<void>
   onStartEdit: (commentId: string) => void
   onStopEdit: () => void
   canEditComment: (comment: ThreadEntry) => boolean
   getEditButtonLabel: (comment: ThreadEntry) => string
+  canOfflineOwnComment?: boolean
+  canOfflineUserComment?: boolean
   renderReplies?: boolean
   isHighlighted?: boolean
 }
@@ -98,10 +101,13 @@ interface CommentThreadReplyItemProps {
   hideFloatingActionButtons: boolean
   onEnableReplyBox: (target: CommentReplyTarget) => void
   onRunAdminAction: (action: string, targetId: string, extra?: Record<string, unknown>) => Promise<void>
+  onOfflineComment: (commentId: string) => Promise<void>
   onStartEdit: (commentId: string) => void
   onStopEdit: () => void
   canEditComment: (comment: ThreadEntry) => boolean
   getEditButtonLabel: (comment: ThreadEntry) => string
+  canOfflineOwnComment?: boolean
+  canOfflineUserComment?: boolean
   layout?: CommentThreadReplyLayout
   isHighlighted?: boolean
   onJumpToParentComment?: (commentId: string, href?: string) => void
@@ -443,10 +449,13 @@ export function CommentThreadReplyItem({
   hideFloatingActionButtons,
   onEnableReplyBox,
   onRunAdminAction,
+  onOfflineComment,
   onStartEdit,
   onStopEdit,
   canEditComment,
   getEditButtonLabel,
+  canOfflineOwnComment = false,
+  canOfflineUserComment = false,
   layout = "tree",
   isHighlighted = false,
   onJumpToParentComment,
@@ -467,6 +476,9 @@ export function CommentThreadReplyItem({
     entry: reply,
     isAdmin,
     adminRole,
+    currentUserId,
+    canOfflineOwnComment,
+    canOfflineUserComment,
   })
   const replyRewardBadges = !replyUnavailableMessage && (reply.rewardClaim || reply.rewardEffectFeedback) ? (
     <>
@@ -597,6 +609,10 @@ export function CommentThreadReplyItem({
                       actions={replyActions}
                       disabled={editingCommentId === reply.id}
                       onSelect={(action) => {
+                        if (action.key === "comment.offline") {
+                          void onOfflineComment(action.targetId)
+                          return
+                        }
                         void onRunAdminAction(action.key, action.targetId, action.payload)
                       }}
                     />
@@ -658,11 +674,14 @@ export function CommentThreadCommentItem({
   onEnableReplyBox,
   onAcceptAnswer,
   onRunAdminAction,
+  onOfflineComment,
   onTogglePinnedComment,
   onStartEdit,
   onStopEdit,
   canEditComment,
   getEditButtonLabel,
+  canOfflineOwnComment = false,
+  canOfflineUserComment = false,
   renderReplies = true,
   isHighlighted = false,
 }: CommentThreadCommentItemProps) {
@@ -685,6 +704,9 @@ export function CommentThreadCommentItem({
     adminRole,
     canPinComment,
     pinningCommentId,
+    currentUserId,
+    canOfflineOwnComment,
+    canOfflineUserComment,
   })
   const commentRewardBadges = !commentUnavailableMessage && (comment.rewardClaim || comment.rewardEffectFeedback) ? (
     <>
@@ -794,6 +816,10 @@ export function CommentThreadCommentItem({
                           void onTogglePinnedComment(comment.id, "unpin")
                           return
                         }
+                        if (action.key === "comment.offline") {
+                          void onOfflineComment(action.targetId)
+                          return
+                        }
                         void onRunAdminAction(action.key, action.targetId, action.payload)
                       }}
                     />
@@ -849,10 +875,13 @@ export function CommentThreadCommentItem({
                       isHighlighted={highlightedCommentId === reply.id}
                       onEnableReplyBox={onEnableReplyBox}
                       onRunAdminAction={onRunAdminAction}
+                      onOfflineComment={onOfflineComment}
                       onStartEdit={onStartEdit}
                       onStopEdit={onStopEdit}
                       canEditComment={canEditComment}
                       getEditButtonLabel={getEditButtonLabel}
+                      canOfflineOwnComment={canOfflineOwnComment}
+                      canOfflineUserComment={canOfflineUserComment}
                     />
                   ))}
 

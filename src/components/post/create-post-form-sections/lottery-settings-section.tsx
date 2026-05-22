@@ -8,6 +8,7 @@ import {
   LOTTERY_PRIZE_TYPE_OPTIONS,
   LOTTERY_VIP_PLAN_OPTIONS,
   getLotteryVipPlanDetails,
+  normalizeLotteryRedemptionCodes,
   normalizeLotteryPrizeType,
   normalizeLotteryVipPlan,
 } from "@/lib/lottery-prizes"
@@ -219,6 +220,7 @@ export function LotterySettingsSection({
           {lotteryPrizes.map((prize, index) => {
             const prizeType = normalizeLotteryPrizeType(prize.type)
             const vipPlan = normalizeLotteryVipPlan(prize.vipPlan)
+            const redemptionCodes = normalizeLotteryRedemptionCodes(prize.redemptionCodes)
             const prizeCost = calculateLotteryPrizeCost(prize, {
               vipMonthlyPrice,
               vipQuarterlyPrice,
@@ -234,7 +236,7 @@ export function LotterySettingsSection({
                     ))}
                   </select>
                   <input value={prize.title} onChange={(event) => onLotteryPrizeChange(index, "title", event.target.value)} className="h-11 rounded-full border border-border bg-background px-4 text-sm outline-hidden" placeholder="奖项名称，如 一等奖" disabled={disabled} />
-                  <input value={prize.quantity} onChange={(event) => onLotteryPrizeChange(index, "quantity", event.target.value)} className="h-11 rounded-full border border-border bg-background px-4 text-sm outline-hidden" placeholder="数量" disabled={disabled} />
+                  <input value={prizeType === "REDEEM_CODE" ? String(redemptionCodes.length) : prize.quantity} onChange={(event) => onLotteryPrizeChange(index, "quantity", event.target.value)} className="h-11 rounded-full border border-border bg-background px-4 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-60" placeholder="数量" disabled={disabled || prizeType === "REDEEM_CODE"} />
                   <Button type="button" variant="ghost" onClick={() => onRemoveLotteryPrize(index)} disabled={disabled || lotteryPrizes.length <= 1}>删除</Button>
                 </div>
 
@@ -262,6 +264,21 @@ export function LotterySettingsSection({
                       })}
                     </select>
                     <span className="text-xs text-muted-foreground">本奖项预扣 {formatNumber(prizeCost)} {pointName}</span>
+                  </div>
+                ) : null}
+
+                {prizeType === "REDEEM_CODE" ? (
+                  <div className="flex flex-col gap-2">
+                    <textarea
+                      value={prize.redemptionCodes}
+                      onChange={(event) => onLotteryPrizeChange(index, "redemptionCodes", event.target.value)}
+                      className="min-h-28 w-full rounded-[18px] border border-border bg-background px-4 py-3 text-sm leading-6 outline-hidden disabled:cursor-not-allowed disabled:opacity-60"
+                      placeholder={"abcd\n123456\nxxxxxx"}
+                      disabled={disabled}
+                    />
+                    <p className="text-xs leading-6 text-muted-foreground">
+                      已识别 {formatNumber(redemptionCodes.length)} 个兑换码，本奖项将产生 {formatNumber(redemptionCodes.length)} 份；开奖后每名中奖用户只会看到分配给自己的兑换码。
+                    </p>
                   </div>
                 ) : null}
 

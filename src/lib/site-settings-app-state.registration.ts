@@ -2,7 +2,12 @@ import {
   buildDefaultRegistrationEmailTemplateSettings,
   normalizeRegistrationEmailTemplateSettings,
 } from "@/lib/email-template-settings"
+import {
+  DEFAULT_EMAIL_BUSINESS_SWITCH_SETTINGS,
+  normalizeEmailBusinessSwitchSettings,
+} from "@/lib/email-business-switches"
 import { parseEmailWhitelistDomains } from "@/lib/email"
+import { normalizeCaptchaMode } from "@/lib/shared/config-parsers"
 import {
   normalizeCheckInRewardRange,
   type CheckInRewardRange,
@@ -33,6 +38,7 @@ import type {
   RegistrationEmailTemplateSettings,
   RegistrationRewardSettings,
   SiteSecuritySettings,
+  SiteEmailBusinessSwitchSettings,
   SmsProviderSettings,
 } from "@/lib/site-settings-app-state.types"
 
@@ -309,6 +315,31 @@ export function mergeRegistrationEmailTemplateSettings(
   })
 }
 
+export function resolveEmailBusinessSwitchSettings(options: {
+  appStateJson?: string | null
+  fallback?: SiteEmailBusinessSwitchSettings
+} = {}): SiteEmailBusinessSwitchSettings {
+  const siteSettingsState = readSiteSettingsState(options.appStateJson)
+
+  return normalizeEmailBusinessSwitchSettings(
+    siteSettingsState.emailBusinessSwitches,
+    options.fallback ?? DEFAULT_EMAIL_BUSINESS_SWITCH_SETTINGS,
+  )
+}
+
+export function mergeEmailBusinessSwitchSettings(
+  appStateJson: string | null | undefined,
+  input: SiteEmailBusinessSwitchSettings,
+) {
+  const siteSettingsState = readSiteSettingsState(appStateJson)
+  const normalized = normalizeEmailBusinessSwitchSettings(input)
+
+  return writeSiteSettingsState(appStateJson, {
+    ...siteSettingsState,
+    emailBusinessSwitches: normalized,
+  })
+}
+
 export function resolveRegisterNicknameLengthSettings(options: {
   appStateJson?: string | null
   minLengthFallback?: number
@@ -516,6 +547,7 @@ export function resolveSmsProviderSettings(options: {
 
   return {
     enabled: typeof smsProvider.enabled === "boolean" ? smsProvider.enabled : false,
+    captchaMode: normalizeCaptchaMode(smsProvider.captchaMode),
     aliyunEndpoint: typeof smsProvider.aliyunEndpoint === "string" && smsProvider.aliyunEndpoint.trim()
       ? smsProvider.aliyunEndpoint.trim()
       : "dysmsapi.aliyuncs.com",
@@ -540,6 +572,7 @@ export function mergeSmsProviderSettings(
     ...siteSettingsState,
     smsProvider: {
       enabled: Boolean(input.enabled),
+      captchaMode: normalizeCaptchaMode(input.captchaMode),
       aliyunEndpoint: input.aliyunEndpoint.trim() || "dysmsapi.aliyuncs.com",
       aliyunRegionId: input.aliyunRegionId.trim() || "cn-hangzhou",
       aliyunSignName: input.aliyunSignName.trim(),

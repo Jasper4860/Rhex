@@ -169,6 +169,8 @@ export function findManagedZoneContext(zoneId: string) {
       showInHomeFeed: true,
       allowUserPost: true,
       allowUserReply: true,
+      allowPostAuthorOfflineComment: true,
+      allowUserOfflineOwnComment: true,
     },
   })
 }

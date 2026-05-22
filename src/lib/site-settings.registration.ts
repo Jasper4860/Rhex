@@ -1,6 +1,7 @@
 import type { RegistrationEmailTemplateSettings } from "@/lib/site-settings-app-state"
 import type { UsernameSensitiveWordSettings } from "@/lib/username-sensitive-words"
 import type { PasswordStrength } from "@/lib/password-policy"
+import type { EmailBusinessSwitchSettings } from "@/lib/email-business-switches"
 
 export interface SiteSettingsRegistrationData extends UsernameSensitiveWordSettings {
   registrationEnabled: boolean
@@ -37,10 +38,12 @@ export interface SiteSettingsRegistrationData extends UsernameSensitiveWordSetti
   registerGenderRequired: boolean
   registerInviterEnabled: boolean
   registrationEmailTemplates: RegistrationEmailTemplateSettings
+  emailBusinessSwitches: EmailBusinessSwitchSettings
   authGithubEnabled: boolean
   authGoogleEnabled: boolean
   authPasskeyEnabled: boolean
   smsEnabled: boolean
+  smsCaptchaMode: "OFF" | "TURNSTILE" | "BUILTIN" | "POW"
   smsAliyunEndpoint: string
   smsAliyunRegionId: string
   smsAliyunSignName: string

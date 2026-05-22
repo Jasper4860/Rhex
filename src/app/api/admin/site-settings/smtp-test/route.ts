@@ -39,7 +39,7 @@ export const POST = createAdminRouteHandler(async ({ request }) => {
     smtpSecure,
   })
 
-  return apiSuccess(undefined, `测试邮件已发送到 ${recipient}`)
+  return apiSuccess(undefined, `测试邮件已加入发送队列：${recipient}`)
 }, {
   errorMessage: "发送测试邮件失败",
   logPrefix: "[api/admin/site-settings/smtp-test:POST] unexpected error",

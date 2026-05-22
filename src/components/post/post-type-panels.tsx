@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronDown, ChevronUp, Clock3, Gift, Sparkles, Trophy } from "lucide-react"
+import { ChevronDown, ChevronUp, Clock3, Gift, Sparkles, Ticket, Trophy } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
 import { UserAvatar } from "@/components/user/user-avatar"
@@ -72,12 +72,14 @@ interface LotteryPanelProps {
       type: string
       pointsAmount: number | null
       vipPlan: string | null
+      hasRedemptionCodes: boolean
       winnerCount: number
       winners: Array<{
         userId: number
         username: string
         nickname: string | null
         avatarPath: string | null
+        redemptionCode: string | null
         drawnAt: string
       }>
     }>
@@ -283,6 +285,16 @@ export function LotteryPanel({ postId, isOwnerOrAdmin, lottery }: LotteryPanelPr
   const announcementLines = lottery.announcement?.split("\n") ?? []
   const announcementPrizeLineOffset = Math.max(0, announcementLines.length - lottery.prizes.length)
   const announcementHeaderLines = announcementLines.slice(0, announcementPrizeLineOffset)
+  const myRedemptionCodeWins = lottery.prizes.flatMap((prize) =>
+    prize.winners
+      .filter((winner) => Boolean(winner.redemptionCode))
+      .map((winner) => ({
+        prizeId: prize.id,
+        prizeTitle: prize.title,
+        userId: winner.userId,
+        redemptionCode: winner.redemptionCode ?? "",
+      })),
+  )
 
   async function loadParticipantPage(page: number) {
     setParticipantLoading(true)
@@ -465,6 +477,9 @@ export function LotteryPanel({ postId, isOwnerOrAdmin, lottery }: LotteryPanelPr
                           {prize.type === "POINTS" || prize.type === "VIP" ? (
                             <Badge variant="outline" className="rounded-full px-1.5 py-0 text-[10px]">自动发放</Badge>
                           ) : null}
+                          {prize.hasRedemptionCodes ? (
+                            <Badge variant="outline" className="rounded-full px-1.5 py-0 text-[10px]">兑换码</Badge>
+                          ) : null}
                         </div>
                       </div>
                       <p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">{prize.description}</p>
@@ -556,6 +571,23 @@ export function LotteryPanel({ postId, isOwnerOrAdmin, lottery }: LotteryPanelPr
                         </p>
                       )
                     })}
+                  </div>
+                </div>
+              ) : null}
+
+              {myRedemptionCodeWins.length > 0 ? (
+                <div className="rounded-[18px] border border-border bg-card/70 p-3">
+                  <div className="flex items-center gap-2">
+                    <Ticket className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-sm font-medium text-foreground">我的兑换码</p>
+                  </div>
+                  <div className="mt-2 flex flex-col gap-2">
+                    {myRedemptionCodeWins.map((item) => (
+                      <div key={`${item.prizeId}-${item.userId}-${item.redemptionCode}`} className="rounded-[14px] border border-border bg-background px-3 py-2">
+                        <p className="text-xs text-muted-foreground">{item.prizeTitle}</p>
+                        <p className="mt-1 break-all font-mono text-sm font-semibold text-foreground">{item.redemptionCode}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ) : null}

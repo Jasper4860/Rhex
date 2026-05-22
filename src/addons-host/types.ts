@@ -1182,6 +1182,8 @@ export interface AddonEmailSendResult {
   userId: number
   username: string
   sent: true
+  queued?: true
+  jobId?: string
   sentAt: string
 }
 
@@ -1207,6 +1209,8 @@ export interface AddonSmsSendResult {
   phone: string
   provider: string
   sent: true
+  queued?: true
+  jobId?: string
   sentAt: string
   messageId?: string | null
   requestId?: string | null

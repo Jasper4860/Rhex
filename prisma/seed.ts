@@ -268,6 +268,17 @@ async function ensureSiteSettings() {
           enabled: false,
           domains: [],
         },
+        emailBusinessSwitches: {
+          registerVerification: true,
+          resetPasswordVerification: true,
+          passwordChangeVerification: true,
+          loginIpChangeAlert: true,
+          paymentOrderSuccess: true,
+          lotteryWinner: true,
+          systemNotification: true,
+          privateMessage: true,
+          addon: true,
+        },
         leftSidebarDisplay: {
           mode: "DEFAULT",
         },

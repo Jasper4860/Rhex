@@ -11,6 +11,8 @@ export interface EffectiveBoardSettings {
   allowedPostTypes: LocalPostType[]
   allowUserPost: boolean
   allowUserReply: boolean
+  allowPostAuthorOfflineComment: boolean
+  allowUserOfflineOwnComment: boolean
   requirePostReview: boolean
   requireCommentReview: boolean
   minViewPoints: number
@@ -36,6 +38,8 @@ export function resolveBoardSettings(zone?: Partial<Zone> | null, board?: Partia
     allowedPostTypes?: string | null
     allowUserPost?: boolean | null
     allowUserReply?: boolean | null
+    allowPostAuthorOfflineComment?: boolean | null
+    allowUserOfflineOwnComment?: boolean | null
     minViewPoints?: number | null
     minViewLevel?: number | null
     minPostPoints?: number | null
@@ -60,6 +64,8 @@ export function resolveBoardSettings(zone?: Partial<Zone> | null, board?: Partia
     allowedPostTypes: normalizePostTypes(board?.allowedPostTypes ?? zoneAdvanced?.allowedPostTypes),
     allowUserPost: board?.allowUserPost ?? zoneAdvanced?.allowUserPost ?? true,
     allowUserReply: board?.allowUserReply ?? zoneAdvanced?.allowUserReply ?? true,
+    allowPostAuthorOfflineComment: board?.allowPostAuthorOfflineComment ?? zoneAdvanced?.allowPostAuthorOfflineComment ?? false,
+    allowUserOfflineOwnComment: board?.allowUserOfflineOwnComment ?? zoneAdvanced?.allowUserOfflineOwnComment ?? false,
 
     requirePostReview: board?.requirePostReview ?? zone?.requirePostReview ?? false,
     requireCommentReview: board?.requireCommentReview ?? zone?.requireCommentReview ?? false,
@@ -124,5 +130,32 @@ export function canUserAccess(user: BoardPermissionUser | null, settings: Effect
   }
 
   return { allowed: true, message: "" }
+}
+
+export function canUserOfflineComment(
+  userId: number | null | undefined,
+  settings: EffectiveBoardSettings,
+  target: {
+    postAuthorId: number
+    commentAuthorId: number
+  },
+) {
+  if (!userId) {
+    return { allowed: false, message: "请先登录" }
+  }
+
+  if (userId === target.commentAuthorId) {
+    return settings.allowUserOfflineOwnComment
+      ? { allowed: true, message: "" }
+      : { allowed: false, message: "当前不允许用户下线自己的评论" }
+  }
+
+  if (userId === target.postAuthorId) {
+    return settings.allowPostAuthorOfflineComment
+      ? { allowed: true, message: "" }
+      : { allowed: false, message: "当前不允许楼主下线用户评论" }
+  }
+
+  return { allowed: false, message: "无权下线该评论" }
 }
 

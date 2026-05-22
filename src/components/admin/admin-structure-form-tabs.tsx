@@ -237,7 +237,7 @@ export function StructureAccessTab({
       <div className="rounded-xl border border-border p-5">
         <h4 className="text-sm font-semibold">普通用户操作权限</h4>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <SelectField label="普通用户发帖" value={form.allowUserPost} onValueChange={(value) => updateField("allowUserPost", value)} options={[
               ...(isBoard ? [{ value: "", label: "继承分区" }] : []),
               { value: "true", label: "允许普通用户发帖" },
@@ -245,13 +245,29 @@ export function StructureAccessTab({
             ]} />
             <p className="text-xs leading-6 text-muted-foreground">{isBoard ? "留空时继承所属分区；关闭后普通用户不能在此节点发帖。" : "关闭后该分区默认只允许管理员和版主发帖，节点仍可单独覆盖。"}</p>
           </div>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <SelectField label="普通用户回帖" value={form.allowUserReply} onValueChange={(value) => updateField("allowUserReply", value)} options={[
               ...(isBoard ? [{ value: "", label: "继承分区" }] : []),
               { value: "true", label: "允许普通用户回帖" },
               { value: "false", label: "仅管理员和版主可回帖" },
             ]} />
             <p className="text-xs leading-6 text-muted-foreground">{isBoard ? "留空时继承所属分区；关闭后普通用户不能在此节点回帖。" : "关闭后该分区默认只允许管理员和版主回帖，节点仍可单独覆盖。"}</p>
+          </div>
+          <div className="space-y-2">
+            <SelectField label="楼主下线用户评论" value={form.allowPostAuthorOfflineComment} onValueChange={(value) => updateField("allowPostAuthorOfflineComment", value)} options={[
+              ...(isBoard ? [{ value: "", label: "继承分区" }] : []),
+              { value: "true", label: "允许楼主下线用户评论" },
+              { value: "false", label: "不允许楼主下线用户评论" },
+            ]} />
+            <p className="text-xs leading-6 text-muted-foreground">{isBoard ? "留空时继承所属分区；开启后，帖子作者可下线本帖内其他用户的评论。" : "开启后，该分区默认允许帖子作者下线自己帖子里的用户评论，节点仍可单独覆盖。"}</p>
+          </div>
+          <div className="space-y-2">
+            <SelectField label="用户下线自己的评论" value={form.allowUserOfflineOwnComment} onValueChange={(value) => updateField("allowUserOfflineOwnComment", value)} options={[
+              ...(isBoard ? [{ value: "", label: "继承分区" }] : []),
+              { value: "true", label: "允许用户下线自己的评论" },
+              { value: "false", label: "不允许用户下线自己的评论" },
+            ]} />
+            <p className="text-xs leading-6 text-muted-foreground">{isBoard ? "留空时继承所属分区；开启后，评论作者可自行下线自己的评论。" : "开启后，该分区默认允许评论作者自行下线自己的评论，节点仍可单独覆盖。"}</p>
           </div>
         </div>
       </div>

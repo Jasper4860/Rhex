@@ -5,6 +5,7 @@ export interface SiteSettingsMarkdownEmojiItem {
   shortcode: string
   label: string
   icon: string
+  group?: string
 }
 
 export interface SiteSettingsUploadData {

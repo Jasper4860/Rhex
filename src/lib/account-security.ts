@@ -2,10 +2,11 @@ import { prisma } from "@/db/client"
 import { apiError } from "@/lib/api-route"
 import { enqueueBackgroundJob, registerBackgroundJobHandler } from "@/lib/background-jobs"
 import {
-  canSendEmail,
-  sendLoginIpChangeAlertEmail,
+  canSendBusinessEmail,
+  deliverLoginIpChangeAlertEmail,
   sendPasswordChangeVerificationEmail,
 } from "@/lib/mailer"
+import { isEmailBusinessSwitchEnabled } from "@/lib/email-business-switches"
 import { VerificationChannel } from "@/lib/shared/verification-channel"
 import { getServerSiteSettings } from "@/lib/site-settings"
 import { sendVerificationCode, verifyCode } from "@/lib/verification"
@@ -56,10 +57,10 @@ export async function sendPasswordChangeVerificationCode(input: {
   ip?: string | null
   userAgent?: string | null
 }) {
-  const smtpReady = await canSendEmail()
+  const smtpReady = await canSendBusinessEmail("passwordChangeVerification")
 
   if (!smtpReady) {
-    apiError(400, "当前站点未配置邮件发送能力，暂不可通过邮箱验证修改密码")
+    apiError(400, "当前站点未配置邮件发送能力或已关闭修改密码验证码邮件，暂不可通过邮箱验证修改密码")
   }
 
   const user = await findVerifiedEmailUserById(input.userId)
@@ -140,7 +141,7 @@ export async function maybeEnqueueLoginIpChangeAlert(input: {
 
   const settings = await getServerSiteSettings()
 
-  if (!settings.loginIpChangeEmailAlertEnabled) {
+  if (!settings.loginIpChangeEmailAlertEnabled || !isEmailBusinessSwitchEnabled(settings.emailBusinessSwitches, "loginIpChangeAlert")) {
     return
   }
 
@@ -163,7 +164,11 @@ registerBackgroundJobHandler(LOGIN_IP_CHANGE_ALERT_JOB_NAME, async (payload) => 
 
   const settings = await getServerSiteSettings()
 
-  if (!settings.loginIpChangeEmailAlertEnabled || !hasMailerConfig(settings)) {
+  if (
+    !settings.loginIpChangeEmailAlertEnabled
+    || !isEmailBusinessSwitchEnabled(settings.emailBusinessSwitches, "loginIpChangeAlert")
+    || !hasMailerConfig(settings)
+  ) {
     return
   }
 
@@ -173,7 +178,7 @@ registerBackgroundJobHandler(LOGIN_IP_CHANGE_ALERT_JOB_NAME, async (payload) => 
     return
   }
 
-  await sendLoginIpChangeAlertEmail({
+  await deliverLoginIpChangeAlertEmail({
     to: user.email,
     username: user.username,
     displayName: user.nickname,

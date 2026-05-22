@@ -29,6 +29,14 @@ const InboxRealtimeContext = createContext<InboxRealtimeContextValue>(defaultInb
 const CROSS_TAB_LEADER_HEARTBEAT_MS = 4_000
 const CROSS_TAB_LEADER_TTL_MS = 12_000
 
+interface InboxRealtimeLockManager {
+  request<T>(
+    name: string,
+    options: { mode: "exclusive" },
+    callback: () => T | Promise<T>,
+  ): Promise<T>
+}
+
 interface InboxRealtimeLeaderLease {
   ownerId: string
   expiresAt: number
@@ -70,6 +78,11 @@ function getInboxRealtimeLeaderKey(userId: number) {
 
 function getInboxRealtimeChannelName(userId: number) {
   return `bbs:inbox-realtime:${userId}`
+}
+
+function getInboxRealtimeLockManager() {
+  const locks = (navigator as Navigator & { locks?: InboxRealtimeLockManager }).locks
+  return typeof locks?.request === "function" ? locks : null
 }
 
 function canUseLeaderStorage(key: string) {
@@ -434,11 +447,16 @@ export function InboxRealtimeProvider({
     let isLeader = false
     let leaderStatus: InboxConnectionStatus = "connecting"
     let leaderTimer: number | null = null
+    let releaseWebLock: (() => void) | null = null
     const tabId = createInboxRealtimeTabId()
     const leaderKey = getInboxRealtimeLeaderKey(currentUserId)
-    const channel = typeof BroadcastChannel === "function" && canUseLeaderStorage(leaderKey)
+    const canCreateChannel = typeof BroadcastChannel === "function"
+    const availableLockManager = canCreateChannel ? getInboxRealtimeLockManager() : null
+    const canUseStorageLeader = Boolean(canCreateChannel && canUseLeaderStorage(leaderKey))
+    const channel = canCreateChannel && (availableLockManager || canUseStorageLeader)
       ? new BroadcastChannel(getInboxRealtimeChannelName(currentUserId))
       : null
+    const lockManager = channel ? availableLockManager : null
 
     const clearReconnectTimer = () => {
       if (reconnectTimerRef.current) {
@@ -552,7 +570,7 @@ export function InboxRealtimeProvider({
     }
 
     const connect = () => {
-      if (closed || channel && !isLeader) {
+      if (closed || (channel && !isLeader)) {
         return
       }
 
@@ -587,7 +605,9 @@ export function InboxRealtimeProvider({
       isLeader = false
       clearReconnectTimer()
       closeEventSource()
-      releaseLeaderLease(leaderKey, tabId)
+      if (!lockManager) {
+        releaseLeaderLease(leaderKey, tabId)
+      }
       setConnectionStatus("connecting")
     }
 
@@ -618,6 +638,44 @@ export function InboxRealtimeProvider({
       connect()
     }
 
+    const requestWebLockLeadership = () => {
+      if (!lockManager) {
+        return
+      }
+
+      let resolveLockLifetime: (() => void) | null = null
+      const lockLifetime = new Promise<void>((resolve) => {
+        resolveLockLifetime = resolve
+      })
+      releaseWebLock = () => {
+        resolveLockLifetime?.()
+        resolveLockLifetime = null
+      }
+
+      void lockManager.request(leaderKey, { mode: "exclusive" }, async () => {
+        if (closed) {
+          return
+        }
+
+        isLeader = true
+        leaderStatus = "connecting"
+        connect()
+
+        await lockLifetime
+
+        if (isLeader) {
+          isLeader = false
+          clearReconnectTimer()
+          closeEventSource()
+        }
+      }).catch((error) => {
+        console.error("[inbox-realtime-provider] failed to acquire realtime lock", error)
+        if (!closed && canUseStorageLeader) {
+          startLeading()
+        }
+      })
+    }
+
     const checkLeadership = () => {
       if (closed) {
         return
@@ -627,6 +685,10 @@ export function InboxRealtimeProvider({
         if (!eventSource && !reconnectTimerRef.current) {
           connect()
         }
+        return
+      }
+
+      if (lockManager) {
         return
       }
 
@@ -662,9 +724,15 @@ export function InboxRealtimeProvider({
         }
       }
 
-      window.addEventListener("storage", checkLeadership)
-      leaderTimer = window.setInterval(checkLeadership, CROSS_TAB_LEADER_HEARTBEAT_MS)
-      checkLeadership()
+      if (lockManager) {
+        requestWebLockLeadership()
+      } else if (canUseStorageLeader) {
+        window.addEventListener("storage", checkLeadership)
+        leaderTimer = window.setInterval(checkLeadership, CROSS_TAB_LEADER_HEARTBEAT_MS)
+        checkLeadership()
+      } else {
+        connect()
+      }
     } else {
       connect()
     }
@@ -679,6 +747,7 @@ export function InboxRealtimeProvider({
       reconnectAttemptRef.current = 0
       setConnectionStatus("closed")
       closeEventSource()
+      releaseWebLock?.()
       releaseLeaderLease(leaderKey, tabId)
       channel?.close()
     }

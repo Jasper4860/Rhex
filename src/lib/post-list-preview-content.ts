@@ -11,7 +11,13 @@ interface PreviewContentResult {
   html: string
 }
 
+type PreviewContentMarkdownInput = string | null | undefined
+
 const previewContentCache = new Map<string, PreviewContentResult>()
+
+function normalizePreviewContentMarkdown(input: PreviewContentMarkdownInput) {
+  return typeof input === "string" ? input : ""
+}
 
 function buildPreviewContentCacheKey(input: {
   contentMarkdown: string
@@ -43,11 +49,16 @@ function rememberPreviewContent(key: string, value: PreviewContentResult) {
 }
 
 export function buildPostListPreviewContent(input: {
-  contentMarkdown: string
+  contentMarkdown: PreviewContentMarkdownInput
   previewMedia?: PostListPreviewMedia | null
   markdownEmojiMap: MarkdownEmojiItem[]
 }): PreviewContentResult {
-  const key = buildPreviewContentCacheKey(input)
+  const contentMarkdown = normalizePreviewContentMarkdown(input.contentMarkdown)
+  const key = buildPreviewContentCacheKey({
+    contentMarkdown,
+    previewMedia: input.previewMedia,
+    markdownEmojiMap: input.markdownEmojiMap,
+  })
   const cached = previewContentCache.get(key)
   if (cached) {
     previewContentCache.delete(key)
@@ -55,7 +66,7 @@ export function buildPostListPreviewContent(input: {
     return cached
   }
 
-  const markdown = omitPostListPreviewMediaFromMarkdown(input.contentMarkdown, input.previewMedia)
+  const markdown = omitPostListPreviewMediaFromMarkdown(contentMarkdown, input.previewMedia)
   const result = {
     markdown,
     html: markdown ? renderMarkdown(markdown, input.markdownEmojiMap) : "",

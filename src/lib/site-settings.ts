@@ -21,7 +21,7 @@ import { parseMarkdownEmojiMapJson } from "@/lib/markdown-emoji"
 import { normalizeCommentLoadMode } from "@/lib/comment-load-mode"
 import { normalizePostListLoadMode } from "@/lib/post-list-load-mode"
 import { normalizePostListDisplayMode } from "@/lib/post-list-display"
-import { resolveAnonymousPostSettings, resolveAttachmentFeatureSettings, resolveAuthProviderSettings, resolveAvatarChangePointCostSettings, resolveBoardApplicationSettings, resolveBoardTreasurySettings, resolveCheckInMakeUpPriceSettings, resolveCheckInRewardSettings, resolveCheckInStreakSettings, resolveCommentAccessSettings, resolveFooterCopyrightSettings, resolveHomeFeedPostListLoadSettings, resolveHomeHotFeedSettings, resolveHomeSidebarAnnouncementSettings, resolveImageWatermarkSettings, resolveInteractionGateSettings, resolveIntroductionChangePointCostSettings, resolveInviteCodePurchasePriceSettings, resolveLeftSidebarDisplaySettings, resolveMarkdownImageUploadSettings, resolveMessageMediaSettings, resolveNicknameChangePointCostSettings, resolvePostContentLengthSettings, resolvePostJackpotSettings, resolvePostPageSizeSettings, resolvePostRedPacketSettings, resolvePostSlugGenerationSettings, resolveRegisterEmailWhitelistSettings, resolveRegisterInviteCodeHelpSettings, resolveRegisterNicknameLengthSettings, resolveRegisterPasswordPolicySettings, resolveRegistrationEmailTemplateSettings, resolveRegistrationRewardSettings, resolveSiteBrandingSettings, resolveSiteChatSettings, resolveSiteSecuritySettings, resolveSmsProviderSettings, resolveThemeCustomizationSettingsFromAppState, resolveUploadObjectStorageSettings, resolveUserProfileDisplaySettings, resolveUsernameSensitiveWordSettings, resolveVipLevelIconSettings, resolveVipNameColorSettings } from "@/lib/site-settings-app-state"
+import { resolveAnonymousPostSettings, resolveAttachmentFeatureSettings, resolveAuthProviderSettings, resolveAvatarChangePointCostSettings, resolveBoardApplicationSettings, resolveBoardTreasurySettings, resolveCheckInMakeUpPriceSettings, resolveCheckInRewardSettings, resolveCheckInStreakSettings, resolveCommentAccessSettings, resolveEmailBusinessSwitchSettings, resolveFooterCopyrightSettings, resolveHomeFeedPostListLoadSettings, resolveHomeHotFeedSettings, resolveHomeSidebarAnnouncementSettings, resolveImageWatermarkSettings, resolveInteractionGateSettings, resolveIntroductionChangePointCostSettings, resolveInviteCodePurchasePriceSettings, resolveLeftSidebarDisplaySettings, resolveMarkdownImageUploadSettings, resolveMessageMediaSettings, resolveNicknameChangePointCostSettings, resolvePostContentLengthSettings, resolvePostJackpotSettings, resolvePostPageSizeSettings, resolvePostRedPacketSettings, resolvePostSlugGenerationSettings, resolveRegisterEmailWhitelistSettings, resolveRegisterInviteCodeHelpSettings, resolveRegisterNicknameLengthSettings, resolveRegisterPasswordPolicySettings, resolveRegistrationEmailTemplateSettings, resolveRegistrationRewardSettings, resolveSiteBrandingSettings, resolveSiteChatSettings, resolveSiteSecuritySettings, resolveSmsProviderSettings, resolveThemeCustomizationSettingsFromAppState, resolveUploadObjectStorageSettings, resolveUserProfileDisplaySettings, resolveUsernameSensitiveWordSettings, resolveVipLevelIconSettings, resolveVipNameColorSettings } from "@/lib/site-settings-app-state"
 import { resolveAuthPageShowcaseSettings } from "@/lib/site-settings-app-state"
 import { resolveAuthProviderSensitiveConfig, resolveCaptchaSensitiveConfig, resolveSmsSensitiveConfig, resolveUploadStorageSensitiveConfig } from "@/lib/site-settings-sensitive-state"
 import { resolveSiteSearchSettings } from "@/lib/site-search-settings"
@@ -317,6 +317,9 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     appStateJson: record.appStateJson,
     siteNameFallback: record.siteName,
   })
+  const emailBusinessSwitches = resolveEmailBusinessSwitchSettings({
+    appStateJson: record.appStateJson,
+  })
   const registerNicknameLengthSettings = resolveRegisterNicknameLengthSettings({
     appStateJson: record.appStateJson,
     minLengthFallback: 1,
@@ -550,10 +553,12 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     registerGenderRequired: record.registerGenderRequired,
     registerInviterEnabled: record.registerInviterEnabled,
     registrationEmailTemplates: registrationEmailTemplateSettings,
+    emailBusinessSwitches,
     authGithubEnabled: authProviderSettings.githubEnabled,
     authGoogleEnabled: authProviderSettings.googleEnabled,
     authPasskeyEnabled: authProviderSettings.passkeyEnabled,
     smsEnabled: smsProviderSettings.enabled,
+    smsCaptchaMode: smsProviderSettings.captchaMode,
     smsAliyunEndpoint: smsProviderSettings.aliyunEndpoint,
     smsAliyunRegionId: smsProviderSettings.aliyunRegionId,
     smsAliyunSignName: smsProviderSettings.aliyunSignName,

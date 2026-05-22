@@ -82,9 +82,10 @@ export function mapForumFeedItemsToDisplayItems(
     }, settings)
     const authorIsVip = isVipActive({ vipLevel: item.authorVipLevel, vipExpiresAt: item.authorVipExpiresAt })
 
-    const previewMedia = resolvePostListPreviewMedia(item.contentMarkdown, item.coverImage)
+    const contentMarkdown = typeof item.contentMarkdown === "string" ? item.contentMarkdown : ""
+    const previewMedia = resolvePostListPreviewMedia(contentMarkdown, item.coverImage)
     const previewContent = buildPostListPreviewContent({
-      contentMarkdown: item.contentMarkdown,
+      contentMarkdown,
       previewMedia,
       markdownEmojiMap: settings.markdownEmojiMap,
     })
@@ -130,7 +131,7 @@ export function mapForumFeedItemsToDisplayItems(
       coverImage: item.coverImage,
       previewMedia,
       excerpt: item.summary,
-      contentMarkdown: item.contentMarkdown,
+      contentMarkdown,
       contentPreviewMarkdown: previewContent.markdown,
       contentPreviewHtml: previewContent.html,
     }

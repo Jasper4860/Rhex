@@ -32,14 +32,14 @@ const writeGuardConfig = {
     },
   },
   "auth-forgot-password-send-code": {
-    description: "找回密码验证码发送，按邮箱做短时间去重和中等频率限制。",
+    description: "找回密码验证码发送，按渠道和目标做短时间去重和中等频率限制。",
     scope: "auth-forgot-password-send-code",
     cooldownMs: 15_000,
     cooldownMessage: "验证码已发送，如未收到请 15 秒后重试",
     releaseOnError: true,
     dedupe: {
       windowMs: 3_000,
-      parts: ["email"],
+      parts: ["channel", "email", "phone"],
     },
   },
   "auth-login": {
@@ -73,14 +73,14 @@ const writeGuardConfig = {
     },
   },
   "auth-send-verification-code": {
-    description: "注册验证码发送，按渠道和目标地址做去重。",
+    description: "注册/登录验证码发送，按渠道、目标地址和用途做去重。",
     scope: "auth-send-verification-code",
     cooldownMs: 15_000,
     cooldownMessage: "验证码已发送，如未收到请 15 秒后重试",
     releaseOnError: true,
     dedupe: {
       windowMs: 3_000,
-      parts: ["channel", "target"],
+      parts: ["channel", "target", "purpose"],
     },
   },
   "profile-password-send-code": {

@@ -15,6 +15,7 @@ import type { PostLinkDisplayMode } from "@/lib/site-settings"
 import {
   buildLotteryPrizeDefaultDescription,
   buildLotteryPrizeDefaultTitle,
+  normalizeLotteryRedemptionCodes,
   normalizeLotteryPrizeType,
   normalizeLotteryVipPlan,
 } from "@/lib/lottery-prizes"
@@ -201,7 +202,7 @@ export interface CreatePostFormInitialValues {
     startsAt?: string | null
     endsAt?: string | null
     participantGoal?: number | null
-    prizes?: Array<{ title: string; quantity: number; description: string; type?: string | null; pointsAmount?: number | null; vipPlan?: string | null }>
+    prizes?: Array<{ title: string; quantity: number; description: string; type?: string | null; pointsAmount?: number | null; vipPlan?: string | null; redemptionCodes?: string[] | string | null }>
     conditions?: Array<{ type: string; value: string; operator?: string; description?: string; groupKey?: string }>
   }
   redPacketConfig?: {
@@ -386,20 +387,22 @@ export function buildNextLotteryConditionGroupKey(conditions: LotteryConditionDr
 
 function normalizeLotteryPrizes(prizes?: InitialLotteryConfig["prizes"] | LocalPostDraft["lotteryPrizes"]) {
   if (!Array.isArray(prizes) || prizes.length === 0) {
-    return [{ title: "一等奖", quantity: "1", description: "填写奖品描述", type: "MANUAL" as const, pointsAmount: "100", vipPlan: "MONTH" as const }]
+    return [{ title: "一等奖", quantity: "1", description: "填写奖品描述", type: "MANUAL" as const, pointsAmount: "100", vipPlan: "MONTH" as const, redemptionCodes: "" }]
   }
 
   return prizes.map((item) => {
     const type = normalizeLotteryPrizeType(item.type)
     const pointsAmount = String(item.pointsAmount ?? (type === "POINTS" ? 100 : 100))
     const vipPlan = normalizeLotteryVipPlan(item.vipPlan)
+    const redemptionCodes = normalizeLotteryRedemptionCodes(item.redemptionCodes)
     const prize = {
       title: item.title,
-      quantity: String(item.quantity),
+      quantity: String(type === "REDEEM_CODE" ? redemptionCodes.length : item.quantity),
       description: item.description,
       type,
       pointsAmount,
       vipPlan,
+      redemptionCodes: redemptionCodes.join("\n"),
     }
 
     return {
@@ -561,14 +564,20 @@ export function buildSubmitRequest({
   const normalizedRedPacketPacketCount = parsePositiveSafeInteger(draft.redPacketPacketCount)
   const fixedRedPacketTotalPoints = multiplyPositiveSafeIntegers(normalizedRedPacketUnitPoints, normalizedRedPacketPacketCount)
   const normalizedLotteryPrizes = draft.lotteryPrizes
-    .map((item) => ({
-      title: item.title.trim(),
-      quantity: Number(item.quantity),
-      description: item.description.trim(),
-      type: normalizeLotteryPrizeType(item.type),
-      pointsAmount: Number(item.pointsAmount),
-      vipPlan: normalizeLotteryVipPlan(item.vipPlan),
-    }))
+    .map((item) => {
+      const type = normalizeLotteryPrizeType(item.type)
+      const redemptionCodes = normalizeLotteryRedemptionCodes(item.redemptionCodes)
+
+      return {
+        title: item.title.trim(),
+        quantity: type === "REDEEM_CODE" ? redemptionCodes.length : Number(item.quantity),
+        description: item.description.trim(),
+        type,
+        pointsAmount: Number(item.pointsAmount),
+        vipPlan: normalizeLotteryVipPlan(item.vipPlan),
+        redemptionCodes,
+      }
+    })
     .filter((item) => item.title || item.description || item.quantity > 0 || item.type !== "MANUAL")
   const normalizedLotteryConditions = draft.lotteryConditions
     .map((item) => ({

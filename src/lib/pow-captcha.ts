@@ -14,7 +14,7 @@ const DEFAULT_MOBILE_POW_DIFFICULTY = 3
 const DEFAULT_POW_EXPIRE_SECONDS = 40
 const POW_MISSING_SECRET_MESSAGE = "缺少 POW_CAPTCHA_SECRET_KEY 或 CAPTCHA_SECRET_KEY，无法校验 PoW 验证码"
 
-export type PowCaptchaScope = "login" | "register"
+export type PowCaptchaScope = "login" | "register" | "sms"
 
 export interface PowCaptchaChallenge {
   challenge: string
@@ -82,7 +82,7 @@ function normalizeNonce(raw: unknown) {
 function normalizeScope(raw: unknown): PowCaptchaScope {
   const scope = String(raw ?? "").trim().toLowerCase()
 
-  if (scope === "login" || scope === "register") {
+  if (scope === "login" || scope === "register" || scope === "sms") {
     return scope
   }
 

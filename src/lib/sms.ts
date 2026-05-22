@@ -4,6 +4,7 @@ import {
   invokeAddonProviderRuntime,
   listAddonProviderRuntimeItems,
 } from "@/lib/addon-provider-registry"
+import { enqueueBackgroundJob } from "@/lib/background-jobs"
 import { getServerSiteSettings } from "@/lib/site-settings"
 import type { ServerSiteSettingsData } from "@/lib/site-settings.types"
 
@@ -20,6 +21,8 @@ export interface SmsSendInput {
 export interface SmsSendResult {
   provider: string
   sent: boolean
+  queued?: boolean
+  jobId?: string
   messageId?: string | null
   requestId?: string | null
 }
@@ -119,7 +122,7 @@ export async function canSendSms() {
   return providers.some((item) => typeof item.runtime?.send === "function")
 }
 
-export async function sendSms(input: SmsSendInput): Promise<SmsSendResult> {
+export async function deliverSms(input: SmsSendInput): Promise<SmsSendResult> {
   const providers = await listAddonProviderRuntimeItems<SmsProviderRuntime>("sms")
 
   for (const item of providers) {
@@ -140,6 +143,19 @@ export async function sendSms(input: SmsSendInput): Promise<SmsSendResult> {
   }
 
   return sendWithAliyun(input, await getServerSiteSettings())
+}
+
+export async function sendSms(input: SmsSendInput): Promise<SmsSendResult> {
+  const result = await enqueueBackgroundJob("sms.send", input)
+
+  return {
+    provider: "queued",
+    sent: true,
+    queued: true,
+    jobId: result.job.id,
+    messageId: null,
+    requestId: null,
+  }
 }
 
 export async function sendSmsVerificationCode(input: {

@@ -10,6 +10,8 @@ export type PostListPreviewMedia = {
   src: string
 }
 
+type MarkdownSourceInput = string | null | undefined
+
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif", ".bmp", ".svg"]
 const EXPLICIT_MEDIA_PATTERN = /MEDIA::(video|audio|iframe)::([^\n\r]+)/gi
 const HTML_MEDIA_PATTERN = /<(video|audio|iframe)\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi
@@ -17,6 +19,10 @@ const HTML_IMAGE_PATTERN = /<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi
 const MARKDOWN_IMAGE_PATTERN = /!\[[^\]]*]\((?:<)?([^)\s>]+)(?:[^)]*)\)/g
 const MARKDOWN_LINK_PATTERN = /(?<!!)\[[^\]]+]\((?:<)?([^)\s>]+)(?:[^)]*)\)/g
 const URL_PATTERN = /(?:https?:)?\/\/[^\s<>()"']+/g
+
+function normalizeMarkdownSource(input: MarkdownSourceInput) {
+  return typeof input === "string" ? input : ""
+}
 
 function normalizeSafeSrc(input: string) {
   const value = input.trim()
@@ -109,45 +115,46 @@ function resolveExplicitMedia(type: string, input: string): PostListPreviewMedia
     : { type: "video", src }
 }
 
-export function resolvePostListPreviewMedia(contentMarkdown: string, fallbackImage?: string | null): PostListPreviewMedia | null {
+export function resolvePostListPreviewMedia(contentMarkdown: MarkdownSourceInput, fallbackImage?: string | null): PostListPreviewMedia | null {
+  const markdown = normalizeMarkdownSource(contentMarkdown)
   const candidates: Array<PostListPreviewMedia & { index: number }> = []
 
-  for (const match of contentMarkdown.matchAll(EXPLICIT_MEDIA_PATTERN)) {
+  for (const match of markdown.matchAll(EXPLICIT_MEDIA_PATTERN)) {
     const media = resolveExplicitMedia(match[1] ?? "", match[2] ?? "")
     if (media) {
       candidates.push({ ...media, index: match.index ?? Number.MAX_SAFE_INTEGER })
     }
   }
 
-  for (const match of contentMarkdown.matchAll(HTML_MEDIA_PATTERN)) {
+  for (const match of markdown.matchAll(HTML_MEDIA_PATTERN)) {
     const media = resolveExplicitMedia(match[1] ?? "", match[2] ?? "")
     if (media) {
       candidates.push({ ...media, index: match.index ?? Number.MAX_SAFE_INTEGER })
     }
   }
 
-  for (const match of contentMarkdown.matchAll(HTML_IMAGE_PATTERN)) {
+  for (const match of markdown.matchAll(HTML_IMAGE_PATTERN)) {
     const src = normalizeSafeSrc(match[1] ?? "")
     if (src) {
       candidates.push({ type: "image", src, index: match.index ?? Number.MAX_SAFE_INTEGER })
     }
   }
 
-  for (const match of contentMarkdown.matchAll(MARKDOWN_IMAGE_PATTERN)) {
+  for (const match of markdown.matchAll(MARKDOWN_IMAGE_PATTERN)) {
     const src = normalizeSafeSrc(match[1] ?? "")
     if (src) {
       candidates.push({ type: "image", src, index: match.index ?? Number.MAX_SAFE_INTEGER })
     }
   }
 
-  for (const match of contentMarkdown.matchAll(MARKDOWN_LINK_PATTERN)) {
+  for (const match of markdown.matchAll(MARKDOWN_LINK_PATTERN)) {
     const media = resolveDirectMedia(match[1] ?? "")
     if (media) {
       candidates.push({ ...media, index: match.index ?? Number.MAX_SAFE_INTEGER })
     }
   }
 
-  for (const match of contentMarkdown.matchAll(URL_PATTERN)) {
+  for (const match of markdown.matchAll(URL_PATTERN)) {
     const media = resolveDirectMedia(match[0] ?? "")
     if (media) {
       candidates.push({ ...media, index: match.index ?? Number.MAX_SAFE_INTEGER })
@@ -192,14 +199,16 @@ function normalizePreviewMarkdown(input: string) {
     .trim()
 }
 
-export function omitPostListPreviewMediaFromMarkdown(contentMarkdown: string, previewMedia?: PostListPreviewMedia | null) {
+export function omitPostListPreviewMediaFromMarkdown(contentMarkdown: MarkdownSourceInput, previewMedia?: PostListPreviewMedia | null) {
+  const markdown = normalizeMarkdownSource(contentMarkdown)
+
   if (!previewMedia?.src) {
-    return contentMarkdown
+    return markdown
   }
 
   const type = previewMedia.type === "embed" ? "iframe" : previewMedia.type
   const explicitMediaPattern = new RegExp(`^[ \\t]*MEDIA::${type}::([^\\n\\r]+)[ \\t]*$`, "gim")
-  let nextContent = removeMatchBySrc(contentMarkdown, explicitMediaPattern, previewMedia.src, 1)
+  let nextContent = removeMatchBySrc(markdown, explicitMediaPattern, previewMedia.src, 1)
 
   if (previewMedia.type === "embed" || previewMedia.type === "video" || previewMedia.type === "audio") {
     nextContent = removeMatchBySrc(nextContent, HTML_MEDIA_PATTERN, previewMedia.src, 2)

@@ -1,5 +1,5 @@
 import { prisma } from "@/db/client"
-import type { Prisma } from "@/db/types"
+import { UserStatus, type Prisma } from "@/db/types"
 import type { PinnedTimestampCursorPayload } from "@/lib/cursor-pagination"
 import { pinnedPostOrderBy } from "@/db/queries"
 import { PUBLIC_READABLE_POST_STATUSES } from "@/lib/post-types"
@@ -62,9 +62,7 @@ export function buildPostSearchWhere(keyword: string) {
     OR: [
       { title: { contains: keyword, mode: "insensitive" as const } },
       { summary: { contains: keyword, mode: "insensitive" as const } },
-      { author: { username: { contains: keyword, mode: "insensitive" as const } } },
-      { author: { nickname: { contains: keyword, mode: "insensitive" as const } } },
-      { board: { name: { contains: keyword, mode: "insensitive" as const } } },
+      { content: { contains: keyword, mode: "insensitive" as const } },
     ],
   }
 }
@@ -130,4 +128,241 @@ export async function findSearchPostsCursor(params: {
     hasPrevPage: params.before ? hasExtra : Boolean(params.after),
     hasNextPage: params.before ? true : hasExtra,
   }
+}
+
+export function buildBoardSearchWhere(keyword: string): Prisma.BoardWhereInput {
+  return {
+    status: "ACTIVE",
+    OR: [
+      { name: { contains: keyword, mode: "insensitive" } },
+      { slug: { contains: keyword, mode: "insensitive" } },
+      { description: { contains: keyword, mode: "insensitive" } },
+      {
+        zone: {
+          is: {
+            OR: [
+              { name: { contains: keyword, mode: "insensitive" } },
+              { slug: { contains: keyword, mode: "insensitive" } },
+            ],
+          },
+        },
+      },
+    ],
+  }
+}
+
+export function countSearchBoards(where: Prisma.BoardWhereInput) {
+  return prisma.board.count({ where })
+}
+
+export function findSearchBoardsPage(params: {
+  where: Prisma.BoardWhereInput
+  page: number
+  pageSize: number
+}) {
+  const normalizedPageSize = Math.min(Math.max(1, params.pageSize), 50)
+
+  return prisma.board.findMany({
+    where: params.where,
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      iconPath: true,
+      followerCount: true,
+      zone: {
+        select: {
+          name: true,
+          slug: true,
+        },
+      },
+      _count: {
+        select: {
+          posts: {
+            where: {
+              status: { in: [...PUBLIC_READABLE_POST_STATUSES] },
+            },
+          },
+        },
+      },
+    },
+    orderBy: [
+      { postCount: "desc" },
+      { followerCount: "desc" },
+      { sortOrder: "asc" },
+      { createdAt: "desc" },
+    ],
+    skip: (params.page - 1) * normalizedPageSize,
+    take: normalizedPageSize,
+  })
+}
+
+export function buildTagSearchWhere(keyword: string): Prisma.TagWhereInput {
+  return {
+    OR: [
+      { name: { contains: keyword, mode: "insensitive" } },
+      { slug: { contains: keyword, mode: "insensitive" } },
+    ],
+  }
+}
+
+export function countSearchTags(where: Prisma.TagWhereInput) {
+  return prisma.tag.count({ where })
+}
+
+export function findSearchTagsPage(params: {
+  where: Prisma.TagWhereInput
+  page: number
+  pageSize: number
+}) {
+  const normalizedPageSize = Math.min(Math.max(1, params.pageSize), 50)
+
+  return prisma.tag.findMany({
+    where: params.where,
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      postCount: true,
+      createdAt: true,
+    },
+    orderBy: [
+      { postCount: "desc" },
+      { createdAt: "desc" },
+      { name: "asc" },
+    ],
+    skip: (params.page - 1) * normalizedPageSize,
+    take: normalizedPageSize,
+  })
+}
+
+export function buildUserSearchWhere(keyword: string): Prisma.UserWhereInput {
+  return {
+    status: {
+      in: [UserStatus.ACTIVE, UserStatus.MUTED],
+    },
+    OR: [
+      { username: { contains: keyword, mode: "insensitive" } },
+      { nickname: { contains: keyword, mode: "insensitive" } },
+      { bio: { contains: keyword, mode: "insensitive" } },
+    ],
+  }
+}
+
+export function countSearchUsers(where: Prisma.UserWhereInput) {
+  return prisma.user.count({ where })
+}
+
+export function findSearchUsersPage(params: {
+  where: Prisma.UserWhereInput
+  page: number
+  pageSize: number
+}) {
+  const normalizedPageSize = Math.min(Math.max(1, params.pageSize), 50)
+
+  return prisma.user.findMany({
+    where: params.where,
+    select: {
+      id: true,
+      username: true,
+      nickname: true,
+      avatarPath: true,
+      bio: true,
+      role: true,
+      status: true,
+      level: true,
+      vipLevel: true,
+      vipExpiresAt: true,
+      postCount: true,
+      commentCount: true,
+      likeReceivedCount: true,
+      _count: {
+        select: {
+          followedByUsers: true,
+          favorites: true,
+          boardFollows: true,
+        },
+      },
+    },
+    orderBy: [
+      { level: "desc" },
+      { postCount: "desc" },
+      { id: "asc" },
+    ],
+    skip: (params.page - 1) * normalizedPageSize,
+    take: normalizedPageSize,
+  })
+}
+
+export function buildFavoriteCollectionSearchWhere(
+  keyword: string,
+  currentUserId?: number | null,
+): Prisma.FavoriteCollectionWhereInput {
+  const visibilityWhere: Prisma.FavoriteCollectionWhereInput = currentUserId
+    ? {
+        OR: [
+          { visibility: "PUBLIC" },
+          { ownerId: currentUserId },
+        ],
+      }
+    : { visibility: "PUBLIC" }
+
+  return {
+    AND: [
+      visibilityWhere,
+      {
+        OR: [
+          { title: { contains: keyword, mode: "insensitive" } },
+          { description: { contains: keyword, mode: "insensitive" } },
+          { owner: { username: { contains: keyword, mode: "insensitive" } } },
+          { owner: { nickname: { contains: keyword, mode: "insensitive" } } },
+        ],
+      },
+    ],
+  }
+}
+
+export function countSearchFavoriteCollections(where: Prisma.FavoriteCollectionWhereInput) {
+  return prisma.favoriteCollection.count({ where })
+}
+
+export function findSearchFavoriteCollectionsPage(params: {
+  where: Prisma.FavoriteCollectionWhereInput
+  page: number
+  pageSize: number
+}) {
+  const normalizedPageSize = Math.min(Math.max(1, params.pageSize), 50)
+
+  return prisma.favoriteCollection.findMany({
+    where: params.where,
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      visibility: true,
+      allowOtherUsersToContribute: true,
+      requireContributionApproval: true,
+      postCount: true,
+      createdAt: true,
+      updatedAt: true,
+      owner: {
+        select: {
+          id: true,
+          username: true,
+          nickname: true,
+          avatarPath: true,
+          role: true,
+          status: true,
+        },
+      },
+    },
+    orderBy: [
+      { postCount: "desc" },
+      { updatedAt: "desc" },
+      { createdAt: "desc" },
+    ],
+    skip: (params.page - 1) * normalizedPageSize,
+    take: normalizedPageSize,
+  })
 }

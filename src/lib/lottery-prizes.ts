@@ -1,6 +1,7 @@
 import { addSafeIntegers, multiplyPositiveSafeIntegers, parsePositiveSafeInteger } from "@/lib/shared/safe-integer"
+import { toPrismaJsonValue } from "@/lib/shared/prisma-json"
 
-export type LotteryPrizeTypeValue = "MANUAL" | "POINTS" | "VIP"
+export type LotteryPrizeTypeValue = "MANUAL" | "POINTS" | "VIP" | "REDEEM_CODE"
 export type LotteryVipPlanValue = "MONTH" | "QUARTER" | "YEAR"
 
 export interface LotteryPrizeCostSettings {
@@ -17,12 +18,14 @@ export interface LotteryPrizeDraftInput {
   type: LotteryPrizeTypeValue
   pointsAmount: number | null
   vipPlan: LotteryVipPlanValue | null
+  redemptionCodes?: string[]
 }
 
 export const LOTTERY_PRIZE_TYPE_OPTIONS = [
   { value: "MANUAL", label: "人工奖品", description: "中奖后由发起人线下或手动发放。" },
   { value: "POINTS", label: "站内积分", description: "开奖后自动发放到中奖用户账户。" },
   { value: "VIP", label: "会员权益", description: "开奖后自动开通或延长中奖用户 VIP。" },
+  { value: "REDEEM_CODE", label: "兑换码", description: "每行一个码，开奖后每名中奖用户只看到自己的码。" },
 ] as const satisfies Array<{ value: LotteryPrizeTypeValue; label: string; description: string }>
 
 export const LOTTERY_VIP_PLAN_OPTIONS = [
@@ -39,6 +42,8 @@ export const LOTTERY_VIP_PLAN_OPTIONS = [
 
 const LOTTERY_PRIZE_TYPE_SET = new Set<LotteryPrizeTypeValue>(LOTTERY_PRIZE_TYPE_OPTIONS.map((item) => item.value))
 const LOTTERY_VIP_PLAN_SET = new Set<LotteryVipPlanValue>(LOTTERY_VIP_PLAN_OPTIONS.map((item) => item.value))
+export const LOTTERY_REDEMPTION_CODE_LIMIT = 1000
+export const LOTTERY_REDEMPTION_CODE_MAX_LENGTH = 200
 
 export function normalizeLotteryPrizeType(value: unknown): LotteryPrizeTypeValue {
   const normalized = typeof value === "string" ? value.trim().toUpperCase() : ""
@@ -52,6 +57,22 @@ export function normalizeLotteryVipPlan(value: unknown): LotteryVipPlanValue {
   return LOTTERY_VIP_PLAN_SET.has(normalized as LotteryVipPlanValue)
     ? normalized as LotteryVipPlanValue
     : "MONTH"
+}
+
+export function normalizeLotteryRedemptionCodes(value: unknown): string[] {
+  const rawLines = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(/\r?\n/)
+      : []
+
+  return rawLines
+    .map((item) => String(item ?? "").trim())
+    .filter(Boolean)
+}
+
+export function hasDuplicateLotteryRedemptionCodes(codes: readonly string[]) {
+  return new Set(codes).size !== codes.length
 }
 
 export function getLotteryPrizeTypeLabel(type: string) {
@@ -81,6 +102,10 @@ export function buildLotteryPrizeDefaultTitle(prize: Pick<LotteryPrizeDraftInput
     return getLotteryVipPlanDetails(prize.vipPlan).label
   }
 
+  if (prize.type === "REDEEM_CODE") {
+    return "兑换码"
+  }
+
   return ""
 }
 
@@ -95,6 +120,10 @@ export function buildLotteryPrizeDefaultDescription(prize: Pick<LotteryPrizeDraf
   if (prize.type === "VIP") {
     const plan = getLotteryVipPlanDetails(prize.vipPlan)
     return `中奖后自动开通或延长 ${plan.label}，有效期 ${plan.days} 天`
+  }
+
+  if (prize.type === "REDEEM_CODE") {
+    return "中奖后显示专属兑换码"
   }
 
   return ""
@@ -143,7 +172,7 @@ export function calculateLotteryAutoPrizeTotalCost(
 
   for (const prize of prizes) {
     const type = normalizeLotteryPrizeType(prize.type)
-    if (type === "MANUAL") {
+    if (type !== "POINTS" && type !== "VIP") {
       continue
     }
 
@@ -181,14 +210,17 @@ export function buildLotteryPrizeCreateInputs(
     const unitCostPoints = resolveLotteryPrizeUnitCost(prize, settings)
     const title = prize.title || buildLotteryPrizeDefaultTitle(prize, pointName)
     const description = prize.description || buildLotteryPrizeDefaultDescription(prize, pointName)
+    const redemptionCodes = normalizeLotteryRedemptionCodes(prize.redemptionCodes)
+    const quantity = prize.type === "REDEEM_CODE" ? redemptionCodes.length : prize.quantity
 
     return {
       title,
       description,
-      quantity: prize.quantity,
+      quantity,
       type: prize.type,
       pointsAmount: prize.type === "POINTS" ? prize.pointsAmount : null,
       vipPlan: prize.type === "VIP" ? (prize.vipPlan ?? "MONTH") : null,
+      codesJson: prize.type === "REDEEM_CODE" ? toPrismaJsonValue(redemptionCodes) : undefined,
       unitCostPoints,
       sortOrder: index,
     }

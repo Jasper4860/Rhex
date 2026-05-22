@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 interface PowCaptchaFieldProps {
-  scope: "login" | "register"
+  scope: "login" | "register" | "sms"
   onTokenChange: (value: string) => void
   onNonceChange: (value: string) => void
   onLoadError?: (message: string) => void

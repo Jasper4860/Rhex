@@ -8,7 +8,7 @@ import { apiError } from "@/lib/api-route"
 import { normalizeEmailAddress } from "@/lib/email"
 import { getSiteSettings } from "@/lib/site-settings"
 import { validatePasswordPolicy, type PasswordPolicySettings } from "@/lib/password-policy"
-import { canSendEmail, sendResetPasswordVerificationEmail } from "@/lib/mailer"
+import { canSendBusinessEmail, sendResetPasswordVerificationEmail } from "@/lib/mailer"
 import { sendVerificationCode, verifyCode } from "@/lib/verification"
 import { isValidMainlandPhone, normalizePhoneNumber } from "@/lib/phone"
 import { canSendSms, sendSmsVerificationCode } from "@/lib/sms"
@@ -43,10 +43,10 @@ export async function sendPasswordResetCode(input: {
     apiError(400, "请输入邮箱")
   }
 
-  const smtpReady = await canSendEmail()
+  const smtpReady = await canSendBusinessEmail("resetPasswordVerification")
 
   if (!smtpReady) {
-    apiError(400, "当前站点未配置邮件发送能力，暂不可找回密码")
+    apiError(400, "当前站点未配置邮件发送能力或已关闭找回密码验证码邮件，暂不可找回密码")
   }
 
   const user = await findUserByEmail(email)

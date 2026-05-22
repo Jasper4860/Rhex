@@ -728,6 +728,8 @@ export default async function PostPage(props: PageProps<"/posts/[slug]">) {
                         currentUserId={currentUser?.id}
                         canAcceptAnswer={displayPost.type === "BOUNTY" && currentUser?.id === displayPost.authorId && !displayPost.bounty?.isResolved}
                         commentsVisibleToAuthorOnly={displayPost.commentsVisibleToAuthorOnly}
+                        canOfflineOwnComment={Boolean(currentUser && boardAccessContext?.settings.allowUserOfflineOwnComment)}
+                        canOfflineUserComment={Boolean(currentUser?.id === displayPost.authorId && boardAccessContext?.settings.allowPostAuthorOfflineComment)}
                         anonymousReplyEnabled={canReplyAsAnonymous}
                         anonymousReplyDefaultChecked={settings.anonymousPostDefaultReplyAnonymous}
                         anonymousReplySwitchVisible={canReplyAsAnonymous && settings.anonymousPostAllowReplySwitch}

@@ -9,8 +9,11 @@ import type { VipLevelIcons } from "@/lib/vip-level-icons"
 import type { SiteTippingGiftItem } from "@/lib/tipping-gifts"
 import type { VipTierPricing } from "@/lib/vip-tier-pricing"
 import type { PasswordPolicySettings, PasswordStrength } from "@/lib/password-policy"
+import type { CaptchaMode } from "@/lib/shared/config-parsers"
+import type { EmailBusinessSwitchSettings } from "@/lib/email-business-switches"
 
 export type { PasswordStrength }
+export type { EmailBusinessSwitchSettings } from "@/lib/email-business-switches"
 
 export const SITE_SETTINGS_STATE_KEY = "__siteSettings"
 
@@ -193,6 +196,8 @@ export interface SiteSecuritySettings {
   passwordChangeRequireEmailVerification: boolean
 }
 
+export type SiteEmailBusinessSwitchSettings = EmailBusinessSwitchSettings
+
 export type PostSlugGenerationMode = "TITLE_TIMESTAMP" | "TIME36" | "PINYIN_TIME36" | "TITLE_TIME36"
 
 export function normalizePostSlugGenerationMode(
@@ -274,6 +279,7 @@ export interface AuthProviderSettings {
 
 export interface SmsProviderSettings {
   enabled: boolean
+  captchaMode: CaptchaMode
   aliyunEndpoint: string
   aliyunRegionId: string
   aliyunSignName: string

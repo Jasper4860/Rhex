@@ -1,5 +1,5 @@
 import { enqueueBackgroundJob, registerBackgroundJobHandler } from "@/lib/background-jobs"
-import { canSendEmail, sendPaymentGatewayOrderSuccessEmail } from "@/lib/mailer"
+import { canSendBusinessEmail, deliverPaymentGatewayOrderSuccessEmail } from "@/lib/mailer"
 import { getServerPaymentGatewayConfig } from "@/lib/payment-gateway-config"
 
 const PAYMENT_GATEWAY_ORDER_SUCCESS_EMAIL_JOB_NAME = "payment-gateway.order-success-email"
@@ -27,7 +27,7 @@ function hasPaymentGatewayOrderSuccessEmailTarget(config: Awaited<ReturnType<typ
 export async function maybeEnqueuePaymentGatewayOrderSuccessEmail(snapshot: PaymentGatewayOrderSuccessEmailSnapshot) {
   const [config, smtpReady] = await Promise.all([
     getServerPaymentGatewayConfig(),
-    canSendEmail(),
+    canSendBusinessEmail("paymentOrderSuccess"),
   ])
 
   if (!hasPaymentGatewayOrderSuccessEmailTarget(config) || !smtpReady) {
@@ -40,14 +40,14 @@ export async function maybeEnqueuePaymentGatewayOrderSuccessEmail(snapshot: Paym
 registerBackgroundJobHandler(PAYMENT_GATEWAY_ORDER_SUCCESS_EMAIL_JOB_NAME, async (payload) => {
   const [config, smtpReady] = await Promise.all([
     getServerPaymentGatewayConfig(),
-    canSendEmail(),
+    canSendBusinessEmail("paymentOrderSuccess"),
   ])
 
   if (!hasPaymentGatewayOrderSuccessEmailTarget(config) || !smtpReady) {
     return
   }
 
-  await sendPaymentGatewayOrderSuccessEmail({
+  await deliverPaymentGatewayOrderSuccessEmail({
     to: config.paymentSuccessEmailRecipient,
     ...payload,
   })

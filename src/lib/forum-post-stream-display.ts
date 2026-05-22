@@ -96,9 +96,10 @@ export function mapSitePostsToDisplayItems(
       tipPoints: post.stats.tipPoints,
     }, settings)
 
-    const previewMedia = resolvePostListPreviewMedia(post.contentMarkdown, post.coverImage)
+    const contentMarkdown = typeof post.contentMarkdown === "string" ? post.contentMarkdown : ""
+    const previewMedia = resolvePostListPreviewMedia(contentMarkdown, post.coverImage)
     const previewContent = buildPostListPreviewContent({
-      contentMarkdown: post.contentMarkdown,
+      contentMarkdown,
       previewMedia,
       markdownEmojiMap: settings.markdownEmojiMap,
     })
@@ -108,7 +109,7 @@ export function mapSitePostsToDisplayItems(
       slug: post.slug,
       title: post.title,
       excerpt: post.excerpt,
-      contentMarkdown: post.contentMarkdown,
+      contentMarkdown,
       coverImage: post.coverImage,
       previewMedia,
       type: post.type,

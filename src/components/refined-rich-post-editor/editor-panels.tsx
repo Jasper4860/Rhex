@@ -645,7 +645,7 @@ export function EmojiInsertPanel({
       position={position}
       ready={ready}
       panelRef={panelRef}
-      className={`${FLOATING_EDITOR_PANEL_CLASSNAME} p-3`}
+      className="overflow-hidden rounded-[14px] border border-border bg-background p-0 shadow-2xl"
       onOpenChange={(nextOpen) => {
         if (!nextOpen) {
           onClose()
@@ -658,7 +658,9 @@ export function EmojiInsertPanel({
           value: emoji.shortcode,
           icon: emoji.icon,
           label: emoji.label,
+          group: emoji.group,
         }))}
+        columns={8}
         onSelect={onSelect}
       />
     </FloatingEditorPanel>

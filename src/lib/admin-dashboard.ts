@@ -97,6 +97,8 @@ export interface AdminStructureData {
     followerCount: number
     allowUserPost: boolean
     allowUserReply: boolean
+    allowPostAuthorOfflineComment: boolean
+    allowUserOfflineOwnComment: boolean
     postPointDelta: number
     replyPointDelta: number
     postIntervalSeconds: number
@@ -133,8 +135,12 @@ export interface AdminStructureData {
     allowPost: boolean
     allowUserPost: boolean | null
     allowUserReply: boolean | null
+    allowPostAuthorOfflineComment: boolean | null
+    allowUserOfflineOwnComment: boolean | null
     effectiveAllowUserPost: boolean
     effectiveAllowUserReply: boolean
+    effectiveAllowPostAuthorOfflineComment: boolean
+    effectiveAllowUserOfflineOwnComment: boolean
     treasuryPoints: number
     zoneId: string | null
     zoneName: string | null
@@ -311,6 +317,8 @@ export function mapAdminStructureData(data: AdminStructureRawData, actor: AdminA
         followerCount: relatedBoards.reduce((total, board) => total + board.followerCount, 0),
         allowUserPost: settings.allowUserPost,
         allowUserReply: settings.allowUserReply,
+        allowPostAuthorOfflineComment: settings.allowPostAuthorOfflineComment,
+        allowUserOfflineOwnComment: settings.allowUserOfflineOwnComment,
         postPointDelta: settings.postPointDelta,
         replyPointDelta: settings.replyPointDelta,
         postIntervalSeconds: settings.postIntervalSeconds,
@@ -352,8 +360,12 @@ export function mapAdminStructureData(data: AdminStructureRawData, actor: AdminA
         allowPost: board.allowPost,
         allowUserPost: board.allowUserPost ?? null,
         allowUserReply: board.allowUserReply ?? null,
+        allowPostAuthorOfflineComment: board.allowPostAuthorOfflineComment ?? null,
+        allowUserOfflineOwnComment: board.allowUserOfflineOwnComment ?? null,
         effectiveAllowUserPost: settings.allowUserPost,
         effectiveAllowUserReply: settings.allowUserReply,
+        effectiveAllowPostAuthorOfflineComment: settings.allowPostAuthorOfflineComment,
+        effectiveAllowUserOfflineOwnComment: settings.allowUserOfflineOwnComment,
         treasuryPoints: board.treasuryPoints,
         zoneId: board.zoneId ?? null,
         zoneName: board.zone?.name ?? null,

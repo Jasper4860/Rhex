@@ -34,6 +34,8 @@ export interface SiteBoardItem {
   allowedPostTypes?: string[]
   allowUserPost?: boolean
   allowUserReply?: boolean
+  allowPostAuthorOfflineComment?: boolean
+  allowUserOfflineOwnComment?: boolean
   requirePostReview?: boolean
   requireCommentReview?: boolean
   minViewPoints?: number
@@ -71,6 +73,8 @@ function mapSiteBoard(board: SiteBoardRecord): SiteBoardItem {
     allowedPostTypes: settings.allowedPostTypes,
     allowUserPost: settings.allowUserPost,
     allowUserReply: settings.allowUserReply,
+    allowPostAuthorOfflineComment: settings.allowPostAuthorOfflineComment,
+    allowUserOfflineOwnComment: settings.allowUserOfflineOwnComment,
     requirePostReview: settings.requirePostReview,
     requireCommentReview: settings.requireCommentReview,
     minViewPoints: settings.minViewPoints,

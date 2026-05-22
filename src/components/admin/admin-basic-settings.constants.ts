@@ -73,6 +73,7 @@ export const INTERNAL_SETTING_TABS: Record<
     { key: "fields", label: "表单字段" },
     { key: "security", label: "安全" },
     { key: "email-templates", label: "邮件模板" },
+    { key: "email-switches", label: "邮件开关" },
     { key: "auth", label: "第三方登录" },
     { key: "sms", label: "短信配置" },
     { key: "smtp", label: "SMTP 邮件" },

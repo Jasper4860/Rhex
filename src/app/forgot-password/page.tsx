@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getCurrentUser } from "@/lib/auth"
 import { getSiteSettings } from "@/lib/site-settings"
+import { canSendSms } from "@/lib/sms"
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings()
@@ -18,7 +19,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ForgotPasswordPage() {
-  const user = await getCurrentUser()
+  const [user, settings, smsAvailable] = await Promise.all([
+    getCurrentUser(),
+    getSiteSettings(),
+    canSendSms(),
+  ])
 
   if (user) {
     redirect("/")
@@ -38,7 +43,7 @@ export default async function ForgotPasswordPage() {
                   <CardTitle>找回密码</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ForgotPasswordForm />
+                  <ForgotPasswordForm settings={settings} smsAvailable={smsAvailable} />
                   <p className="mt-4 text-center text-sm text-muted-foreground">
                     想起密码了？<Link href="/login" className="font-medium text-foreground hover:underline">返回登录</Link>
                   </p>

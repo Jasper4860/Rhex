@@ -214,7 +214,7 @@ export function CommentReviewStatusNotice({ status, reviewNote, isAdmin, isOwner
   )
 }
 
-export function buildCommentAdminActions({ entry, isAdmin, adminRole, canPinComment = false, pinningCommentId = null }: { entry: ThreadEntry; isAdmin: boolean; adminRole?: "ADMIN" | "MODERATOR" | null; canPinComment?: boolean; pinningCommentId?: string | null }) {
+export function buildCommentAdminActions({ entry, isAdmin, adminRole, canPinComment = false, pinningCommentId = null, currentUserId, canOfflineOwnComment = false, canOfflineUserComment = false }: { entry: ThreadEntry; isAdmin: boolean; adminRole?: "ADMIN" | "MODERATOR" | null; canPinComment?: boolean; pinningCommentId?: string | null; currentUserId?: number; canOfflineOwnComment?: boolean; canOfflineUserComment?: boolean }) {
   const actions: CommentAdminAction[] = []
   const canRestrictEntryAuthor = adminRole === "ADMIN"
     ? entry.authorRole !== "ADMIN"
@@ -222,6 +222,13 @@ export function buildCommentAdminActions({ entry, isAdmin, adminRole, canPinComm
   const canRestoreEntryAuthor = adminRole === "ADMIN" || entry.authorRole === "USER"
   if (canPinComment && "isPinnedByAuthor" in entry) {
     actions.push({ key: entry.isPinnedByAuthor ? "comment.unpinByAuthor" : "comment.pinByAuthor", label: pinningCommentId === entry.id ? "处理中..." : entry.isPinnedByAuthor ? "取消置顶" : "置顶评论", targetId: entry.id, disabled: pinningCommentId === entry.id })
+  }
+  if (!isAdmin && currentUserId && entry.status === "NORMAL") {
+    if (currentUserId === entry.authorId && canOfflineOwnComment) {
+      actions.push({ key: "comment.offline", label: "下线自己的评论", tone: "danger", targetId: entry.id })
+    } else if (currentUserId !== entry.authorId && canOfflineUserComment) {
+      actions.push({ key: "comment.offline", label: "下线评论", tone: "danger", targetId: entry.id })
+    }
   }
   if (!isAdmin) return actions
   if (entry.status === "HIDDEN") {

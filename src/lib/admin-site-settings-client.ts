@@ -11,7 +11,12 @@ function isMarkdownEmojiItem(value: unknown): value is MarkdownEmojiItem {
   }
 
   const row = value as Record<string, unknown>
-  return typeof row.shortcode === "string" && typeof row.label === "string" && typeof row.icon === "string"
+  return (
+    typeof row.shortcode === "string" &&
+    typeof row.label === "string" &&
+    typeof row.icon === "string" &&
+    (typeof row.group === "undefined" || typeof row.group === "string")
+  )
 }
 
 function isUploadMarkdownEmojiFilesData(value: unknown): value is UploadMarkdownEmojiFilesData {

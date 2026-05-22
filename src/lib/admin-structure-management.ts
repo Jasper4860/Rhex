@@ -12,6 +12,8 @@ export interface ZoneItem {
   followerCount: number
   allowUserPost: boolean
   allowUserReply: boolean
+  allowPostAuthorOfflineComment: boolean
+  allowUserOfflineOwnComment: boolean
   requirePostReview: boolean
   requireCommentReview: boolean
   postPointDelta: number
@@ -67,8 +69,12 @@ export interface BoardItem {
   allowPost: boolean
   allowUserPost: boolean | null
   allowUserReply: boolean | null
+  allowPostAuthorOfflineComment: boolean | null
+  allowUserOfflineOwnComment: boolean | null
   effectiveAllowUserPost: boolean
   effectiveAllowUserReply: boolean
+  effectiveAllowPostAuthorOfflineComment: boolean
+  effectiveAllowUserOfflineOwnComment: boolean
   postCount: number
   followerCount: number
   todayPostCount: number

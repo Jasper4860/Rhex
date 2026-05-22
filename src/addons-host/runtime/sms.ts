@@ -93,6 +93,8 @@ export async function sendAddonSms(
     phone: recipient.phone,
     provider: result.provider,
     sent: true,
+    queued: result.queued ? true : undefined,
+    jobId: result.jobId,
     sentAt: new Date().toISOString(),
     messageId: result.messageId ?? null,
     requestId: result.requestId ?? null,

@@ -13,7 +13,7 @@ import {
   upsertLotteryParticipantEligibility,
 } from "@/db/lottery-queries"
 import { apiError } from "@/lib/api-route"
-import { canSendEmail } from "@/lib/mailer"
+import { canSendBusinessEmail, sendUserNotificationEmail } from "@/lib/mailer"
 import { isPublicReadablePostStatus } from "@/lib/post-types"
 
 
@@ -21,11 +21,16 @@ import { formatDateTime, parseBusinessDateTime } from "@/lib/formatters"
 import {
   buildLotteryPrizeDefaultDescription,
   buildLotteryPrizeDefaultTitle,
+  hasDuplicateLotteryRedemptionCodes,
+  LOTTERY_REDEMPTION_CODE_LIMIT,
+  LOTTERY_REDEMPTION_CODE_MAX_LENGTH,
+  normalizeLotteryRedemptionCodes,
   normalizeLotteryPrizeType,
   normalizeLotteryVipPlan,
   type LotteryPrizeTypeValue,
   type LotteryVipPlanValue,
 } from "@/lib/lottery-prizes"
+import { getConfiguredSiteOrigin } from "@/lib/site-origin-config"
 import { getServerSiteSettings } from "@/lib/site-settings"
 import { revalidateUserSurfaceCache } from "@/lib/user-surface"
 
@@ -54,6 +59,7 @@ export interface LotteryPrizeInput {
   type: LotteryPrizeTypeValue
   pointsAmount: number | null
   vipPlan: LotteryVipPlanValue | null
+  redemptionCodes: string[]
 }
 
 export interface LotteryConfigInput {
@@ -108,12 +114,14 @@ export interface LotteryViewModel {
     type: LotteryPrizeTypeValue
     pointsAmount: number | null
     vipPlan: LotteryVipPlanValue | null
+    hasRedemptionCodes: boolean
     winnerCount: number
     winners: Array<{
       userId: number
       username: string
       nickname: string | null
       avatarPath: string | null
+      redemptionCode: string | null
       drawnAt: string
     }>
   }>
@@ -146,10 +154,12 @@ interface LotteryPostRelations extends Post {
     type: LotteryPrizeTypeValue
     pointsAmount: number | null
     vipPlan: LotteryVipPlanValue | null
+    codesJson?: unknown
     unitCostPoints: number
     sortOrder: number
     winners: Array<{
       userId: number
+      redemptionCode: string | null
       drawnAt: Date
       user: {
         username: string
@@ -242,13 +252,17 @@ export function normalizeLotteryConfig(raw: unknown): { success: boolean; messag
             ? normalizeInteger(rawItem?.pointsAmount ?? rawItem?.amount ?? 0)
             : null
           const vipPlan = type === "VIP" ? normalizeLotteryVipPlan(rawItem?.vipPlan) : null
+          const redemptionCodes = type === "REDEEM_CODE"
+            ? normalizeLotteryRedemptionCodes(rawItem?.redemptionCodes ?? rawItem?.codes)
+            : []
           const prize = {
             title: String(rawItem?.title ?? "").trim(),
             description: String(rawItem?.description ?? "").trim(),
-            quantity: normalizeInteger(rawItem?.quantity ?? 0),
+            quantity: type === "REDEEM_CODE" ? redemptionCodes.length : normalizeInteger(rawItem?.quantity ?? 0),
             type,
             pointsAmount,
             vipPlan,
+            redemptionCodes,
           }
 
           return {
@@ -257,7 +271,7 @@ export function normalizeLotteryConfig(raw: unknown): { success: boolean; messag
             description: prize.description || buildLotteryPrizeDefaultDescription(prize),
           }
         })
-        .filter((item) => item.title || item.description || item.quantity > 0 || item.type !== "MANUAL")
+        .filter((item) => item.title || item.description || item.quantity > 0 || item.type !== "MANUAL" || item.redemptionCodes.length > 0)
     : []
 
   const conditions = Array.isArray(payload.conditions)
@@ -301,6 +315,20 @@ export function normalizeLotteryConfig(raw: unknown): { success: boolean; messag
 
     if (prize.type === "VIP" && !prize.vipPlan) {
       return { success: false, message: "会员权益奖品配置不合法" }
+    }
+
+    if (prize.type === "REDEEM_CODE") {
+      if (prize.redemptionCodes.length < 1 || prize.redemptionCodes.length > LOTTERY_REDEMPTION_CODE_LIMIT) {
+        return { success: false, message: `兑换码奖品需提供 1-${LOTTERY_REDEMPTION_CODE_LIMIT} 个兑换码` }
+      }
+
+      if (prize.redemptionCodes.some((code) => code.length > LOTTERY_REDEMPTION_CODE_MAX_LENGTH)) {
+        return { success: false, message: `单个兑换码长度不能超过 ${LOTTERY_REDEMPTION_CODE_MAX_LENGTH} 个字符` }
+      }
+
+      if (hasDuplicateLotteryRedemptionCodes(prize.redemptionCodes)) {
+        return { success: false, message: "兑换码不能重复" }
+      }
     }
   }
 
@@ -572,45 +600,39 @@ function buildLotteryAnnouncement(input: {
   return lines.join("\n")
 }
 
+function buildLotteryPostUrl(postSlug: string) {
+  const path = `/posts/${postSlug}`
+  const origin = getConfiguredSiteOrigin()
+  return origin ? new URL(path, `${origin}/`).toString() : path
+}
+
 async function sendLotteryWinnerEmails(input: {
   postSlug: string
   postTitle: string
   winners: Array<{ email: string | null; nickname: string | null; username: string; prizeTitle: string }>
 }) {
-  const available = await canSendEmail().catch(() => false)
+  const available = await canSendBusinessEmail("lotteryWinner").catch(() => false)
   if (!available) {
     return
   }
 
-  const nodemailer = await import("nodemailer")
   const settings = await getServerSiteSettings()
   if (!settings.smtpEnabled || !settings.smtpHost || !settings.smtpPort || !settings.smtpUser || !settings.smtpPass || !settings.smtpFrom) {
     return
   }
 
-  const { smtpFrom, smtpHost, smtpPass, smtpPort, smtpSecure, smtpUser } = settings
-  const transporter = nodemailer.default.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpSecure,
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  })
+  const postUrl = buildLotteryPostUrl(input.postSlug)
 
   await Promise.all(
 
     input.winners
       .filter((winner): winner is { email: string; nickname: string | null; username: string; prizeTitle: string } => Boolean(winner.email))
-      .map((winner) => transporter.sendMail({
-        from: smtpFrom,
-
+      .map((winner) => sendUserNotificationEmail({
         to: winner.email,
-
         subject: `${settings.siteName} 抽奖中奖通知`,
-        text: `${winner.nickname ?? winner.username}，恭喜你在帖子《${input.postTitle}》中获得 ${winner.prizeTitle}。请尽快前往站内查看开奖结果：/posts/${input.postSlug}`,
-        html: `<div style="font-family:Arial,sans-serif;line-height:1.7;color:#111"><h2>恭喜中奖</h2><p>${winner.nickname ?? winner.username}，你在帖子《${input.postTitle}》中获得了 <strong>${winner.prizeTitle}</strong>。</p><p>请尽快登录站内查看开奖结果与领奖说明。</p><p>帖子地址：/posts/${input.postSlug}</p></div>`,
+        text: `${winner.nickname ?? winner.username}，恭喜你在帖子《${input.postTitle}》中获得 ${winner.prizeTitle}。请尽快前往站内查看开奖结果：${postUrl}`,
+        html: `<div style="font-family:Arial,sans-serif;line-height:1.7;color:#111"><h2>恭喜中奖</h2><p>${winner.nickname ?? winner.username}，你在帖子《${input.postTitle}》中获得了 <strong>${winner.prizeTitle}</strong>。</p><p>请尽快登录站内查看开奖结果与领奖说明。</p><p>帖子地址：${postUrl}</p></div>`,
+        businessKey: "lotteryWinner",
       })),
   )
 }
@@ -627,7 +649,7 @@ export async function drawLotteryWinners(postId: string, options?: { force?: boo
   }
 
   if (post.lotteryStatus === LotteryStatus.DRAWN && options?.force && post.lotteryPrizes.some((prize) => prize.type !== "MANUAL")) {
-    apiError(409, "已自动发放站内奖品的抽奖不可重新开奖")
+    apiError(409, "已发放或分配奖品的抽奖不可重新开奖")
   }
 
   if (post.lotteryTriggerMode === LotteryTriggerMode.MANUAL && !options?.force) {
@@ -654,6 +676,10 @@ export async function drawLotteryWinners(postId: string, options?: { force?: boo
   let cursor = 0
 
   for (const prize of post.lotteryPrizes) {
+    const redemptionCodes = prize.type === "REDEEM_CODE"
+      ? normalizeLotteryRedemptionCodes(prize.codesJson)
+      : []
+
     for (let count = 0; count < prize.quantity && cursor < pool.length; count += 1) {
       const participant = pool[cursor]
       cursor += 1
@@ -662,6 +688,7 @@ export async function drawLotteryWinners(postId: string, options?: { force?: boo
         prizeId: prize.id,
         participantId: participant.id,
         userId: participant.userId,
+        redemptionCode: redemptionCodes[count] ?? null,
         drawnAt: lockedAt,
         createdAt: lockedAt,
       })
@@ -799,12 +826,14 @@ export function mapLotteryView(post: LotteryPostRelations, currentUserId?: numbe
         type: prize.type,
         pointsAmount: prize.pointsAmount,
         vipPlan: prize.vipPlan,
+        hasRedemptionCodes: prize.type === "REDEEM_CODE",
         winnerCount: prize.winners.length,
         winners: prize.winners.map((winner) => ({
           userId: winner.userId,
           username: winner.user.username,
           nickname: winner.user.nickname,
           avatarPath: winner.user.avatarPath ?? null,
+          redemptionCode: currentUserId && winner.userId === currentUserId ? (winner.redemptionCode ?? null) : null,
           drawnAt: winner.drawnAt.toISOString(),
         })),
       })),

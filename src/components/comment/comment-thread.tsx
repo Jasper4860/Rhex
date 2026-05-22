@@ -34,6 +34,8 @@ interface CommentThreadProps {
   currentUserId?: number
   canAcceptAnswer?: boolean
   commentsVisibleToAuthorOnly?: boolean
+  canOfflineOwnComment?: boolean
+  canOfflineUserComment?: boolean
   anonymousReplyEnabled?: boolean
   anonymousReplyDefaultChecked?: boolean
   anonymousReplySwitchVisible?: boolean
@@ -121,7 +123,7 @@ function shouldIgnoreReplyShortcut(target: EventTarget | null) {
   return ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
 }
 
-export function CommentThread({ threadId, comments, flatComments = [], postId, postPath, pointName, tipping, canReply, currentPage, pageSize, total, currentSort, currentDisplayMode, commentLoadMode = COMMENT_LOAD_MODE_PAGINATION, currentUserId, canAcceptAnswer = false, commentsVisibleToAuthorOnly = false, anonymousReplyEnabled = false, anonymousReplyDefaultChecked = false, anonymousReplySwitchVisible = false, isAdmin = false, adminRole = null, canPinComment = false, markdownEmojiMap, commentEditWindowMinutes = 5, initialVisibleReplies = 10 }: CommentThreadProps) {
+export function CommentThread({ threadId, comments, flatComments = [], postId, postPath, pointName, tipping, canReply, currentPage, pageSize, total, currentSort, currentDisplayMode, commentLoadMode = COMMENT_LOAD_MODE_PAGINATION, currentUserId, canAcceptAnswer = false, commentsVisibleToAuthorOnly = false, canOfflineOwnComment = false, canOfflineUserComment = false, anonymousReplyEnabled = false, anonymousReplyDefaultChecked = false, anonymousReplySwitchVisible = false, isAdmin = false, adminRole = null, canPinComment = false, markdownEmojiMap, commentEditWindowMinutes = 5, initialVisibleReplies = 10 }: CommentThreadProps) {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -824,6 +826,40 @@ export function CommentThread({ threadId, comments, flatComments = [], postId, p
     router.refresh()
   }
 
+  async function offlineComment(commentId: string) {
+    setActionMessage("")
+
+    const response = await fetch("/api/comments/offline", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ commentId }),
+    })
+
+    const result = await response.json().catch(() => null) as { message?: string; data?: { reviewNote?: string | null } } | null
+    setActionMessage(result?.message ?? (response.ok ? "评论已下线" : "操作失败"))
+
+    if (!response.ok) {
+      return
+    }
+
+    patchCommentThreadEntries({
+      targetId: commentId,
+      rootUpdater: (comment) => ({
+        ...comment,
+        status: "HIDDEN",
+        reviewNote: result?.data?.reviewNote ?? "评论已下线",
+      }),
+      replyUpdater: (reply) => ({
+        ...reply,
+        status: "HIDDEN",
+        reviewNote: result?.data?.reviewNote ?? "评论已下线",
+      }),
+    })
+    router.refresh()
+  }
+
   async function togglePinnedComment(commentId: string, nextAction: "pin" | "unpin") {
     setPinningCommentId(commentId)
     setActionMessage("")
@@ -966,11 +1002,14 @@ export function CommentThread({ threadId, comments, flatComments = [], postId, p
             onEnableReplyBox={(target) => enableReplyBox(target)}
             onAcceptAnswer={acceptAnswer}
             onRunAdminAction={runAdminAction}
+            onOfflineComment={offlineComment}
             onTogglePinnedComment={togglePinnedComment}
             onStartEdit={startEdit}
             onStopEdit={stopEdit}
             canEditComment={canEditComment}
             getEditButtonLabel={getEditButtonLabel}
+            canOfflineOwnComment={canOfflineOwnComment}
+            canOfflineUserComment={canOfflineUserComment}
           />
         ))
       ) : (
@@ -1004,11 +1043,14 @@ export function CommentThread({ threadId, comments, flatComments = [], postId, p
                 onEnableReplyBox={(target) => enableReplyBox(target)}
                 onAcceptAnswer={acceptAnswer}
                 onRunAdminAction={runAdminAction}
+                onOfflineComment={offlineComment}
                 onTogglePinnedComment={togglePinnedComment}
                 onStartEdit={startEdit}
                 onStopEdit={stopEdit}
                 canEditComment={canEditComment}
                 getEditButtonLabel={getEditButtonLabel}
+                canOfflineOwnComment={canOfflineOwnComment}
+                canOfflineUserComment={canOfflineUserComment}
                 renderReplies={false}
               />
             )
@@ -1037,10 +1079,13 @@ export function CommentThread({ threadId, comments, flatComments = [], postId, p
               onJumpToParentComment={jumpToParentComment}
               onEnableReplyBox={(target) => enableReplyBox(target)}
               onRunAdminAction={runAdminAction}
+              onOfflineComment={offlineComment}
               onStartEdit={startEdit}
               onStopEdit={stopEdit}
               canEditComment={canEditComment}
               getEditButtonLabel={getEditButtonLabel}
+              canOfflineOwnComment={canOfflineOwnComment}
+              canOfflineUserComment={canOfflineUserComment}
               layout="flat"
             />
           )

@@ -1,7 +1,7 @@
 import "server-only"
 
 import { prisma } from "@/db/client"
-import { sendUserNotificationEmail } from "@/lib/mailer"
+import { canSendBusinessEmail, sendUserNotificationEmail } from "@/lib/mailer"
 import type {
   AddonEmailSendInput,
   AddonEmailSendResult,
@@ -66,6 +66,10 @@ async function resolveAddonEmailRecipient(input: AddonEmailSendInput) {
 export async function sendAddonEmail(
   input: AddonEmailSendInput,
 ): Promise<AddonEmailSendResult> {
+  if (!(await canSendBusinessEmail("addon"))) {
+    throw new Error("系统已关闭插件业务邮件发送")
+  }
+
   const recipient = await resolveAddonEmailRecipient(input)
   const subject = normalizeOptionalString(input.subject)
   const text = normalizeOptionalString(input.text)
@@ -79,17 +83,20 @@ export async function sendAddonEmail(
     throw new Error("邮件正文需要提供 text 或 html")
   }
 
-  await sendUserNotificationEmail({
+  const result = await sendUserNotificationEmail({
     to: recipient.email,
     subject,
     text: text || html,
     html: html || text,
+    businessKey: "addon",
   })
 
   return {
     userId: recipient.id,
     username: recipient.username,
     sent: true,
+    queued: true,
+    jobId: result.job.id,
     sentAt: new Date().toISOString(),
   }
 }

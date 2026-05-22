@@ -4,6 +4,7 @@ import type { LocalPostDraft } from "@/lib/post-draft"
 import {
   buildLotteryPrizeDefaultDescription,
   buildLotteryPrizeDefaultTitle,
+  normalizeLotteryRedemptionCodes,
   normalizeLotteryPrizeType,
   normalizeLotteryVipPlan,
   type LotteryPrizeTypeValue,
@@ -68,11 +69,13 @@ export function useCreatePostLottery({
           const type = normalizeLotteryPrizeType(value)
           const pointsAmount = item.pointsAmount || "100"
           const vipPlan = normalizeLotteryVipPlan(item.vipPlan)
+          const redemptionCodes = normalizeLotteryRedemptionCodes(item.redemptionCodes)
           const nextPrize = {
             ...item,
             type,
             pointsAmount,
             vipPlan,
+            quantity: type === "REDEEM_CODE" ? String(redemptionCodes.length) : item.quantity,
           }
 
           return {
@@ -98,6 +101,14 @@ export function useCreatePostLottery({
           return { ...item, pointsAmount: value }
         }
 
+        if (field === "redemptionCodes") {
+          return {
+            ...item,
+            redemptionCodes: value,
+            quantity: String(normalizeLotteryRedemptionCodes(value).length),
+          }
+        }
+
         return { ...item, [field]: value }
       }),
     )
@@ -107,7 +118,7 @@ export function useCreatePostLottery({
     if (draft.lotteryPrizes.length < 20) {
       updateDraftField("lotteryPrizes", [
         ...draft.lotteryPrizes,
-        { title: "", quantity: "1", description: "", type: "MANUAL" as LotteryPrizeTypeValue, pointsAmount: "100", vipPlan: "MONTH" },
+        { title: "", quantity: "1", description: "", type: "MANUAL" as LotteryPrizeTypeValue, pointsAmount: "100", vipPlan: "MONTH", redemptionCodes: "" },
       ])
     }
   }

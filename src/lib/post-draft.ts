@@ -29,7 +29,7 @@ export interface LocalPostDraft {
   lotteryStartsAt: string
   lotteryEndsAt: string
   lotteryParticipantGoal: string
-  lotteryPrizes: Array<{ title: string; quantity: string; description: string; type: "MANUAL" | "POINTS" | "VIP"; pointsAmount: string; vipPlan: "MONTH" | "QUARTER" | "YEAR" }>
+  lotteryPrizes: Array<{ title: string; quantity: string; description: string; type: "MANUAL" | "POINTS" | "VIP" | "REDEEM_CODE"; pointsAmount: string; vipPlan: "MONTH" | "QUARTER" | "YEAR"; redemptionCodes: string }>
   lotteryConditions: Array<{ type: string; value: string; operator: string; description: string; groupKey: string }>
   redPacketEnabled: boolean
   redPacketMode: "RED_PACKET" | "JACKPOT"
@@ -110,7 +110,7 @@ export function createEmptyLocalPostDraft(boardSlug = ""): LocalPostDraft {
     lotteryStartsAt: "",
     lotteryEndsAt: "",
     lotteryParticipantGoal: "",
-    lotteryPrizes: [{ title: "一等奖", quantity: "1", description: "填写奖品描述", type: "MANUAL", pointsAmount: "100", vipPlan: "MONTH" }],
+    lotteryPrizes: [{ title: "一等奖", quantity: "1", description: "填写奖品描述", type: "MANUAL", pointsAmount: "100", vipPlan: "MONTH", redemptionCodes: "" }],
     lotteryConditions: [{ type: "REPLY_CONTENT_LENGTH", value: "10", operator: "GTE", description: "回帖内容至少 10 字", groupKey: "default" }],
     redPacketEnabled: false,
     redPacketMode: "RED_PACKET",
@@ -169,6 +169,19 @@ function normalizeStoredDraftData(draft: LocalPostDraft) {
     ...createEmptyLocalPostDraft(draft.boardSlug || ""),
     ...draft,
     manualTags: Array.isArray(draft.manualTags) ? draft.manualTags.filter((item): item is string => typeof item === "string") : [],
+    lotteryPrizes: Array.isArray(draft.lotteryPrizes)
+      ? draft.lotteryPrizes
+          .filter((item): item is LocalPostDraft["lotteryPrizes"][number] => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+          .map((item) => ({
+            title: typeof item.title === "string" ? item.title : "",
+            quantity: typeof item.quantity === "string" ? item.quantity : "1",
+            description: typeof item.description === "string" ? item.description : "",
+            type: item.type === "POINTS" || item.type === "VIP" || item.type === "REDEEM_CODE" ? item.type : "MANUAL",
+            pointsAmount: typeof item.pointsAmount === "string" ? item.pointsAmount : "100",
+            vipPlan: item.vipPlan === "QUARTER" || item.vipPlan === "YEAR" ? item.vipPlan : "MONTH",
+            redemptionCodes: typeof item.redemptionCodes === "string" ? item.redemptionCodes : "",
+          }))
+      : createEmptyLocalPostDraft(draft.boardSlug || "").lotteryPrizes,
     attachments: Array.isArray(draft.attachments)
       ? draft.attachments
           .filter((item): item is LocalPostDraft["attachments"][number] => Boolean(item) && typeof item === "object" && !Array.isArray(item))

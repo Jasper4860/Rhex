@@ -17,6 +17,7 @@ import {
   matchesBackgroundJob,
 } from "@/lib/background-job-helpers"
 import type { NotificationType, RelatedType } from "@/db/types"
+import type { EmailBusinessSwitchKey } from "@/lib/email-business-switches"
 import type { UserNotificationDeliveryJobPayload } from "@/lib/user-notification-delivery"
 import { logError, logInfo } from "@/lib/logger"
 
@@ -55,6 +56,71 @@ export interface BackgroundJobPayloadMap {
   }
   "notification.dispatch-webhook": UserNotificationDeliveryJobPayload
   "notification.dispatch-email": UserNotificationDeliveryJobPayload
+  "email.register-verification": {
+    to: string
+    code: string
+  }
+  "email.reset-password-verification": {
+    to: string
+    code: string
+    username: string
+  }
+  "email.password-change-verification": {
+    to: string
+    code: string
+    username: string
+  }
+  "email.login-ip-change-alert": {
+    to: string
+    username: string
+    displayName?: string | null
+    previousIp: string
+    currentIp: string
+    loginAt: string
+    userAgent?: string | null
+  }
+  "email.payment-gateway-order-success": {
+    to: string
+    merchantOrderNo: string
+    bizScene: string
+    orderSubject: string
+    amountFen: number
+    currency: string
+    providerCode: string
+    channelCode: string
+    paidAt: string
+    username: string
+    pointName?: string | null
+    points?: number | null
+    bonusPoints?: number | null
+    totalPoints?: number | null
+  }
+  "email.generic": {
+    to: string
+    subject: string
+    text: string
+    html: string
+    businessKey?: EmailBusinessSwitchKey
+  }
+  "email.smtp-test": {
+    to: string
+    siteName?: string | null
+    smtpHost?: string | null
+    smtpPort?: number | null
+    smtpUser?: string | null
+    smtpPass?: string | null
+    smtpFrom?: string | null
+    smtpSecure?: boolean
+  }
+  "sms.send": {
+    phone: string
+    code?: string
+    scene?: string
+    templateCode?: string
+    templateParam?: Record<string, unknown>
+    signName?: string
+    outId?: string
+  }
   "follow.notify-new-post": {
     postId: string
   }

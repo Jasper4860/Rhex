@@ -101,6 +101,8 @@ export interface StructureFormState {
   allowedPostTypes: string[]
   allowUserPost: string
   allowUserReply: string
+  allowPostAuthorOfflineComment: string
+  allowUserOfflineOwnComment: string
   minViewPoints: string
   minViewLevel: string
   minPostPoints: string

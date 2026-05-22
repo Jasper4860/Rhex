@@ -44,6 +44,8 @@ export const GET = createRouteHandler(async ({ request, routeContext }) => {
     allowedPostTypes: DEFAULT_ALLOWED_POST_TYPES,
     allowUserPost: zone.allowUserPost ?? true,
     allowUserReply: zone.allowUserReply ?? true,
+    allowPostAuthorOfflineComment: zone.allowPostAuthorOfflineComment ?? false,
+    allowUserOfflineOwnComment: zone.allowUserOfflineOwnComment ?? false,
     minViewPoints: zone.minViewPoints ?? 0,
     minViewLevel: zone.minViewLevel ?? 0,
     minPostPoints: 0,

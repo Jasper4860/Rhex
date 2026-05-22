@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 
 import { VerificationChannel } from "@/lib/shared/verification-channel"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -25,6 +25,7 @@ import { AuthField, AuthFormSection, AuthInlineMessage } from "@/components/auth
 import { BuiltinCaptchaField } from "@/components/auth/builtin-captcha-field"
 import { ExternalAuthEntry } from "@/components/auth/external-auth-entry"
 import { PowCaptchaField } from "@/components/auth/pow-captcha-field"
+import { SmsCaptchaDialog, type SmsCaptchaPayload } from "@/components/auth/sms-captcha-dialog"
 import { TurnstileCaptchaField } from "@/components/auth/turnstile-captcha-field"
 import { Button } from "@/components/ui/button"
 import {
@@ -48,6 +49,7 @@ import type { AddonExternalAuthEntry } from "@/lib/addon-external-auth-providers
 import { isEmailInWhitelist } from "@/lib/email"
 import { validatePasswordPolicy } from "@/lib/password-policy"
 import type { SiteSettingsData } from "@/lib/site-settings"
+import { SMS_CODE_COOLDOWN_SECONDS } from "@/lib/sms-verification"
 import { findUsernameSensitiveWord } from "@/lib/username-sensitive-words"
 
 function getUsernameValidationMessage(value: string, settings: SiteSettingsData) {
@@ -132,6 +134,8 @@ export function RegisterForm({
   const [phoneMessage, setPhoneMessage] = useState("")
   const [emailSending, setEmailSending] = useState(false)
   const [phoneSending, setPhoneSending] = useState(false)
+  const [phoneCodeCountdown, setPhoneCodeCountdown] = useState(0)
+  const [smsCaptchaOpen, setSmsCaptchaOpen] = useState(false)
 
   const captchaMode = settings.registerCaptchaMode
   const useTurnstile = captchaMode === "TURNSTILE" && Boolean(settings.turnstileSiteKey)
@@ -183,7 +187,19 @@ export function RegisterForm({
       || isEmailInWhitelist(value, settings.registerEmailWhitelistDomains)
   }
 
-  async function sendCode(channel: VerificationChannel) {
+  useEffect(() => {
+    if (phoneCodeCountdown <= 0) {
+      return
+    }
+
+    const timer = window.setInterval(() => {
+      setPhoneCodeCountdown((current) => Math.max(0, current - 1))
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [phoneCodeCountdown])
+
+  async function sendCode(channel: VerificationChannel, captchaPayload: SmsCaptchaPayload = {}) {
     const target = channel === VerificationChannel.EMAIL ? email : phone
     const setSending = channel === VerificationChannel.EMAIL ? setEmailSending : setPhoneSending
     const setFieldMessage = channel === VerificationChannel.EMAIL ? setEmailMessage : setPhoneMessage
@@ -197,17 +213,47 @@ export function RegisterForm({
       return
     }
 
-    const response = await fetch("/api/auth/send-verification-code", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ channel, target }),
-    })
+    try {
+      const response = await fetch("/api/auth/send-verification-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ channel, target, ...captchaPayload }),
+      })
 
-    const result = await response.json()
-    setFieldMessage(result.message ?? (response.ok ? "验证码已发送" : "验证码发送失败"))
-    setSending(false)
+      const result = await response.json()
+      setFieldMessage(result.message ?? (response.ok ? "验证码已发送" : "验证码发送失败"))
+
+      if (channel === VerificationChannel.PHONE) {
+        setSmsCaptchaOpen(false)
+      }
+
+      if (response.ok && channel === VerificationChannel.PHONE) {
+        setPhoneCodeCountdown(Number(result.data?.cooldownSeconds ?? SMS_CODE_COOLDOWN_SECONDS))
+      }
+    } catch {
+      if (channel === VerificationChannel.PHONE) {
+        setSmsCaptchaOpen(false)
+      }
+
+      setFieldMessage("验证码发送失败")
+    } finally {
+      setSending(false)
+    }
+  }
+
+  function handleSendPhoneCode() {
+    if (phoneCodeCountdown > 0 || phoneSending) {
+      return
+    }
+
+    if (settings.smsCaptchaMode === "OFF") {
+      void sendCode(VerificationChannel.PHONE)
+      return
+    }
+
+    setSmsCaptchaOpen(true)
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -501,8 +547,9 @@ export function RegisterForm({
               required={settings.registerPhoneRequired}
               verifyRequired={settings.registerPhoneVerification}
               sending={phoneSending}
+              countdown={phoneCodeCountdown}
               message={phoneMessage}
-              onSend={() => sendCode(VerificationChannel.PHONE)}
+              onSend={handleSendPhoneCode}
               autoComplete="tel"
             />
           ) : null}
@@ -622,6 +669,15 @@ export function RegisterForm({
       </div>
 
       {hasAlternativeAuth ? <ExternalAuthEntry settings={settings} mode="register" addonEntries={addonExternalAuthEntries} /> : null}
+
+      <SmsCaptchaDialog
+        open={smsCaptchaOpen}
+        mode={settings.smsCaptchaMode}
+        siteKey={settings.turnstileSiteKey}
+        sending={phoneSending}
+        onClose={() => setSmsCaptchaOpen(false)}
+        onVerified={(payload) => sendCode(VerificationChannel.PHONE, payload)}
+      />
     </form>
   )
 }
@@ -639,6 +695,7 @@ function VerificationField({
   verifyRequired,
   description,
   sending,
+  countdown = 0,
   message,
   onSend,
   type = "text",
@@ -656,8 +713,9 @@ function VerificationField({
   verifyRequired: boolean
   description?: string
   sending: boolean
+  countdown?: number
   message: string
-  onSend: () => Promise<void>
+  onSend: () => Promise<void> | void
   type?: "text" | "email" | "tel"
   autoComplete?: string
 }) {
@@ -700,10 +758,10 @@ function VerificationField({
                   type="button"
                   variant="secondary"
                   onClick={() => void onSend()}
-                  disabled={sending || !value}
+                  disabled={sending || countdown > 0 || !value}
                 >
                   {sending ? <Spinner data-icon="inline-start" /> : null}
-                  {sending ? "发送中" : "发送验证码"}
+                  {sending ? "发送中" : countdown > 0 ? `${countdown}s` : "发送验证码"}
                 </InputGroupButton>
               </InputGroupAddon>
             </InputGroup>

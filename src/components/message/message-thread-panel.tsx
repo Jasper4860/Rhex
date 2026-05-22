@@ -195,6 +195,7 @@ function MessageThreadPanelContent({
       value: `:${emoji.shortcode}:`,
       icon: emoji.icon,
       label: `${emoji.label}（:${emoji.shortcode}:）`,
+      group: emoji.group,
     })),
     [markdownEmojiMap],
   )
@@ -592,10 +593,10 @@ function MessageThreadPanelContent({
                 <span className="hidden sm:inline">表情</span>
               </button>
               {showEmojiPanel ? (
-                <div className="absolute bottom-[calc(100%+12px)] left-0 z-20 max-h-[360px] w-[min(320px,calc(100vw-32px))] overflow-y-auto rounded-2xl border border-border bg-background p-3 shadow-2xl">
+                <div className="absolute bottom-[calc(100%+12px)] left-0 z-20 max-h-[min(340px,calc(100vh-160px))] w-[min(440px,calc(100vw-32px))] overflow-hidden rounded-[14px] border border-border bg-background p-0 shadow-2xl">
                   <EmojiPicker
                     items={emojiPickerItems}
-                    columns={6}
+                    columns={8}
                     onSelect={(value) => insertEmoji(value)}
                   />
                 </div>

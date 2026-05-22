@@ -3,7 +3,8 @@ import "server-only"
 import { type RelatedType } from "@/db/types"
 import { findUserNotificationDeliveryRecipient } from "@/db/notification-write-queries"
 import { enqueueBackgroundJob, registerBackgroundJobHandler } from "@/lib/background-jobs"
-import { sendUserNotificationEmail } from "@/lib/mailer"
+import { isEmailBusinessSwitchEnabled, type EmailBusinessSwitchKey } from "@/lib/email-business-switches"
+import { deliverUserNotificationEmail } from "@/lib/mailer"
 import { getServerSiteSettings } from "@/lib/site-settings"
 import { getConfiguredSiteOrigin } from "@/lib/site-origin"
 import { getUserDisplayName } from "@/lib/user-display"
@@ -122,6 +123,10 @@ function toSiteUrl(path: string) {
 
 function hasMailerConfig(settings: Awaited<ReturnType<typeof getServerSiteSettings>>) {
   return Boolean(settings.smtpEnabled && settings.smtpHost && settings.smtpPort && settings.smtpUser && settings.smtpPass && settings.smtpFrom)
+}
+
+function resolveEmailBusinessKey(event: UserNotificationDeliveryEvent): EmailBusinessSwitchKey {
+  return event.type === "privateMessage" ? "privateMessage" : "systemNotification"
 }
 
 function buildWebhookPayload(payload: UserNotificationDeliveryJobPayload): UserNotificationWebhookPayload {
@@ -278,7 +283,7 @@ async function deliverEmail(payload: UserNotificationDeliveryJobPayload) {
 
   const siteSettings = await getServerSiteSettings()
 
-  if (!hasMailerConfig(siteSettings)) {
+  if (!isEmailBusinessSwitchEnabled(siteSettings.emailBusinessSwitches, resolveEmailBusinessKey(payload.event)) || !hasMailerConfig(siteSettings)) {
     return
   }
 
@@ -289,11 +294,12 @@ async function deliverEmail(payload: UserNotificationDeliveryJobPayload) {
     payload,
   })
 
-  await sendUserNotificationEmail({
+  await deliverUserNotificationEmail({
     to: recipient.email,
     subject: emailEnvelope.subject,
     text: emailEnvelope.text,
     html: emailEnvelope.html,
+    businessKey: resolveEmailBusinessKey(payload.event),
   })
 }
 
@@ -312,7 +318,11 @@ export async function enqueueUserNotificationDeliveries(payload: UserNotificatio
   }
 
   if (recipient.email && recipient.emailVerifiedAt && isUserNotificationChannelEnabled(notificationPreferences, "email", payload.event.type)) {
-    tasks.push(enqueueBackgroundJob("notification.dispatch-email", payload))
+    const siteSettings = await getServerSiteSettings()
+
+    if (isEmailBusinessSwitchEnabled(siteSettings.emailBusinessSwitches, resolveEmailBusinessKey(payload.event))) {
+      tasks.push(enqueueBackgroundJob("notification.dispatch-email", payload))
+    }
   }
 
   await Promise.all(tasks)

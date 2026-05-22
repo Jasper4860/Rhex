@@ -25,6 +25,8 @@ export interface SiteZoneItem {
   count: number
   allowUserPost?: boolean
   allowUserReply?: boolean
+  allowPostAuthorOfflineComment?: boolean
+  allowUserOfflineOwnComment?: boolean
   requirePostReview?: boolean
   requireCommentReview?: boolean
   minViewPoints?: number
@@ -51,6 +53,8 @@ function mapSiteZone(zone: SiteZoneRecord): SiteZoneItem {
     count: zone.boards.reduce((total, board) => total + board._count.posts, 0),
     allowUserPost: zone.allowUserPost ?? true,
     allowUserReply: zone.allowUserReply ?? true,
+    allowPostAuthorOfflineComment: zone.allowPostAuthorOfflineComment ?? false,
+    allowUserOfflineOwnComment: zone.allowUserOfflineOwnComment ?? false,
     requirePostReview: zone.requirePostReview ?? false,
     requireCommentReview: zone.requireCommentReview ?? false,
     minViewPoints: (zone as { minViewPoints?: number | null }).minViewPoints ?? 0,

@@ -2,6 +2,7 @@ export interface MarkdownEmojiItem {
   shortcode: string
   label: string
   icon: string
+  group?: string
 }
 
 const SHORTCODE_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/i
@@ -10,18 +11,26 @@ const REMOTE_URL_PATTERN = /^(https?:)?\/\//i
 const DATA_IMAGE_PATTERN = /^data:image\//i
 const BLOB_URL_PATTERN = /^blob:/i
 const LOCAL_ASSET_PATTERN = /^(\/|\.\/|\.\.\/)/
+const MARKDOWN_EMOJI_GROUP_MAX_LENGTH = 24
+
+export const DEFAULT_MARKDOWN_EMOJI_GROUP = "默认"
 
 export const DEFAULT_MARKDOWN_EMOJI_ITEMS: MarkdownEmojiItem[] = [
-  { shortcode: "smile", label: "微笑", icon: "😀" },
-  { shortcode: "heart", label: "爱心", icon: "❤️" },
-  { shortcode: "rocket", label: "火箭", icon: "🚀" },
-  { shortcode: "fire", label: "火焰", icon: "🔥" },
-  { shortcode: "sparkles", label: "闪光", icon: "✨" },
+  { shortcode: "smile", label: "微笑", icon: "😀", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "heart", label: "爱心", icon: "❤️", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "rocket", label: "火箭", icon: "🚀", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "fire", label: "火焰", icon: "🔥", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "sparkles", label: "闪光", icon: "✨", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
 
 ]
 
 function normalizeShortcode(value: string) {
   return value.trim().replace(/^:+|:+$/g, "").toLowerCase()
+}
+
+export function normalizeMarkdownEmojiGroup(value: unknown) {
+  const group = String(value ?? "").trim().slice(0, MARKDOWN_EMOJI_GROUP_MAX_LENGTH)
+  return group || DEFAULT_MARKDOWN_EMOJI_GROUP
 }
 
 function isSvgMarkup(value: string) {
@@ -89,6 +98,7 @@ export function normalizeOptionalMarkdownEmojiItems(
         shortcode,
         label: label || shortcode,
         icon,
+        group: normalizeMarkdownEmojiGroup(row.group),
       }
     })
     .filter(Boolean) as MarkdownEmojiItem[]

@@ -14,6 +14,7 @@ import { getAutoCategorizeConfig } from "@/lib/ai/capabilities/auto-categorize-c
 import { parsePostContentDocument } from "@/lib/post-content"
 import { parsePostRewardPoolConfigFromContent } from "@/lib/post-red-packets"
 import { getEditablePostBySlug } from "@/lib/posts"
+import { normalizeLotteryRedemptionCodes } from "@/lib/lottery-prizes"
 import { DEFAULT_ALLOWED_POST_TYPES } from "@/lib/post-types"
 import { readSearchParam } from "@/lib/search-params"
 import { getSiteSettings } from "@/lib/site-settings"
@@ -248,6 +249,7 @@ export default async function WritePage(props: PageProps<"/write">) {
                             type: prize.type,
                             pointsAmount: prize.pointsAmount,
                             vipPlan: prize.vipPlan,
+                            redemptionCodes: normalizeLotteryRedemptionCodes(prize.codesJson),
                           })),
                           conditions: editingPost.lotteryConditions.map((condition) => ({
                             type: condition.type,

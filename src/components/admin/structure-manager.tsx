@@ -308,6 +308,8 @@ export function StructureManager({
                         <Badge variant="outline">关注 {formatNumber(zone.followerCount)}</Badge>
                         <Badge variant="outline">{zone.allowUserPost ? "用户可发帖" : "仅管理员/版主发帖"}</Badge>
                         <Badge variant="outline">{zone.allowUserReply ? "用户可回帖" : "仅管理员/版主回帖"}</Badge>
+                        <Badge variant="outline">{zone.allowPostAuthorOfflineComment ? "楼主可下线评论" : "楼主不可下线评论"}</Badge>
+                        <Badge variant="outline">{zone.allowUserOfflineOwnComment ? "用户可下线自己的评论" : "用户不可下线自己的评论"}</Badge>
                         <Badge variant="outline">{zone.requirePostReview ? "发帖审核" : "帖子直发"}</Badge>
                         <Badge variant="outline">{zone.requireCommentReview ? "回帖审核" : "回帖直发"}</Badge>
                         <Badge variant="outline">{getZoneHomeFeedVisibilityLabel(zone)}</Badge>
@@ -447,6 +449,8 @@ function BoardRow({
           <Badge variant="outline">{board.allowPost ? "允许发帖" : "暂停发帖"}</Badge>
           <Badge variant="outline">{getBoardUserPermissionLabel(board.allowUserPost, board.effectiveAllowUserPost, "发帖")}</Badge>
           <Badge variant="outline">{getBoardUserPermissionLabel(board.allowUserReply, board.effectiveAllowUserReply, "回帖")}</Badge>
+          <Badge variant="outline">{getBoardNullablePolicyLabel(board.allowPostAuthorOfflineComment, board.effectiveAllowPostAuthorOfflineComment, "楼主可下线评论", "楼主不可下线评论")}</Badge>
+          <Badge variant="outline">{getBoardNullablePolicyLabel(board.allowUserOfflineOwnComment, board.effectiveAllowUserOfflineOwnComment, "用户可下线自己的评论", "用户不可下线自己的评论")}</Badge>
           <Badge variant="outline">{board.requirePostReview ? "发帖审核" : "帖子直发"}</Badge>
           <Badge variant="outline">{board.requireCommentReview ? "回帖审核" : "回帖直发"}</Badge>
         </div>
@@ -504,6 +508,14 @@ function getBoardUserPermissionLabel(value: boolean | null, effectiveValue: bool
   }
 
   return value ? `用户可${action}` : `仅管理员/版主${action}`
+}
+
+function getBoardNullablePolicyLabel(value: boolean | null, effectiveValue: boolean, enabledLabel: string, disabledLabel: string) {
+  if (value == null) {
+    return effectiveValue ? `${enabledLabel}(继承)` : `${disabledLabel}(继承)`
+  }
+
+  return value ? enabledLabel : disabledLabel
 }
 
 function getPostListDisplayModeLabel(value: string | null) {
@@ -653,6 +665,8 @@ function StructureModalForm({
       id: editingItemId,
       allowUserPost: form.allowUserPost,
       allowUserReply: form.allowUserReply,
+      allowPostAuthorOfflineComment: form.allowPostAuthorOfflineComment,
+      allowUserOfflineOwnComment: form.allowUserOfflineOwnComment,
       postPointDelta: form.postPointDelta === "" ? undefined : Number(form.postPointDelta),
       replyPointDelta: form.replyPointDelta === "" ? undefined : Number(form.replyPointDelta),
       postIntervalSeconds: form.postIntervalSeconds === "" ? undefined : Number(form.postIntervalSeconds),
@@ -774,6 +788,8 @@ function getInitialStructureFormState(modal: Exclude<ModalMode, null>, zones: Zo
       allowedPostTypes: DEFAULT_ALLOWED_POST_TYPES,
       allowUserPost: "true",
       allowUserReply: "true",
+      allowPostAuthorOfflineComment: "false",
+      allowUserOfflineOwnComment: "false",
       minViewPoints: "0",
       minViewLevel: "0",
       minPostPoints: "0",
@@ -812,6 +828,8 @@ function getInitialStructureFormState(modal: Exclude<ModalMode, null>, zones: Zo
       allowedPostTypes: DEFAULT_ALLOWED_POST_TYPES,
       allowUserPost: "",
       allowUserReply: "",
+      allowPostAuthorOfflineComment: "",
+      allowUserOfflineOwnComment: "",
       minViewPoints: "",
       minViewLevel: "",
       minPostPoints: "",
@@ -850,6 +868,8 @@ function getInitialStructureFormState(modal: Exclude<ModalMode, null>, zones: Zo
       allowedPostTypes: normalizePostTypes(modal.item.allowedPostTypes),
       allowUserPost: String(modal.item.allowUserPost),
       allowUserReply: String(modal.item.allowUserReply),
+      allowPostAuthorOfflineComment: String(modal.item.allowPostAuthorOfflineComment),
+      allowUserOfflineOwnComment: String(modal.item.allowUserOfflineOwnComment),
       minViewPoints: String(modal.item.minViewPoints),
       minViewLevel: String(modal.item.minViewLevel),
       minPostPoints: String(modal.item.minPostPoints),
@@ -887,6 +907,8 @@ function getInitialStructureFormState(modal: Exclude<ModalMode, null>, zones: Zo
     allowedPostTypes: normalizePostTypes(modal.item.allowedPostTypes),
     allowUserPost: modal.item.allowUserPost == null ? "" : String(modal.item.allowUserPost),
     allowUserReply: modal.item.allowUserReply == null ? "" : String(modal.item.allowUserReply),
+    allowPostAuthorOfflineComment: modal.item.allowPostAuthorOfflineComment == null ? "" : String(modal.item.allowPostAuthorOfflineComment),
+    allowUserOfflineOwnComment: modal.item.allowUserOfflineOwnComment == null ? "" : String(modal.item.allowUserOfflineOwnComment),
     minViewPoints: modal.item.minViewPoints == null ? "" : String(modal.item.minViewPoints),
     minViewLevel: modal.item.minViewLevel == null ? "" : String(modal.item.minViewLevel),
     minPostPoints: modal.item.minPostPoints == null ? "" : String(modal.item.minPostPoints),

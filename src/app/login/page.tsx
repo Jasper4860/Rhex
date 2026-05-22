@@ -14,6 +14,7 @@ import { listAddonExternalAuthEntries } from "@/lib/addon-external-auth-provider
 import { getCurrentUser } from "@/lib/auth"
 import { readSearchParam } from "@/lib/search-params"
 import { getSiteSettings } from "@/lib/site-settings"
+import { canSendSms } from "@/lib/sms"
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings()
@@ -33,6 +34,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
     addonBeforeFieldBlocks,
     addonCaptchaBlocks,
     addonAfterFieldBlocks,
+    smsAvailable,
   ] = await Promise.all([
     getCurrentUser(),
     getSiteSettings(),
@@ -40,6 +42,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
     executeAddonSlot("auth.login.form.before"),
     executeAddonSlot("auth.login.captcha"),
     executeAddonSlot("auth.login.form.after"),
+    canSendSms(),
   ])
   const authError = readSearchParam(searchParams?.authError) ?? ""
 
@@ -56,7 +59,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
     <AuthShell
       showcaseName={settings.siteName}
       showShowcase={settings.authPageShowcaseEnabled}
-      panelTitle="登录论坛"
+      panelTitle="登录账户"
       panelDescription="输入邮箱或用户名和密码，继续你的社区浏览与互动。"
       beforeForm={authError ? <AuthPanelNotice tone="destructive" title="登录失败">{authError}</AuthPanelNotice> : null}
       panelBefore={<AddonSlotRenderer slot="auth.login.panel.before" props={authSlotProps} />}
@@ -77,6 +80,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
       <AddonSurfaceRenderer surface="auth.login.form" props={authSlotProps}>
         <LoginForm
           settings={settings}
+          smsAvailable={smsAvailable}
           addonBeforeFields={renderAddonBlocks(addonBeforeFieldBlocks)}
           addonCaptcha={renderAddonBlocks(addonCaptchaBlocks)}
           addonAfterFields={renderAddonBlocks(addonAfterFieldBlocks)}

@@ -146,6 +146,8 @@ function buildBoardAdvancedPayload(body: Record<string, unknown>, currentConfig?
     allowedPostTypes: Array.isArray(body.allowedPostTypes) && body.allowedPostTypes.length > 0 ? (body.allowedPostTypes as string[]).join(",") : undefined,
     allowUserPost: parseNullableBoolean(body.allowUserPost),
     allowUserReply: parseNullableBoolean(body.allowUserReply),
+    allowPostAuthorOfflineComment: parseNullableBoolean(body.allowPostAuthorOfflineComment),
+    allowUserOfflineOwnComment: parseNullableBoolean(body.allowUserOfflineOwnComment),
     minViewPoints: parseNullableNumber(body.minViewPoints),
     minViewLevel: parseNullableNumber(body.minViewLevel),
     minPostPoints: parseNullableNumber(body.minPostPoints),
@@ -188,6 +190,8 @@ function buildZonePayload(
   currentShowInHomeFeed?: boolean,
   currentAllowUserPost?: boolean,
   currentAllowUserReply?: boolean,
+  currentAllowPostAuthorOfflineComment?: boolean,
+  currentAllowUserOfflineOwnComment?: boolean,
 ) {
   const showInHomeFeed = parseNullableBoolean(body.showInHomeFeed)
 
@@ -201,6 +205,8 @@ function buildZonePayload(
     showInHomeFeed: typeof showInHomeFeed === "boolean" ? showInHomeFeed : currentShowInHomeFeed ?? true,
     allowUserPost: parseNullableBoolean(body.allowUserPost) ?? currentAllowUserPost ?? true,
     allowUserReply: parseNullableBoolean(body.allowUserReply) ?? currentAllowUserReply ?? true,
+    allowPostAuthorOfflineComment: parseNullableBoolean(body.allowPostAuthorOfflineComment) ?? currentAllowPostAuthorOfflineComment ?? false,
+    allowUserOfflineOwnComment: parseNullableBoolean(body.allowUserOfflineOwnComment) ?? currentAllowUserOfflineOwnComment ?? false,
     postPointDelta: parseNullableNumber(body.postPointDelta) ?? 0,
     replyPointDelta: parseNullableNumber(body.replyPointDelta) ?? 0,
     postIntervalSeconds: parseNullableNumber(body.postIntervalSeconds) ?? 120,
@@ -342,6 +348,8 @@ export async function updateStructureItem(params: {
         currentZone.showInHomeFeed,
         currentZone.allowUserPost,
         currentZone.allowUserReply,
+        currentZone.allowPostAuthorOfflineComment,
+        currentZone.allowUserOfflineOwnComment,
       ))
 
       return { message: "分区已更新", action: "zone.update", targetType: "ZONE", targetId: id, detail: `更新分区 ${name}` }

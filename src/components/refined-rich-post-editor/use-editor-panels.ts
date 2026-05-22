@@ -358,7 +358,7 @@ export function useEditorPanels({
 
   const syncFloatingPanels = useCallback(() => {
     syncFloatingPanel(openPanels.media, mediaButtonRef.current, 320, mediaPanelRef, setMediaPanelPosition, setMediaPanelReady)
-    syncFloatingPanel(openPanels.emoji, emojiButtonRef.current, 320, emojiPanelRef, setEmojiPanelPosition, setEmojiPanelReady)
+    syncFloatingPanel(openPanels.emoji, emojiButtonRef.current, 440, emojiPanelRef, setEmojiPanelPosition, setEmojiPanelReady)
     syncFloatingPanel(openPanels.table, tableButtonRef.current, 292, tablePanelRef, setTablePanelPosition, setTablePanelReady)
     syncFloatingPanel(openPanels.link, linkButtonRef.current, 320, linkPanelRef, setLinkPanelPosition, setLinkPanelReady)
     syncFloatingPanel(openPanels.image, imageButtonRef.current, 320, imagePanelRef, setImagePanelPosition, setImagePanelReady)

@@ -10,7 +10,7 @@ import { LevelIcon } from "@/components/level-icon"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/toast"
 import { saveAdminSiteSettings, uploadAdminMarkdownEmojiFiles } from "@/lib/admin-site-settings-client"
-import { DEFAULT_MARKDOWN_EMOJI_ITEMS, type MarkdownEmojiItem, normalizeMarkdownEmojiItems } from "@/lib/markdown-emoji"
+import { DEFAULT_MARKDOWN_EMOJI_GROUP, DEFAULT_MARKDOWN_EMOJI_ITEMS, type MarkdownEmojiItem, normalizeMarkdownEmojiItems } from "@/lib/markdown-emoji"
 
 interface AdminMarkdownEmojiSettingsFormProps {
   initialItems: MarkdownEmojiItem[]
@@ -87,7 +87,7 @@ export function AdminMarkdownEmojiSettingsForm({ initialItems }: AdminMarkdownEm
     >
       <SettingsSection
         title="Markdown 表情"
-        description="独立配置 Markdown 短码表情，例如 `:smile:`、`:rocket:`，支持 emoji、图片链接与完整 SVG 图标。"
+        description="独立配置 Markdown 短码表情，例如 `:smile:`、`:rocket:`，支持按分组展示，也支持 emoji、图片链接与完整 SVG 图标。"
       >
         <div className="rounded-xl border border-dashed border-border bg-card/40 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -113,12 +113,18 @@ export function AdminMarkdownEmojiSettingsForm({ initialItems }: AdminMarkdownEm
         <div className="space-y-3">
           {items.map((item, index) => (
             <div key={`markdown-emoji-${index}`} className="rounded-2xl bg-muted/35 p-4">
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[180px_minmax(0,1fr)_auto] xl:items-start">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[160px_160px_minmax(0,1fr)_auto] xl:items-start">
                 <SettingsInputField
                   label="短码"
                   value={item.shortcode}
                   onChange={(value) => setItems((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, shortcode: value.replace(/[^a-zA-Z0-9_-]/g, "").toLowerCase() } : row))}
                   placeholder="如 smile"
+                />
+                <SettingsInputField
+                  label="分组"
+                  value={item.group ?? DEFAULT_MARKDOWN_EMOJI_GROUP}
+                  onChange={(value) => setItems((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, group: value } : row))}
+                  placeholder="如 默认 / 表情 / 颜文字"
                 />
                 <div className="space-y-2">
                   <SettingsInputField
@@ -145,7 +151,7 @@ export function AdminMarkdownEmojiSettingsForm({ initialItems }: AdminMarkdownEm
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="outline" className="rounded-full" onClick={() => setItems((current) => [...current, { shortcode: `emoji_${current.length + 1}`, label: "新表情", icon: "😀" }])}>新增表情</Button>
+          <Button type="button" variant="outline" className="rounded-full" onClick={() => setItems((current) => [...current, { shortcode: `emoji_${current.length + 1}`, label: "新表情", icon: "😀", group: DEFAULT_MARKDOWN_EMOJI_GROUP }])}>新增表情</Button>
           <Button type="button" variant="ghost" className="rounded-full" onClick={() => setItems(DEFAULT_MARKDOWN_EMOJI_ITEMS)}>恢复默认</Button>
         </div>
         <div className="rounded-xl border border-dashed border-border bg-card/40 p-4 space-y-2">
@@ -154,12 +160,13 @@ export function AdminMarkdownEmojiSettingsForm({ initialItems }: AdminMarkdownEm
             {items.map((item) => (
               <span key={`preview-${item.shortcode}`} className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs">
                 <EmojiPreview icon={item.icon} label={item.label} />
+                <span className="text-muted-foreground">{item.group ?? DEFAULT_MARKDOWN_EMOJI_GROUP}</span>
                 <span>{item.label}</span>
                 <code>:{item.shortcode}:</code>
               </span>
             ))}
           </div>
-          <p className="text-xs leading-6 text-muted-foreground">前台帖子中输入对应短码，例如 <code>:smile:</code>，渲染时才会替换为表情；编辑器工具栏会优先展示前 8 个已配置表情。</p>
+          <p className="text-xs leading-6 text-muted-foreground">前台帖子中输入对应短码，例如 <code>:smile:</code>，渲染时才会替换为表情；编辑器表情面板会按分组展示，每行 8 个。</p>
         </div>
       </SettingsSection>
 

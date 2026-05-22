@@ -104,6 +104,71 @@ export function parseBackgroundJobEnvelopeString(value: string) {
   }
 }
 
+const REDACTED_BACKGROUND_JOB_FIELD = "[redacted]"
+
+function redactOptionalBackgroundJobValue(value: unknown) {
+  return value == null || value === "" ? value : REDACTED_BACKGROUND_JOB_FIELD
+}
+
+function redactBackgroundJobPayload(job: BackgroundJobEnvelope) {
+  const payload = job.payload as Record<string, unknown>
+
+  switch (job.name) {
+    case "email.register-verification":
+      return {
+        ...payload,
+        to: redactOptionalBackgroundJobValue(payload.to),
+        code: redactOptionalBackgroundJobValue(payload.code),
+      }
+    case "email.reset-password-verification":
+    case "email.password-change-verification":
+      return {
+        ...payload,
+        to: redactOptionalBackgroundJobValue(payload.to),
+        code: redactOptionalBackgroundJobValue(payload.code),
+      }
+    case "email.login-ip-change-alert":
+      return {
+        ...payload,
+        to: redactOptionalBackgroundJobValue(payload.to),
+        previousIp: redactOptionalBackgroundJobValue(payload.previousIp),
+        currentIp: redactOptionalBackgroundJobValue(payload.currentIp),
+        userAgent: redactOptionalBackgroundJobValue(payload.userAgent),
+      }
+    case "email.payment-gateway-order-success":
+      return {
+        ...payload,
+        to: redactOptionalBackgroundJobValue(payload.to),
+      }
+    case "email.generic":
+      return {
+        ...payload,
+        to: redactOptionalBackgroundJobValue(payload.to),
+        text: redactOptionalBackgroundJobValue(payload.text),
+        html: redactOptionalBackgroundJobValue(payload.html),
+      }
+    case "email.smtp-test":
+      return {
+        ...payload,
+        to: redactOptionalBackgroundJobValue(payload.to),
+        smtpUser: redactOptionalBackgroundJobValue(payload.smtpUser),
+        smtpPass: redactOptionalBackgroundJobValue(payload.smtpPass),
+        smtpFrom: redactOptionalBackgroundJobValue(payload.smtpFrom),
+      }
+    case "sms.send":
+      return {
+        ...payload,
+        phone: redactOptionalBackgroundJobValue(payload.phone),
+        code: redactOptionalBackgroundJobValue(payload.code),
+        templateParam: payload.templateParam
+          ? REDACTED_BACKGROUND_JOB_FIELD
+          : payload.templateParam,
+      }
+    default:
+      return job.payload
+  }
+}
+
 export function createBackgroundJobLogMetadata(job: BackgroundJobEnvelope, extra?: Record<string, unknown>) {
   return {
     jobId: job.id,
@@ -113,7 +178,7 @@ export function createBackgroundJobLogMetadata(job: BackgroundJobEnvelope, extra
     maxAttempts: job.maxAttempts,
     availableAt: job.availableAt ?? null,
     idempotencyKey: job.idempotencyKey ?? null,
-    payload: job.payload,
+    payload: redactBackgroundJobPayload(job),
     ...(extra ?? {}),
   }
 }
