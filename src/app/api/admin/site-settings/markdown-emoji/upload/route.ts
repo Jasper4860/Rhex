@@ -4,7 +4,7 @@ import { logRouteWriteSuccess } from "@/lib/route-metadata"
 import { getSiteSettings } from "@/lib/site-settings"
 import { prepareUploadedFile, saveUploadedFile } from "@/lib/upload"
 import { isAllowedUploadMimeType, normalizeUploadExtension } from "@/lib/upload-rules"
-import type { MarkdownEmojiItem } from "@/lib/markdown-emoji"
+import { normalizeMarkdownEmojiGroup, type MarkdownEmojiItem } from "@/lib/markdown-emoji"
 import {
   buildMarkdownEmojiUploadItem,
   MARKDOWN_EMOJI_UPLOAD_FOLDER,
@@ -22,6 +22,7 @@ export const POST = createAdminRouteHandler(async ({ request, adminUser }) => {
   const settings = await getSiteSettings()
   const formData = await request.formData()
   const files = formData.getAll("files").filter((file): file is File => file instanceof File)
+  const group = normalizeMarkdownEmojiGroup(formData.get("group"))
 
   if (files.length === 0) {
     apiError(400, "请选择要上传的表情文件")
@@ -81,7 +82,7 @@ export const POST = createAdminRouteHandler(async ({ request, adminUser }) => {
       }),
     })
 
-    items.push(buildMarkdownEmojiUploadItem(file.name, upload.urlPath, usedShortcodes, items.length))
+    items.push(buildMarkdownEmojiUploadItem(file.name, upload.urlPath, usedShortcodes, items.length, group))
 
     logRouteWriteSuccess({
       scope: "admin-markdown-emoji-upload",

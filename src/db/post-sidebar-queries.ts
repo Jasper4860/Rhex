@@ -1,5 +1,6 @@
 import { prisma } from "@/db/client"
 import { PUBLIC_READABLE_POST_STATUSES } from "@/lib/post-types"
+import { MAX_MANUAL_TAGS } from "@/lib/post-tags"
 
 export async function findPostSidebarData(
   postId: string,
@@ -19,7 +20,8 @@ export async function findPostSidebarData(
     prisma.postTag.findMany({
       where: { postId },
       include: { tag: true },
-      take: 8,
+      // Keep the editable sidebar tags aligned with the post tag editor's max.
+      take: MAX_MANUAL_TAGS,
     }),
     prisma.post.findMany({
       where: {

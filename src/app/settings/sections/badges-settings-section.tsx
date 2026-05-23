@@ -7,7 +7,7 @@ import type { SettingsPageData } from "@/app/settings/settings-page-loader"
 export function BadgesSettingsSection({ data }: { data: SettingsPageData }) {
   return (
     <div className="space-y-6">
-      <BadgeCenter isLoggedIn badges={data.badgeDisplayItems} />
+      <BadgeCenter isLoggedIn badges={data.badgeDisplayItems} pointName={data.settings.pointName} />
 
       <Card>
         <CardContent className="p-6">

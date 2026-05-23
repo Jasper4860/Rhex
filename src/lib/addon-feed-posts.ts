@@ -17,7 +17,7 @@ import { getPublicPostContentText } from "@/lib/post-content"
 import { resolvePostHeatStyle } from "@/lib/post-heat"
 import { resolvePostListPreviewMedia } from "@/lib/post-list-media"
 import { buildPostListPreviewContent } from "@/lib/post-list-preview-content"
-import { getPostTypeLabel } from "@/lib/post-types"
+import { getPostTypeLabel, PUBLIC_READABLE_POST_STATUSES } from "@/lib/post-types"
 import { parsePostRewardPoolConfigFromContent } from "@/lib/post-red-packets"
 import type { SitePostItem } from "@/lib/posts"
 import { getSiteSettings } from "@/lib/site-settings"
@@ -104,6 +104,7 @@ async function resolveHookedFeedPosts(
 
   const queried = await queryAddonPosts({
     ids: uniquePostIds,
+    statuses: [...PUBLIC_READABLE_POST_STATUSES],
     includeTotal: false,
     limit: uniquePostIds.length,
   })

@@ -50,11 +50,14 @@ export async function saveAdminSiteSettings(payload: Record<string, unknown>) {
   }
 }
 
-export async function uploadAdminMarkdownEmojiFiles(files: File[]) {
+export async function uploadAdminMarkdownEmojiFiles(files: File[], group?: string) {
   try {
     const formData = new FormData()
     for (const file of files) {
       formData.append("files", file)
+    }
+    if (group) {
+      formData.append("group", group)
     }
 
     const result = await adminPost<UploadMarkdownEmojiFilesData>(

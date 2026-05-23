@@ -1,6 +1,7 @@
 "use client"
 
 import { ArrowUp } from "lucide-react"
+import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/rbutton"
@@ -9,10 +10,18 @@ import { cn } from "@/lib/utils"
 const VISIBILITY_SCROLL_OFFSET = 320
 
 export function BackToTopButton() {
+  const pathname = usePathname()
+  const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/")
   const [visible, setVisible] = useState(false)
   const [scrolledToBottom, setScrolledToBottom] = useState(false)
 
   useEffect(() => {
+    if (isAdminPath) {
+      setVisible(false)
+      setScrolledToBottom(false)
+      return
+    }
+
     const handleScroll = () => {
       const viewportHeight = window.innerHeight
       const documentHeight = document.documentElement.scrollHeight
@@ -31,10 +40,14 @@ export function BackToTopButton() {
       window.removeEventListener("scroll", handleScroll)
       window.removeEventListener("resize", handleScroll)
     }
-  }, [])
+  }, [isAdminPath])
 
   function handleBackToTop() {
     window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  if (isAdminPath) {
+    return null
   }
 
   return (

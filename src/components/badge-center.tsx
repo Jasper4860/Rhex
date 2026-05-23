@@ -4,6 +4,16 @@ import Link from "next/link"
 import { useMemo, useState, useTransition } from "react"
 
 import { LevelIcon } from "@/components/level-icon"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/rbutton"
 import { Tooltip } from "@/components/ui/tooltip"
 
@@ -41,14 +51,16 @@ interface BadgeCenterItem {
 interface BadgeCenterProps {
   badges: BadgeCenterItem[]
   isLoggedIn: boolean
+  pointName?: string
 }
 
 const MAX_DISPLAYED_BADGES = 3
 
-export function BadgeCenter({ badges, isLoggedIn }: BadgeCenterProps) {
+export function BadgeCenter({ badges, isLoggedIn, pointName = "积分" }: BadgeCenterProps) {
   const [items, setItems] = useState(badges)
   const [activeCategory, setActiveCategory] = useState<string>("全部")
   const [feedback, setFeedback] = useState("")
+  const [claimConfirmationBadge, setClaimConfirmationBadge] = useState<BadgeCenterItem | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const categories = useMemo(() => {
@@ -93,6 +105,25 @@ export function BadgeCenter({ badges, isLoggedIn }: BadgeCenterProps) {
         } : item)))
       }
     })
+  }
+
+  function handleClaimClick(badge: BadgeCenterItem) {
+    if (badge.eligibility.purchaseRequired && badge.eligibility.canAffordPurchase) {
+      setClaimConfirmationBadge(badge)
+      return
+    }
+
+    handleClaim(badge.id)
+  }
+
+  function handleConfirmClaim() {
+    if (!claimConfirmationBadge) {
+      return
+    }
+
+    const badgeId = claimConfirmationBadge.id
+    setClaimConfirmationBadge(null)
+    handleClaim(badgeId)
   }
 
   function handleToggleDisplay(badgeId: string) {
@@ -167,8 +198,8 @@ export function BadgeCenter({ badges, isLoggedIn }: BadgeCenterProps) {
               ? badge.eligibility.progressText
               : badge.eligibility.purchaseRequired
                 ? badge.eligibility.canAffordPurchase
-                  ? `支付 ${badge.eligibility.pointsCost} 积分领取`
-                  : `需要 ${badge.eligibility.pointsCost} 积分`
+                  ? `支付 ${badge.eligibility.pointsCost} ${pointName}领取`
+                  : `需要 ${badge.eligibility.pointsCost} ${pointName}`
                 : "立即领取"
           const claimButtonDisabled = !isLoggedIn || badge.eligibility.alreadyGranted || !badge.eligibility.eligible || isPending || (badge.eligibility.purchaseRequired && !badge.eligibility.canAffordPurchase)
           const displayButtonLabel = badge.display.isDisplayed ? "取消佩戴" : "佩戴" 
@@ -206,7 +237,7 @@ export function BadgeCenter({ badges, isLoggedIn }: BadgeCenterProps) {
                         </Button>
                       </Tooltip>
                     ) : null}
-                    <Button type="button" disabled={claimButtonDisabled} onClick={() => handleClaim(badge.id)} className="h-7 rounded-full px-4 text-xs">
+                    <Button type="button" disabled={claimButtonDisabled} onClick={() => handleClaimClick(badge)} className="h-7 rounded-full px-4 text-xs">
                       {claimButtonLabel}
                     </Button>
                   </div>
@@ -216,6 +247,29 @@ export function BadgeCenter({ badges, isLoggedIn }: BadgeCenterProps) {
           )
         })}
       </div>
+      <AlertDialog
+        open={Boolean(claimConfirmationBadge)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setClaimConfirmationBadge(null)
+          }
+        }}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认领取付费勋章</AlertDialogTitle>
+            <AlertDialogDescription className="leading-6">
+              确认支付 {claimConfirmationBadge?.eligibility.pointsCost ?? 0} {pointName} 领取「{claimConfirmationBadge?.name ?? "勋章"}」吗？确认后会立即扣除余额并发放勋章。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-w-24">取消</AlertDialogCancel>
+            <AlertDialogAction className="min-w-24" disabled={isPending} onClick={handleConfirmClaim}>
+              确认支付
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

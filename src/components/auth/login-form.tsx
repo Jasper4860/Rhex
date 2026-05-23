@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
-import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck, Smartphone, UserRound } from "lucide-react"
+import {  Eye, EyeOff, LockKeyhole, ShieldCheck, Smartphone, UserRound } from "lucide-react"
 
 import { AuthField, AuthFormSection, AuthInlineMessage } from "@/components/auth/auth-form-primitives"
 import { BuiltinCaptchaField } from "@/components/auth/builtin-captcha-field"
@@ -65,6 +65,7 @@ export function LoginForm({
   const usePowCaptcha = captchaMode === "POW"
   const hasAlternativeAuth = settings.authGithubEnabled || settings.authGoogleEnabled || settings.authPasskeyEnabled || addonExternalAuthEntries.length > 0
   const hasCaptchaSection = useTurnstile || useBuiltinCaptcha || usePowCaptcha || Boolean(addonCaptcha)
+  const showLoginModeSwitch = smsAvailable
 
   useEffect(() => {
     if (phoneCodeCountdown <= 0) {
@@ -77,6 +78,12 @@ export function LoginForm({
 
     return () => window.clearInterval(timer)
   }, [phoneCodeCountdown])
+
+  useEffect(() => {
+    if (!smsAvailable && loginMode === "phone-code") {
+      setLoginMode("password")
+    }
+  }, [loginMode, smsAvailable])
 
   async function sendPhoneCode(captchaPayload: SmsCaptchaPayload = {}) {
     if (!login.trim()) {
@@ -214,12 +221,12 @@ export function LoginForm({
       ) : null}
 
       <AuthFormSection>
-        <div className="flex gap-2">
-          <Button type="button" variant={loginMode === "password" ? "default" : "outline"} onClick={() => setLoginMode("password")}>密码登录</Button>
-          {smsAvailable ? (
+        {showLoginModeSwitch ? (
+          <div className="flex gap-2">
+            <Button type="button" variant={loginMode === "password" ? "default" : "outline"} onClick={() => setLoginMode("password")}>密码登录</Button>
             <Button type="button" variant={loginMode === "phone-code" ? "default" : "outline"} onClick={() => setLoginMode("phone-code")}>短信登录</Button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         <AuthField htmlFor="login-identity" label={loginMode === "password" ? "邮箱 / 用户名 / 手机号" : "手机号"} required>
           <InputGroup className="h-11 rounded-2xl bg-background/80">
@@ -340,7 +347,6 @@ export function LoginForm({
           ) : (
             <>
               登录
-              <ArrowRight data-icon="inline-end" />
             </>
           )}
         </Button>

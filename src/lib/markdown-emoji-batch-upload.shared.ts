@@ -56,10 +56,12 @@ export function buildMarkdownEmojiUploadItem(
   icon: string,
   usedShortcodes: Set<string>,
   fallbackIndex: number,
+  group?: string,
 ): MarkdownEmojiItem {
   return {
     shortcode: buildUniqueMarkdownEmojiUploadShortcode(fileName, usedShortcodes, fallbackIndex),
     label: normalizeEmojiUploadLabel(fileName),
     icon,
+    ...(group ? { group } : {}),
   }
 }

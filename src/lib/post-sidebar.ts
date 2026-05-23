@@ -3,6 +3,7 @@ import "server-only"
 import { executeAddonAsyncWaterfallHook } from "@/addons-host/runtime/hooks"
 import { queryAddonPosts } from "@/addons-host/runtime/posts"
 import { findPostSidebarData } from "@/db/post-sidebar-queries"
+import { PUBLIC_READABLE_POST_STATUSES } from "@/lib/post-types"
 
 interface PostSidebarRelatedTopic {
   id: string
@@ -40,6 +41,7 @@ async function resolveHookedRelatedTopics(input: {
 
   const queried = await queryAddonPosts({
     ids: orderedIds,
+    statuses: [...PUBLIC_READABLE_POST_STATUSES],
     includeTotal: false,
     limit: orderedIds.length,
   })

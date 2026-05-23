@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Hash } from "lucide-react"
 import { AddonSlotRenderer, AddonSurfaceRenderer } from "@/addons-host"
 import { ExternalSearchOptions } from "@/components/external-search-options"
 import { ForumPostStream } from "@/components/forum/forum-post-stream"
+import { LevelIcon } from "@/components/level-icon"
 import { SearchForm } from "@/components/search-form"
 import { SiteHeader } from "@/components/site-header"
 import { Badge } from "@/components/ui/badge"
@@ -333,7 +334,7 @@ function BoardSearchResults({ items }: { items: SearchBoardItem[] }) {
       {items.map((board) => (
         <Link key={board.id} href={`/boards/${board.slug}`} className="group flex min-h-32 gap-3 rounded-xl border border-border bg-background p-4 transition-colors hover:bg-accent/60">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-lg">
-            {board.icon}
+            <LevelIcon icon={board.icon} className="size-6 text-[22px]" svgClassName="[&>svg]:block" emojiClassName="text-[22px]" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">

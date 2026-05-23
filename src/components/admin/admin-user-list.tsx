@@ -14,7 +14,7 @@ import { AdminSummaryStrip } from "@/components/admin/admin-summary-strip"
 import { AdminUserModal } from "@/components/admin/admin-user-modal"
 import { UserAvatar } from "@/components/user/user-avatar"
 import { Badge } from "@/components/ui/badge"
-import { buttonVariants } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Card,
   CardAction,
@@ -32,6 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Input } from "@/components/ui/input"
 import { Tooltip } from "@/components/ui/tooltip"
 import { formatDateTime, formatNumber } from "@/lib/formatters"
 import type { AdminUserListItem, AdminUserListResult } from "@/lib/admin-user-management"
@@ -41,6 +42,8 @@ import { cn } from "@/lib/utils"
 interface AdminUserListProps {
   data: AdminUserListResult
 }
+
+type PaginationToken = number | "ellipsis"
 
 const roleOptions = [
   { value: "ALL", label: "全部角色" },
@@ -76,6 +79,40 @@ const sortOptions = [
   { value: "mostComments", label: "评论最多" },
   { value: "mostPoints", label: "积分最高" },
 ]
+
+function buildPageTokens(page: number, totalPages: number): PaginationToken[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  }
+
+  const windowSize = 5
+  const start = Math.min(
+    Math.max(page - Math.floor(windowSize / 2), 1),
+    Math.max(totalPages - windowSize + 1, 1),
+  )
+  const end = Math.min(start + windowSize - 1, totalPages)
+  const tokens: PaginationToken[] = []
+
+  if (start > 1) {
+    tokens.push(1)
+    if (start > 2) {
+      tokens.push("ellipsis")
+    }
+  }
+
+  for (let current = start; current <= end; current += 1) {
+    tokens.push(current)
+  }
+
+  if (end < totalPages) {
+    if (end < totalPages - 1) {
+      tokens.push("ellipsis")
+    }
+    tokens.push(totalPages)
+  }
+
+  return tokens
+}
 
 export function AdminUserList({ data }: AdminUserListProps) {
   const [filters, setFilters] = useState({
@@ -325,25 +362,81 @@ export function AdminUserList({ data }: AdminUserListProps) {
             <span>每页 {data.pagination.pageSize} 条</span>
             <span>共 {formatNumber(data.pagination.total)} 条用户</span>
           </div>
-          <div className="flex items-center gap-2">
-            <PaginationLink
-              href={data.pagination.hasPrevPage ? buildPageHref(data.pagination.page - 1) : "#"}
-              disabled={!data.pagination.hasPrevPage}
-            >
-              上一页
-            </PaginationLink>
-            <Badge variant="secondary" className="h-8 rounded-full px-3 text-sm">
-              {data.pagination.page}
-            </Badge>
-            <PaginationLink
-              href={data.pagination.hasNextPage ? buildPageHref(data.pagination.page + 1) : "#"}
-              disabled={!data.pagination.hasNextPage}
-            >
-              下一页
-            </PaginationLink>
-          </div>
+          <AdminUserPagination data={data} buildPageHref={buildPageHref} />
         </CardFooter>
       </Card>
+    </div>
+  )
+}
+
+function AdminUserPagination({
+  data,
+  buildPageHref,
+}: {
+  data: AdminUserListResult
+  buildPageHref: (page: number) => string
+}) {
+  const pageTokens = buildPageTokens(data.pagination.page, data.pagination.totalPages)
+
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-1.5">
+        <PaginationLink
+          href={data.pagination.hasPrevPage ? buildPageHref(data.pagination.page - 1) : "#"}
+          disabled={!data.pagination.hasPrevPage}
+        >
+          上一页
+        </PaginationLink>
+        {pageTokens.map((token, index) => token === "ellipsis" ? (
+          <span key={`ellipsis-${index}`} className="px-1 text-xs text-muted-foreground">
+            ...
+          </span>
+        ) : (
+          <PaginationLink
+            key={token}
+            href={buildPageHref(token)}
+            disabled={token === data.pagination.page}
+            active={token === data.pagination.page}
+          >
+            {token}
+          </PaginationLink>
+        ))}
+        <PaginationLink
+          href={data.pagination.hasNextPage ? buildPageHref(data.pagination.page + 1) : "#"}
+          disabled={!data.pagination.hasNextPage}
+        >
+          下一页
+        </PaginationLink>
+      </div>
+
+      {data.pagination.totalPages > 1 ? (
+        <form action="/admin" className="flex items-center gap-1.5">
+          <input type="hidden" name="tab" value="users" />
+          <input type="hidden" name="userKeyword" value={data.filters.keyword} />
+          <input type="hidden" name="userRole" value={data.filters.role} />
+          <input type="hidden" name="userStatus" value={data.filters.status} />
+          <input type="hidden" name="userVip" value={data.filters.vip} />
+          <input type="hidden" name="userActivity" value={data.filters.activity} />
+          <input type="hidden" name="userSort" value={data.filters.sort} />
+          <input type="hidden" name="userPageSize" value={String(data.pagination.pageSize)} />
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            跳至
+            <Input
+              type="number"
+              name="userPage"
+              min={1}
+              max={data.pagination.totalPages}
+              step={1}
+              defaultValue={data.pagination.page}
+              aria-label="跳转到用户列表页码"
+              className="h-8 w-16 rounded-full bg-background px-2 text-center text-xs"
+            />
+          </label>
+          <Button type="submit" variant="outline" className="rounded-full px-3 text-xs">
+            跳页
+          </Button>
+        </form>
+      ) : null}
     </div>
   )
 }
@@ -473,20 +566,24 @@ function UserGrowthMetricsCell({ user }: { user: AdminUserListItem }) {
 function PaginationLink({
   href,
   disabled,
+  active = false,
   children,
 }: {
   href: string
   disabled: boolean
+  active?: boolean
   children: React.ReactNode
 }) {
   return (
     <Link
       href={href}
       aria-disabled={disabled}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        buttonVariants({ variant: "outline", size: "default" }),
-        "rounded-full px-3 text-xs",
-        disabled ? "pointer-events-none opacity-40" : ""
+        buttonVariants({ variant: active ? "default" : "outline", size: "default" }),
+        "min-w-8 rounded-full px-3 text-xs",
+        disabled ? "pointer-events-none" : "",
+        disabled && !active ? "opacity-40" : ""
       )}
     >
       {children}
