@@ -13,7 +13,7 @@ import { defaultSiteSettingsCreateInput } from "@/lib/site-settings-defaults"
 import { DEFAULT_GOD_COMMENT_AUTO_LIKE_THRESHOLD } from "@/lib/god-comment-settings"
 import { DEFAULT_THEME_CUSTOMIZATION_SETTINGS, type BuiltInThemePreset, type EditableThemePresetDefinition, type FontSizePreset, type FontSizePresetDefinition, type ThemeCustomizationSettings, type ThemeRuntimeSettings } from "@/lib/theme"
 import type { InteractionGateCondition, InteractionGateSettings, MentionRecommendationSettings } from "@/lib/site-settings"
-import type { LeftSidebarDisplayMode, LeftSidebarHomeSettings, PostSlugGenerationMode, RegistrationEmailTemplateSettings, SiteSearchSettings, SiteTippingGiftItem } from "@/lib/site-settings"
+import type { LeftSidebarDisplayMode, LeftSidebarHomeSettings, LeftSidebarNavigationMode, PostSlugGenerationMode, RegistrationEmailTemplateSettings, SiteSearchSettings, SiteTippingGiftItem } from "@/lib/site-settings"
 import type { PasswordStrength } from "@/lib/password-policy"
 
 export interface AdminBasicSettingsInitialSettings {
@@ -44,6 +44,7 @@ export interface AdminBasicSettingsInitialSettings {
   homeSidebarAnnouncementsEnabled: boolean
   userProfileIpLocationEnabled: boolean
   leftSidebarDisplayMode: LeftSidebarDisplayMode
+  leftSidebarNavigationMode: LeftSidebarNavigationMode
   leftSidebarHome: LeftSidebarHomeSettings
   theme: ThemeRuntimeSettings
   postSlugGenerationMode: PostSlugGenerationMode
@@ -187,6 +188,7 @@ export interface AdminBasicSettingsDraft {
   homeSidebarAnnouncementsEnabled: boolean
   userProfileIpLocationEnabled: boolean
   leftSidebarDisplayMode: LeftSidebarDisplayMode
+  leftSidebarNavigationMode: LeftSidebarNavigationMode
   leftSidebarHomeEnabled: boolean
   leftSidebarHomeName: string
   leftSidebarHomeIcon: string
@@ -424,6 +426,7 @@ export function createAdminBasicSettingsDraft(initialSettings: AdminBasicSetting
     homeSidebarAnnouncementsEnabled: coerceBoolean(initialSettings.homeSidebarAnnouncementsEnabled, true),
     userProfileIpLocationEnabled: coerceBoolean(initialSettings.userProfileIpLocationEnabled, false),
     leftSidebarDisplayMode: initialSettings.leftSidebarDisplayMode ?? "DEFAULT",
+    leftSidebarNavigationMode: initialSettings.leftSidebarNavigationMode ?? "DEFAULT",
     leftSidebarHomeEnabled: coerceBoolean(initialSettings.leftSidebarHome?.enabled, true),
     leftSidebarHomeName: coerceString(initialSettings.leftSidebarHome?.name, "首页"),
     leftSidebarHomeIcon: coerceString(initialSettings.leftSidebarHome?.icon, "🏠"),
@@ -591,6 +594,7 @@ export function buildAdminBasicSettingsPayload(draft: AdminBasicSettingsDraft, m
       homeSidebarAnnouncementsEnabled: draft.homeSidebarAnnouncementsEnabled,
       userProfileIpLocationEnabled: draft.userProfileIpLocationEnabled,
       leftSidebarDisplayMode: draft.leftSidebarDisplayMode,
+      leftSidebarNavigationMode: draft.leftSidebarNavigationMode,
       leftSidebarHome: {
         enabled: draft.leftSidebarHomeEnabled,
         name: draft.leftSidebarHomeName,

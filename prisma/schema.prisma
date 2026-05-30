@@ -468,6 +468,7 @@ model User {
   role                             UserRole                       @default(USER)
   status                           UserStatus                     @default(ACTIVE)
   statusExpiresAt                  DateTime?                      @db.Timestamptz(3)
+  statusReason                     String?
   points                           Int                            @default(0)
   level                            Int                            @default(1)
   vipLevel                         Int                            @default(0)
@@ -792,6 +793,10 @@ model Zone {
   minViewVipLevel               Int                  @default(0)
   minPostVipLevel               Int                  @default(0)
   minReplyVipLevel              Int                  @default(0)
+  postRequiredVerificationTypeIds  String[]           @default([])
+  postRequiredBadgeIds             String[]           @default([])
+  replyRequiredVerificationTypeIds String[]           @default([])
+  replyRequiredBadgeIds            String[]           @default([])
   postListDisplayMode           String?
   postListLoadMode              String?
   createdAt                     DateTime             @default(now()) @db.Timestamptz(3)
@@ -836,6 +841,12 @@ model Board {
   minViewVipLevel                 Int?
   minPostVipLevel                 Int?
   minReplyVipLevel                Int?
+  postIdentityGateInherit          Boolean                  @default(true)
+  replyIdentityGateInherit         Boolean                  @default(true)
+  postRequiredVerificationTypeIds  String[]                 @default([])
+  postRequiredBadgeIds             String[]                 @default([])
+  replyRequiredVerificationTypeIds String[]                 @default([])
+  replyRequiredBadgeIds            String[]                 @default([])
   postListDisplayMode             String?
   postListLoadMode                String?
   postCount                       Int                      @default(0)

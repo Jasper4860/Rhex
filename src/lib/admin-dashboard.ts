@@ -113,6 +113,10 @@ export interface AdminStructureData {
     minViewVipLevel: number
     minPostVipLevel: number
     minReplyVipLevel: number
+    postRequiredVerificationTypeIds: string[]
+    postRequiredBadgeIds: string[]
+    replyRequiredVerificationTypeIds: string[]
+    replyRequiredBadgeIds: string[]
     requirePostReview: boolean
     requireCommentReview: boolean
     postListDisplayMode: string | null
@@ -162,6 +166,16 @@ export interface AdminStructureData {
     minViewVipLevel: number | null
     minPostVipLevel: number | null
     minReplyVipLevel: number | null
+    postIdentityGateInherit: boolean
+    replyIdentityGateInherit: boolean
+    postRequiredVerificationTypeIds: string[]
+    postRequiredBadgeIds: string[]
+    replyRequiredVerificationTypeIds: string[]
+    replyRequiredBadgeIds: string[]
+    effectivePostRequiredVerificationTypeIds: string[]
+    effectivePostRequiredBadgeIds: string[]
+    effectiveReplyRequiredVerificationTypeIds: string[]
+    effectiveReplyRequiredBadgeIds: string[]
     requirePostReview: boolean | null
     requireCommentReview: boolean | null
     postListDisplayMode: string | null
@@ -176,6 +190,18 @@ export interface AdminStructureData {
     canDeleteZone: boolean
     canDeleteBoard: boolean
   }
+  verificationTypes: Array<{
+    id: string
+    name: string
+    slug: string
+    status: boolean
+  }>
+  badges: Array<{
+    id: string
+    name: string
+    code: string
+    status: boolean
+  }>
   boardApplications: Array<{
     id: string
     applicantId: number
@@ -333,6 +359,10 @@ export function mapAdminStructureData(data: AdminStructureRawData, actor: AdminA
         minViewVipLevel: settings.minViewVipLevel,
         minPostVipLevel: settings.minPostVipLevel,
         minReplyVipLevel: settings.minReplyVipLevel,
+        postRequiredVerificationTypeIds: settings.postRequiredVerificationTypeIds,
+        postRequiredBadgeIds: settings.postRequiredBadgeIds,
+        replyRequiredVerificationTypeIds: settings.replyRequiredVerificationTypeIds,
+        replyRequiredBadgeIds: settings.replyRequiredBadgeIds,
         requirePostReview: settings.requirePostReview,
         requireCommentReview: settings.requireCommentReview,
         postListDisplayMode: zone.postListDisplayMode ?? null,
@@ -387,6 +417,16 @@ export function mapAdminStructureData(data: AdminStructureRawData, actor: AdminA
         minViewVipLevel: board.minViewVipLevel ?? null,
         minPostVipLevel: board.minPostVipLevel ?? null,
         minReplyVipLevel: board.minReplyVipLevel ?? null,
+        postIdentityGateInherit: board.postIdentityGateInherit,
+        replyIdentityGateInherit: board.replyIdentityGateInherit,
+        postRequiredVerificationTypeIds: board.postRequiredVerificationTypeIds,
+        postRequiredBadgeIds: board.postRequiredBadgeIds,
+        replyRequiredVerificationTypeIds: board.replyRequiredVerificationTypeIds,
+        replyRequiredBadgeIds: board.replyRequiredBadgeIds,
+        effectivePostRequiredVerificationTypeIds: settings.postRequiredVerificationTypeIds,
+        effectivePostRequiredBadgeIds: settings.postRequiredBadgeIds,
+        effectiveReplyRequiredVerificationTypeIds: settings.replyRequiredVerificationTypeIds,
+        effectiveReplyRequiredBadgeIds: settings.replyRequiredBadgeIds,
         requirePostReview: board.requirePostReview ?? null,
         requireCommentReview: board.requireCommentReview ?? null,
         postListDisplayMode: board.postListDisplayMode ?? null,
@@ -402,6 +442,18 @@ export function mapAdminStructureData(data: AdminStructureRawData, actor: AdminA
       canDeleteZone: actor.role === UserRole.ADMIN,
       canDeleteBoard: actor.role === UserRole.ADMIN,
     },
+    verificationTypes: data.verificationTypes.map((item) => ({
+      id: item.id,
+      name: item.name,
+      slug: item.slug,
+      status: item.status,
+    })),
+    badges: data.badges.map((item) => ({
+      id: item.id,
+      name: item.name,
+      code: item.code,
+      status: item.status,
+    })),
     boardApplications: [],
     canReviewBoardApplications: false,
   }

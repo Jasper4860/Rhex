@@ -23,6 +23,7 @@ import {
   PROFILE_HOME_FEED_DISPLAY_MODE_OPTIONS,
   PROFILE_HOME_FEED_LOAD_MODE_OPTIONS,
   PROFILE_LEFT_SIDEBAR_DISPLAY_MODE_OPTIONS,
+  PROFILE_LEFT_SIDEBAR_NAVIGATION_MODE_OPTIONS,
   PROFILE_POST_LINK_DISPLAY_MODE_OPTIONS,
   PROFILE_POST_SLUG_GENERATION_MODE_OPTIONS,
 } from "@/components/admin/admin-basic-settings.constants"
@@ -446,9 +447,20 @@ export function AdminProfileSettingsForm({
                     updateDraftField(
                       "leftSidebarDisplayMode",
                       value as typeof draft.leftSidebarDisplayMode,
-                    )}
+                  )}
                   options={[...PROFILE_LEFT_SIDEBAR_DISPLAY_MODE_OPTIONS]}
-                  description="默认保持现在的三栏布局；隐藏会移除左侧导航；吸附模式会把左侧导航收进最左侧抽屉，可选择首次默认隐藏或打开。"
+                  description="控制左侧导航整体是否显示，以及是否吸附到页面最左侧。"
+                />
+                <SettingsSelectField
+                  label="左侧导航显示模式"
+                  value={draft.leftSidebarNavigationMode}
+                  onChange={(value) =>
+                    updateDraftField(
+                      "leftSidebarNavigationMode",
+                      value as typeof draft.leftSidebarNavigationMode,
+                    )}
+                  options={[...PROFILE_LEFT_SIDEBAR_NAVIGATION_MODE_OPTIONS]}
+                  description="默认模式分开展示分区和节点；树状展示会按分区归类节点，并在各自分区内沿用节点排序。"
                 />
                 <SettingsToggleField
                   label="左侧导航首页入口"

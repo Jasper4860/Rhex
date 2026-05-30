@@ -10,6 +10,7 @@ import { AnonymousUserIndicator } from "@/components/user/anonymous-user-indicat
 import { CommentForm } from "@/components/comment/comment-form"
 import { CommentLikeButton } from "@/components/comment/comment-like-button"
 import { AdminCommentStatusNotice, buildCommentAdminActions, CommentAuthorIdentityBadges, CommentJackpotDepositBadge, CommentReviewStatusNotice, CommentRewardBadge, CommentRewardEffectBadge, CommentUnavailablePlaceholder, copyCommentPermalink, getCommentUnavailableMessage, type CommentAdminAction } from "@/components/comment/comment-thread-shared"
+import { AdminUserStatusDialog } from "@/components/admin/admin-user-status-modal"
 import { InlineTokenContent } from "@/components/inline-token-content"
 import { MarkdownContentClient as MarkdownContent } from "@/components/markdown-content-client"
 import { PostTipPanel } from "@/components/post/post-tip-panel"
@@ -388,48 +389,70 @@ function CommentAdminActionMenu({
   onSelect: (action: CommentAdminAction) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [statusAction, setStatusAction] = useState<CommentAdminAction | null>(null)
 
   if (actions.length === 0) {
     return null
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        disabled={disabled}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        管理
-      </PopoverTrigger>
-      <PopoverContent
-        side="top"
-        align="end"
-        sideOffset={8}
-        className="w-max max-w-[min(30rem,calc(100vw-1.5rem))] flex-row flex-wrap items-center justify-start gap-1.5 rounded-2xl p-1.5"
-      >
-        {actions.map((action) => (
-          <Button
-            key={action.key}
-            type="button"
-            variant="outline"
-            disabled={action.disabled}
-            className={action.tone === "danger" ? "h-6 border-red-200 px-2 text-[11px] text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-60" : "h-6 px-2 text-[11px] disabled:opacity-60"}
-            onClick={() => {
-              if (action.disabled) {
-                return
-              }
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          disabled={disabled}
+          aria-expanded={open}
+          aria-haspopup="menu"
+          className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          管理
+        </PopoverTrigger>
+        <PopoverContent
+          side="top"
+          align="end"
+          sideOffset={8}
+          className="w-max max-w-[min(30rem,calc(100vw-1.5rem))] flex-row flex-wrap items-center justify-start gap-1.5 rounded-2xl p-1.5"
+        >
+          {actions.map((action) => (
+            <Button
+              key={action.key}
+              type="button"
+              variant="outline"
+              disabled={action.disabled}
+              className={action.tone === "danger" ? "h-6 border-red-200 px-2 text-[11px] text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-60" : "h-6 px-2 text-[11px] disabled:opacity-60"}
+              onClick={() => {
+                if (action.disabled) {
+                  return
+                }
 
-              setOpen(false)
-              onSelect(action)
-            }}
-          >
-            {action.label}
-          </Button>
-        ))}
-      </PopoverContent>
-    </Popover>
+                setOpen(false)
+                if (action.key === "user.mute" || action.key === "user.ban") {
+                  setStatusAction(action)
+                  return
+                }
+
+                onSelect(action)
+              }}
+            >
+              {action.label}
+            </Button>
+          ))}
+        </PopoverContent>
+      </Popover>
+      {statusAction ? (
+        <AdminUserStatusDialog
+          userId={Number(statusAction.targetId)}
+          username={statusAction.username ?? statusAction.targetId}
+          action={statusAction.key === "user.ban" ? "ban" : "mute"}
+          commentId={typeof statusAction.payload?.commentId === "string" ? statusAction.payload.commentId : undefined}
+          open
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              setStatusAction(null)
+            }
+          }}
+        />
+      ) : null}
+    </>
   )
 }
 

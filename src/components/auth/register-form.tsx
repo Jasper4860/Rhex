@@ -46,6 +46,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/toast"
 import { collectAddonAuthFieldsFromFormData } from "@/lib/addon-auth-fields"
 import type { AddonExternalAuthEntry } from "@/lib/addon-external-auth-providers"
+import { buildLoginHrefWithRedirect, normalizeAuthRedirectTarget } from "@/lib/auth-redirect"
 import { isEmailInWhitelist } from "@/lib/email"
 import { validatePasswordPolicy } from "@/lib/password-policy"
 import type { SiteSettingsData } from "@/lib/site-settings"
@@ -112,6 +113,7 @@ export function RegisterForm({
   const searchParams = useSearchParams()
   const initialInviterUsername = searchParams.get("invite") ?? searchParams.get("inviter") ?? ""
   const initialInviteCode = (searchParams.get("code") ?? "").toUpperCase()
+  const redirectTarget = normalizeAuthRedirectTarget(searchParams.get("redirect"), "/")
   const [username, setUsername] = useState("")
   const [nickname, setNickname] = useState("")
   const [password, setPassword] = useState("")
@@ -366,7 +368,7 @@ export function RegisterForm({
     const successMessage = result.message ?? (autoLogin ? "注册成功，正在跳转到首页…" : "注册成功，请前往登录页登录")
     toast.success(successMessage, "注册成功")
 
-    router.replace(autoLogin ? "/" : "/login")
+    router.replace(autoLogin ? redirectTarget : buildLoginHrefWithRedirect(redirectTarget))
     router.refresh()
     setLoading(false)
   }

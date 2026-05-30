@@ -204,10 +204,10 @@ export function AdminInteractionSettingsForm({
             <TextField label="发帖正文最大字数" value={draft.postContentMaxLength} onChange={(value) => updateDraftField("postContentMaxLength", value)} placeholder="默认 50000，最大 100000" />
             <TextField label="回复正文最小字数" value={draft.commentContentMinLength} onChange={(value) => updateDraftField("commentContentMinLength", value)} placeholder="默认 2，最小 1" />
             <TextField label="回复正文最大字数" value={draft.commentContentMaxLength} onChange={(value) => updateDraftField("commentContentMaxLength", value)} placeholder="默认 2000，最大 20000" />
-            <TextField label="帖子可编辑分钟数" value={draft.postEditableMinutes} onChange={(value) => updateDraftField("postEditableMinutes", value)} placeholder="如 10" />
+            <TextField label="帖子可编辑分钟数" value={draft.postEditableMinutes} onChange={(value) => updateDraftField("postEditableMinutes", value)} placeholder="如 10，-1 为永久" />
             <TextField label="评论可编辑分钟数" value={draft.commentEditableMinutes} onChange={(value) => updateDraftField("commentEditableMinutes", value)} placeholder="如 5" />
           </div>
-          <p className="text-xs leading-6 text-muted-foreground">保存时若最大值小于最小值，会自动按最小值兜底；发帖、编辑帖子、回复、编辑回复都会使用这组限制。可编辑分钟数填 `0` 表示发出后不可再编辑。</p>
+          <p className="text-xs leading-6 text-muted-foreground">保存时若最大值小于最小值，会自动按最小值兜底；发帖、编辑帖子、回复、编辑回复都会使用这组限制。帖子可编辑分钟数填 `-1` 表示永久可编辑，填 `0` 表示发出后不可再编辑。</p>
         </div>
       ) : null}
 

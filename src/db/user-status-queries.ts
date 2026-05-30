@@ -14,6 +14,7 @@ export function clearExpiredUserRestrictions(now = new Date()) {
     data: {
       status: UserStatus.ACTIVE,
       statusExpiresAt: null,
+      statusReason: null,
     },
   })
 }
@@ -40,6 +41,7 @@ export async function normalizeExpiredUserRestrictionByUsername<TSelect extends 
       data: {
         status: UserStatus.ACTIVE,
         statusExpiresAt: null,
+        statusReason: null,
       },
       select,
     })

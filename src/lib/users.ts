@@ -37,6 +37,8 @@ export interface SiteUserProfile {
   avatarPath?: string | null
   gender?: string | null
   status: PublicUserStatus
+  statusExpiresAt?: string | null
+  statusReason?: string | null
   level: number
   levelName?: string
   levelColor?: string
@@ -100,6 +102,8 @@ export async function getUserProfile(username: string): Promise<SiteUserProfile 
       avatarPath: getUserAvatarPath(user),
       gender: user.gender,
       status: user.status,
+      statusExpiresAt: user.statusExpiresAt?.toISOString() ?? null,
+      statusReason: user.statusReason ?? null,
       level: user.level,
       levelName: levelBadge.name,
       levelColor: levelBadge.color,

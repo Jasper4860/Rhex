@@ -12,6 +12,7 @@ export interface AdminActionContext {
   message: string
   requestIp: string | null
   body: JsonObject
+  detailOverride?: string
 }
 
 export interface AdminActionResult<T = unknown> {
@@ -74,7 +75,7 @@ export function revalidateAdminMutationPaths(extraPaths: string[] = []) {
 }
 
 export async function writeAdminActionLog(context: AdminActionContext, metadata: AdminActionMetadata) {
-  const detail = context.message || metadata.buildDetail?.(context) || `管理员执行 ${context.action}`
+  const detail = context.detailOverride || context.message || metadata.buildDetail?.(context) || `管理员执行 ${context.action}`
   await writeAdminLog(context.adminUserId, context.action, metadata.targetType, context.targetId, detail, context.requestIp)
 }
 

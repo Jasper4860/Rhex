@@ -107,6 +107,10 @@ export default async function ZonePage(props: PageProps<"/zones/[slug]">) {
 
     minPostVipLevel: 0,
     minReplyVipLevel: 0,
+    postRequiredVerificationTypeIds: [],
+    postRequiredBadgeIds: [],
+    replyRequiredVerificationTypeIds: [],
+    replyRequiredBadgeIds: [],
     requirePostReview: zone.requirePostReview ?? false,
     requireCommentReview: zone.requireCommentReview ?? false,
     showInHomeFeed: true,

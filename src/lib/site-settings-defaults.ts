@@ -204,6 +204,9 @@ export const defaultSiteSettingsCreateInput = {
       leftSidebarDisplay: {
         mode: "DEFAULT",
       },
+      leftSidebarNavigation: {
+        mode: "DEFAULT",
+      },
       leftSidebarHome: {
         enabled: true,
         name: "首页",

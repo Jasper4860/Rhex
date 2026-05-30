@@ -2,14 +2,16 @@ import { UserRole, UserStatus } from "@/db/types"
 
 import { prisma } from "@/db/client"
 
-export function updateUserStatus(userId: number, status: UserStatus, statusExpiresAt?: Date | null) {
+export function updateUserStatus(userId: number, status: UserStatus, statusExpiresAt?: Date | null, statusReason?: string | null) {
   const shouldInvalidateSessions = status === UserStatus.BANNED || status === UserStatus.INACTIVE
+  const shouldStoreReason = status === UserStatus.MUTED || status === UserStatus.BANNED
 
   return prisma.user.update({
     where: { id: userId },
     data: {
       status,
-      statusExpiresAt: status === UserStatus.MUTED || status === UserStatus.BANNED ? statusExpiresAt ?? null : null,
+      statusExpiresAt: shouldStoreReason ? statusExpiresAt ?? null : null,
+      statusReason: shouldStoreReason ? (statusReason?.trim() || null) : null,
       ...(shouldInvalidateSessions ? { sessionInvalidBefore: new Date() } : {}),
     },
   })
@@ -21,7 +23,7 @@ export function updateUserRole(userId: number, role: UserRole, status?: UserStat
     data: {
       role,
       status,
-      ...(status ? { statusExpiresAt: null } : {}),
+      ...(status ? { statusExpiresAt: null, statusReason: null } : {}),
     },
   })
 }
@@ -93,7 +95,7 @@ export function findUserUsername(userId: number) {
 export function findUserStatus(userId: number) {
   return prisma.user.findUnique({
     where: { id: userId },
-    select: { role: true, status: true, statusExpiresAt: true },
+    select: { role: true, status: true, statusExpiresAt: true, statusReason: true },
   })
 }
 
@@ -129,6 +131,7 @@ export function promoteUserToAdmin(userId: number) {
         role: UserRole.ADMIN,
         status: UserStatus.ACTIVE,
         statusExpiresAt: null,
+        statusReason: null,
       },
     })
     await tx.moderatorZoneScope.deleteMany({ where: { moderatorId: userId } })

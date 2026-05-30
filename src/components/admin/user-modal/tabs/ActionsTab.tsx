@@ -10,6 +10,7 @@ import { UserInfoGrid } from "@/components/admin/user-modal/components/UserInfo"
 import type { UserActionsState } from "@/components/admin/user-modal/hooks/use-user-actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { USER_STATUS_EXPIRATION_PRESETS } from "@/lib/user-status-expiration-presets"
 
 const VIP_LEVEL_OPTIONS = CONFIGURABLE_VIP_LEVELS.map((level) => ({
   value: String(level),
@@ -71,7 +72,30 @@ export function ActionsTab({
               />
               <span className="text-xs text-muted-foreground">仅对禁言和拉黑生效，不填写则永久。</span>
             </label>
-            <TextAreaField label="操作备注" value={account.state.statusMessage} onChange={account.setStatusMessage} placeholder="记录禁言、恢复或拉黑原因" rows={4} />
+            <div className="flex flex-wrap items-center gap-2">
+              {USER_STATUS_EXPIRATION_PRESETS.map((preset) => (
+                <Button
+                  key={preset.label}
+                  type="button"
+                  variant="outline"
+                  className="h-7 rounded-full px-2.5 text-xs"
+                  onClick={() => account.setStatusExpirationPreset(preset.days)}
+                  disabled={isPending}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-7 rounded-full px-2.5 text-xs"
+                onClick={() => account.setStatusExpirationPreset(null)}
+                disabled={isPending}
+              >
+                永久
+              </Button>
+            </div>
+            <TextAreaField label="公开原因" value={account.state.statusMessage} onChange={account.setStatusMessage} placeholder="填写禁言或封禁原因，不填写会使用默认公开原因" rows={4} />
             <ActionButtons
               items={[
                 {

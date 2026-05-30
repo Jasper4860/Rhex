@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react"
 
 import { Modal } from "@/components/ui/modal"
+import { AdminUserStatusModal } from "@/components/admin/admin-user-status-modal"
 import { BoardSelectField, type BoardSelectGroup } from "@/components/board/board-select-field"
 import { Button } from "@/components/ui/rbutton"
 import { getPostPath } from "@/lib/post-links"
@@ -137,12 +138,11 @@ export function PostAdminPanel({
     : postAuthorStatus === "MUTED"
       ? [
           { action: "user.activate", targetId: String(postAuthorId), label: "解除禁言" },
-          ...(actorRole === "ADMIN" ? [{ action: "user.ban", targetId: String(postAuthorId), label: "封禁此用户", tone: "danger" as const }] : []),
         ]
       : [
-          { action: "user.mute", targetId: String(postAuthorId), label: "禁言此用户" },
-          ...(actorRole === "ADMIN" ? [{ action: "user.ban", targetId: String(postAuthorId), label: "封禁此用户", tone: "danger" as const }] : []),
         ]
+  const showMuteAuthorAction = postAuthorStatus !== "MUTED" && postAuthorStatus !== "BANNED"
+  const showBanAuthorAction = actorRole === "ADMIN" && postAuthorStatus !== "BANNED"
 
   const pinActions: AdminQuickAction[] = isPinned
     ? (allowedPinScopes.includes("NONE")
@@ -202,6 +202,24 @@ export function PostAdminPanel({
             {item.label}
           </Button>
         ))}
+        {showMuteAuthorAction ? (
+          <AdminUserStatusModal
+            userId={postAuthorId}
+            username={postAuthorUsername}
+            action="mute"
+            postId={postId}
+            triggerClassName="h-8 rounded-lg px-3 text-xs"
+          />
+        ) : null}
+        {showBanAuthorAction ? (
+          <AdminUserStatusModal
+            userId={postAuthorId}
+            username={postAuthorUsername}
+            action="ban"
+            postId={postId}
+            triggerClassName="h-8 rounded-lg border border-red-200 bg-background px-3 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+          />
+        ) : null}
       </div>
       {feedback ? <p className="mt-2 text-xs text-muted-foreground">{feedback}</p> : null}
 

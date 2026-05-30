@@ -31,6 +31,10 @@ export interface ZoneItem {
 
   minPostVipLevel: number
   minReplyVipLevel: number
+  postRequiredVerificationTypeIds: string[]
+  postRequiredBadgeIds: string[]
+  replyRequiredVerificationTypeIds: string[]
+  replyRequiredBadgeIds: string[]
   postListDisplayMode: string | null
   postListLoadMode: string | null
   moderators: StructureModeratorItem[]
@@ -98,6 +102,16 @@ export interface BoardItem {
 
   minPostVipLevel: number | null
   minReplyVipLevel: number | null
+  postIdentityGateInherit: boolean
+  replyIdentityGateInherit: boolean
+  postRequiredVerificationTypeIds: string[]
+  postRequiredBadgeIds: string[]
+  replyRequiredVerificationTypeIds: string[]
+  replyRequiredBadgeIds: string[]
+  effectivePostRequiredVerificationTypeIds: string[]
+  effectivePostRequiredBadgeIds: string[]
+  effectiveReplyRequiredVerificationTypeIds: string[]
+  effectiveReplyRequiredBadgeIds: string[]
   postListDisplayMode: string | null
   postListLoadMode: string | null
   moderators: StructureModeratorItem[]
@@ -114,6 +128,18 @@ export interface StructureManagerData {
     canDeleteZone: boolean
     canDeleteBoard: boolean
   }
+  verificationTypes: Array<{
+    id: string
+    name: string
+    slug: string
+    status: boolean
+  }>
+  badges: Array<{
+    id: string
+    name: string
+    code: string
+    status: boolean
+  }>
   boardApplications: Array<{
     id: string
     applicantId: number

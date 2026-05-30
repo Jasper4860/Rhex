@@ -5,6 +5,7 @@ import { useState, useTransition } from "react"
 import { AddonEditor } from "@/components/addon-editor"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { IconPicker } from "@/components/ui/icon-picker"
 import { Input } from "@/components/ui/input"
 import { toast } from "@/components/ui/toast"
@@ -49,6 +50,28 @@ interface StructureTabProps {
   ) => void
   addSidebarLink: () => void
   removeSidebarLink: (index: number) => void
+}
+
+type PermissionOption = {
+  id: string
+  name: string
+  detail: string
+  status: boolean
+}
+
+interface StructureAccessTabProps extends StructureTabProps {
+  verificationTypes: Array<{
+    id: string
+    name: string
+    slug: string
+    status: boolean
+  }>
+  badges: Array<{
+    id: string
+    name: string
+    code: string
+    status: boolean
+  }>
 }
 
 export function StructureBasicTab({
@@ -231,7 +254,35 @@ export function StructureAccessTab({
   form,
   isBoard,
   updateField,
-}: StructureTabProps) {
+  verificationTypes,
+  badges,
+}: StructureAccessTabProps) {
+  const verificationOptions = verificationTypes.map((item) => ({
+    id: item.id,
+    name: item.name,
+    detail: item.slug,
+    status: item.status,
+  }))
+  const badgeOptions = badges.map((item) => ({
+    id: item.id,
+    name: item.name,
+    detail: item.code,
+    status: item.status,
+  }))
+
+  function toggleIdentityGateList(
+    field: "postRequiredVerificationTypeIds" | "postRequiredBadgeIds" | "replyRequiredVerificationTypeIds" | "replyRequiredBadgeIds",
+    id: string,
+    checked: boolean,
+  ) {
+    updateField(
+      field,
+      checked
+        ? Array.from(new Set([...form[field], id]))
+        : form[field].filter((item) => item !== id),
+    )
+  }
+
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-border p-5">
@@ -288,12 +339,145 @@ export function StructureAccessTab({
       </div>
 
       <div className="rounded-xl border border-border p-5">
+        <h4 className="text-sm font-semibold">指定认证 / 勋章权限</h4>
+        <p className="mt-2 text-xs leading-6 text-muted-foreground">配置后，普通用户需要命中任一认证或勋章才可执行对应操作；管理员和版主不受此限制。</p>
+        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+          <IdentityGateEditor
+            title="发帖权限增强"
+            mode={form.postIdentityGateMode}
+            isBoard={isBoard}
+            onModeChange={(value) => updateField("postIdentityGateMode", value)}
+            verificationOptions={verificationOptions}
+            badgeOptions={badgeOptions}
+            selectedVerificationIds={form.postRequiredVerificationTypeIds}
+            selectedBadgeIds={form.postRequiredBadgeIds}
+            onVerificationChange={(id, checked) => toggleIdentityGateList("postRequiredVerificationTypeIds", id, checked)}
+            onBadgeChange={(id, checked) => toggleIdentityGateList("postRequiredBadgeIds", id, checked)}
+          />
+          <IdentityGateEditor
+            title="回复权限增强"
+            mode={form.replyIdentityGateMode}
+            isBoard={isBoard}
+            onModeChange={(value) => updateField("replyIdentityGateMode", value)}
+            verificationOptions={verificationOptions}
+            badgeOptions={badgeOptions}
+            selectedVerificationIds={form.replyRequiredVerificationTypeIds}
+            selectedBadgeIds={form.replyRequiredBadgeIds}
+            onVerificationChange={(id, checked) => toggleIdentityGateList("replyRequiredVerificationTypeIds", id, checked)}
+            onBadgeChange={(id, checked) => toggleIdentityGateList("replyRequiredBadgeIds", id, checked)}
+          />
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border p-5">
         <h4 className="text-sm font-semibold">审核策略</h4>
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Toggle label="开启发帖审核" checked={form.requirePostReview} onChange={(value) => updateField("requirePostReview", value)} />
           <Toggle label="开启回帖审核" checked={form.requireCommentReview} onChange={(value) => updateField("requireCommentReview", value)} />
         </div>
       </div>
+    </div>
+  )
+}
+
+function IdentityGateEditor({
+  title,
+  mode,
+  isBoard,
+  verificationOptions,
+  badgeOptions,
+  selectedVerificationIds,
+  selectedBadgeIds,
+  onModeChange,
+  onVerificationChange,
+  onBadgeChange,
+}: {
+  title: string
+  mode: "inherit" | "custom"
+  isBoard: boolean
+  verificationOptions: PermissionOption[]
+  badgeOptions: PermissionOption[]
+  selectedVerificationIds: string[]
+  selectedBadgeIds: string[]
+  onModeChange: (value: "inherit" | "custom") => void
+  onVerificationChange: (id: string, checked: boolean) => void
+  onBadgeChange: (id: string, checked: boolean) => void
+}) {
+  const disabled = isBoard && mode === "inherit"
+
+  return (
+    <div className="rounded-xl border border-border/70 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h5 className="text-sm font-medium">{title}</h5>
+          <p className="mt-1 text-xs text-muted-foreground">{selectedVerificationIds.length + selectedBadgeIds.length > 0 ? `已选择 ${selectedVerificationIds.length + selectedBadgeIds.length} 项` : "未限制认证或勋章"}</p>
+        </div>
+        {isBoard ? (
+          <SelectField
+            label="权限来源"
+            value={mode}
+            onValueChange={(value) => onModeChange(value === "custom" ? "custom" : "inherit")}
+            options={[
+              { value: "inherit", label: "继承分区" },
+              { value: "custom", label: "自定义名单" },
+            ]}
+          />
+        ) : null}
+      </div>
+
+      <div className={disabled ? "pointer-events-none mt-4 opacity-50" : "mt-4"}>
+        <IdentityGateOptionGroup
+          title="认证"
+          emptyText="暂无认证类型"
+          options={verificationOptions}
+          selectedIds={selectedVerificationIds}
+          onChange={onVerificationChange}
+        />
+        <IdentityGateOptionGroup
+          title="勋章"
+          emptyText="暂无勋章"
+          options={badgeOptions}
+          selectedIds={selectedBadgeIds}
+          onChange={onBadgeChange}
+        />
+      </div>
+    </div>
+  )
+}
+
+function IdentityGateOptionGroup({
+  title,
+  emptyText,
+  options,
+  selectedIds,
+  onChange,
+}: {
+  title: string
+  emptyText: string
+  options: PermissionOption[]
+  selectedIds: string[]
+  onChange: (id: string, checked: boolean) => void
+}) {
+  return (
+    <div className="mt-4">
+      <p className="text-xs font-medium text-muted-foreground">{title}</p>
+      {options.length === 0 ? (
+        <p className="mt-2 text-xs text-muted-foreground">{emptyText}</p>
+      ) : (
+        <div className="mt-2 grid gap-2">
+          {options.map((option) => (
+            <label key={option.id} className="flex cursor-pointer items-center gap-2 rounded-xl border border-border/70 px-3 py-2 text-sm">
+              <Checkbox
+                checked={selectedIds.includes(option.id)}
+                onCheckedChange={(checked) => onChange(option.id, checked === true)}
+                aria-label={option.name}
+              />
+              <span className="min-w-0 flex-1 truncate">{option.name}</span>
+              <span className="shrink-0 text-[11px] text-muted-foreground">{option.status ? option.detail : `${option.detail} · 停用`}</span>
+            </label>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

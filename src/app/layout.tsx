@@ -173,6 +173,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
               markdownEmojiMap={settings.markdownEmojiMap}
               markdownImageUploadEnabled={settings.markdownImageUploadEnabled}
               leftSidebarDisplayMode={settings.leftSidebarDisplayMode}
+              leftSidebarNavigationMode={settings.leftSidebarNavigationMode}
               leftSidebarHome={settings.leftSidebarHome}
               vipLevelIcons={settings.vipLevelIcons}
             >

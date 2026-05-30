@@ -3,6 +3,18 @@ import type { Board, Zone } from "@/db/types"
 import { normalizePostTypes, type LocalPostType } from "@/lib/post-types"
 import { isVipActive } from "@/lib/vip-status"
 
+function normalizeStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return Array.from(new Set(
+    value
+      .map((item) => typeof item === "string" ? item.trim() : "")
+      .filter(Boolean),
+  ))
+}
+
 export interface EffectiveBoardSettings {
   postPointDelta: number
   replyPointDelta: number
@@ -24,6 +36,10 @@ export interface EffectiveBoardSettings {
   minViewVipLevel: number
   minPostVipLevel: number
   minReplyVipLevel: number
+  postRequiredVerificationTypeIds: string[]
+  postRequiredBadgeIds: string[]
+  replyRequiredVerificationTypeIds: string[]
+  replyRequiredBadgeIds: string[]
   showInHomeFeed: boolean
   moderatorsCanWithdrawBoardTreasury?: boolean
 }
@@ -46,9 +62,19 @@ export function resolveBoardSettings(zone?: Partial<Zone> | null, board?: Partia
     minPostLevel?: number | null
     minReplyPoints?: number | null
     minReplyLevel?: number | null
+    postRequiredVerificationTypeIds?: string[] | null
+    postRequiredBadgeIds?: string[] | null
+    replyRequiredVerificationTypeIds?: string[] | null
+    replyRequiredBadgeIds?: string[] | null
   }) | null | undefined
   const boardConfig = board as (Partial<Board> & {
     configJson?: unknown
+    postIdentityGateInherit?: boolean | null
+    replyIdentityGateInherit?: boolean | null
+    postRequiredVerificationTypeIds?: string[] | null
+    postRequiredBadgeIds?: string[] | null
+    replyRequiredVerificationTypeIds?: string[] | null
+    replyRequiredBadgeIds?: string[] | null
   }) | null | undefined
   const configJson = boardConfig?.configJson
   const boardTreasury = configJson && typeof configJson === "object" && !Array.isArray(configJson)
@@ -78,6 +104,10 @@ export function resolveBoardSettings(zone?: Partial<Zone> | null, board?: Partia
     minViewVipLevel: board?.minViewVipLevel ?? zone?.minViewVipLevel ?? 0,
     minPostVipLevel: board?.minPostVipLevel ?? zone?.minPostVipLevel ?? 0,
     minReplyVipLevel: board?.minReplyVipLevel ?? zone?.minReplyVipLevel ?? 0,
+    postRequiredVerificationTypeIds: normalizeStringList(boardConfig?.postIdentityGateInherit === true ? zoneAdvanced?.postRequiredVerificationTypeIds : boardConfig?.postRequiredVerificationTypeIds ?? zoneAdvanced?.postRequiredVerificationTypeIds),
+    postRequiredBadgeIds: normalizeStringList(boardConfig?.postIdentityGateInherit === true ? zoneAdvanced?.postRequiredBadgeIds : boardConfig?.postRequiredBadgeIds ?? zoneAdvanced?.postRequiredBadgeIds),
+    replyRequiredVerificationTypeIds: normalizeStringList(boardConfig?.replyIdentityGateInherit === true ? zoneAdvanced?.replyRequiredVerificationTypeIds : boardConfig?.replyRequiredVerificationTypeIds ?? zoneAdvanced?.replyRequiredVerificationTypeIds),
+    replyRequiredBadgeIds: normalizeStringList(boardConfig?.replyIdentityGateInherit === true ? zoneAdvanced?.replyRequiredBadgeIds : boardConfig?.replyRequiredBadgeIds ?? zoneAdvanced?.replyRequiredBadgeIds),
     showInHomeFeed: board?.showInHomeFeed ?? zone?.showInHomeFeed ?? true,
     moderatorsCanWithdrawBoardTreasury: Boolean(
       boardTreasury
@@ -95,6 +125,8 @@ type BoardPermissionUser = {
   vipLevel?: number | null
   vipExpiresAt?: Date | string | null
   role?: "USER" | "MODERATOR" | "ADMIN" | null
+  grantedBadgeIds?: string[] | null
+  approvedVerificationTypeIds?: string[] | null
 }
 
 function isStaffUser(user: Pick<BoardPermissionUser, "role"> | null) {
@@ -127,6 +159,23 @@ export function canUserAccess(user: BoardPermissionUser | null, settings: Effect
 
   if ((user?.level ?? 0) < minLevel) {
     return { allowed: false, message: `当前需要至少 Lv.${minLevel}` }
+  }
+
+  if (!isStaffUser(user) && (action === "post" || action === "reply")) {
+    const requiredVerificationTypeIds = action === "post" ? settings.postRequiredVerificationTypeIds : settings.replyRequiredVerificationTypeIds
+    const requiredBadgeIds = action === "post" ? settings.postRequiredBadgeIds : settings.replyRequiredBadgeIds
+    const hasIdentityGate = requiredVerificationTypeIds.length > 0 || requiredBadgeIds.length > 0
+
+    if (hasIdentityGate) {
+      const userVerificationTypeIds = new Set(user?.approvedVerificationTypeIds ?? [])
+      const userBadgeIds = new Set(user?.grantedBadgeIds ?? [])
+      const hasRequiredVerification = requiredVerificationTypeIds.some((id) => userVerificationTypeIds.has(id))
+      const hasRequiredBadge = requiredBadgeIds.some((id) => userBadgeIds.has(id))
+
+      if (!hasRequiredVerification && !hasRequiredBadge) {
+        return { allowed: false, message: action === "post" ? "当前需要指定认证或勋章才可发帖" : "当前需要指定认证或勋章才可回复" }
+      }
+    }
   }
 
   return { allowed: true, message: "" }

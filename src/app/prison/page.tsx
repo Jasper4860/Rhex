@@ -21,6 +21,7 @@ import { getHomeSidebarHotTopics, resolveSidebarUser } from "@/lib/home-sidebar"
 import { readSearchParam } from "@/lib/search-params"
 import { getSiteSettings } from "@/lib/site-settings"
 import { getUserAvatarPath, getUserDisplayName } from "@/lib/user-display"
+import { resolveUserStatusReason } from "@/lib/user-status-reason"
 import { cn } from "@/lib/utils"
 import { getZones } from "@/lib/zones"
 
@@ -120,16 +121,6 @@ function getStatusMeta(status: UserStatus) {
   }
 }
 
-function resolveModerationReason(detail: string | null | undefined, fallbackReason: string) {
-  const reason = detail?.trim()
-
-  if (!reason || reason === "管理员拉黑用户" || reason === "管理员禁言用户") {
-    return fallbackReason
-  }
-
-  return reason
-}
-
 function resolveStatusCount(status: PrisonStatusFilter, counts: { mutedCount: number; bannedCount: number; totalCount: number }) {
   if (status === "BANNED") return counts.bannedCount
   if (status === "MUTED") return counts.mutedCount
@@ -197,6 +188,8 @@ export default async function PrisonPage(props: PageProps<"/prison">) {
       nickname: true,
       avatarPath: true,
       status: true,
+      statusReason: true,
+      statusExpiresAt: true,
       updatedAt: true,
     },
   })
@@ -230,7 +223,8 @@ export default async function PrisonPage(props: PageProps<"/prison">) {
       avatarPath: getUserAvatarPath(user),
       statusMeta,
       moderationAt: moderationLog?.createdAt ?? user.updatedAt,
-      reason: resolveModerationReason(moderationLog?.detail, statusMeta.fallbackReason),
+      expiresAt: user.statusExpiresAt,
+      reason: resolveUserStatusReason(user.status, user.statusReason) || statusMeta.fallbackReason,
     }
   })
 
@@ -352,6 +346,7 @@ function PrisonUserCard({
     displayName: string
     avatarPath: string | null
     moderationAt: Date
+    expiresAt?: Date | null
     reason: string
     statusMeta: ReturnType<typeof getStatusMeta>
   }
@@ -381,6 +376,7 @@ function PrisonUserCard({
                 <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[9px] text-muted-foreground">
                   <Clock3 className="size-3 shrink-0" />
                   <span title={formatDateTime(user.moderationAt)}>处理时间:{serializeDate(user.moderationAt) ?? "-"}</span>
+                  <span>{user.expiresAt ? `至 ${serializeDate(user.expiresAt) ?? formatDateTime(user.expiresAt)}` : "永久"}</span>
                   <Badge variant={user.statusMeta.tone === "danger" ? "destructive" : "secondary"} className="h-4 rounded-full px-1.5 text-[9px]">
                     {user.statusMeta.label}
                   </Badge>

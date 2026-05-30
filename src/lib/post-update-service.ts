@@ -11,6 +11,7 @@ import { createPostMentionNotifications, stripPostContentUserLinks } from "@/lib
 import { normalizePostAttachmentInputs, syncPostAttachments } from "@/lib/post-attachments"
 import { processInternalPostCardEmbeds } from "@/lib/post-card-embed.server"
 import { buildPostContentDocument, getAllPostContentText, getPostContentMeta, serializePostContentDocument } from "@/lib/post-content"
+import { isPostStillEditable } from "@/lib/post-edit-window"
 import { normalizeManualTags, syncPostTaxonomy } from "@/lib/post-editor"
 import { getSiteSettings } from "@/lib/site-settings"
 import { validatePostPayload } from "@/lib/validators"
@@ -82,8 +83,7 @@ export async function updatePostFlow(input: {
     apiError(403, "没有权限编辑该帖子")
   }
 
-  const editDeadline = new Date(post.createdAt).getTime() + Math.max(0, settings.postEditableMinutes) * 60 * 1000
-  const canEditNormally = isAdmin || (editDeadline > Date.now())
+  const canEditNormally = isAdmin || isPostStillEditable(post.createdAt, settings.postEditableMinutes)
 
   if (canEditNormally && !appendedContent) {
     await verifyCreatePostCaptchaWithAddonProviders({

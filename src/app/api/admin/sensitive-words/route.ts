@@ -87,6 +87,13 @@ export const PUT = createAdminRouteHandler(async ({ request, adminUser }) => {
 export const DELETE = createAdminRouteHandler(async ({ request, adminUser }) => {
   const requestIp = getRequestIp(request)
   const body = await readJsonBody(request)
+  if (body.clearAll === true) {
+    const result = await prisma.sensitiveWord.deleteMany({})
+    invalidateSensitiveWordRulesCache()
+    await writeAdminLog(adminUser.id, "sensitiveWord.clear", "CONFIG", "all", `清空敏感词规则 ${result.count} 条`, requestIp)
+    return apiSuccess({ deletedCount: result.count }, `已清空 ${result.count} 条规则`)
+  }
+
   if (Array.isArray(body.ids)) {
     const ids = [...new Set(body.ids.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()))]
 

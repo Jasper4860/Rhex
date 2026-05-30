@@ -3,13 +3,14 @@
 import { createContext, useContext, useMemo } from "react"
 
 import { DEFAULT_MARKDOWN_EMOJI_ITEMS, type MarkdownEmojiItem } from "@/lib/markdown-emoji"
-import type { LeftSidebarDisplayMode, LeftSidebarHomeSettings } from "@/lib/site-settings"
+import type { LeftSidebarDisplayMode, LeftSidebarHomeSettings, LeftSidebarNavigationMode } from "@/lib/site-settings"
 import { DEFAULT_VIP_LEVEL_ICONS, normalizeVipLevelIcons, type VipLevelIcons } from "@/lib/vip-level-icons"
 
 interface SiteSettingsContextValue {
   markdownEmojiMap: MarkdownEmojiItem[]
   markdownImageUploadEnabled: boolean
   leftSidebarDisplayMode: LeftSidebarDisplayMode
+  leftSidebarNavigationMode: LeftSidebarNavigationMode
   leftSidebarHome: LeftSidebarHomeSettings
   vipLevelIcons: VipLevelIcons
 }
@@ -18,6 +19,7 @@ const defaultSiteSettingsContextValue: SiteSettingsContextValue = {
   markdownEmojiMap: DEFAULT_MARKDOWN_EMOJI_ITEMS,
   markdownImageUploadEnabled: true,
   leftSidebarDisplayMode: "DEFAULT",
+  leftSidebarNavigationMode: "DEFAULT",
   leftSidebarHome: {
     enabled: true,
     name: "首页",
@@ -33,18 +35,20 @@ interface SiteSettingsProviderProps {
   markdownEmojiMap?: MarkdownEmojiItem[]
   markdownImageUploadEnabled?: boolean
   leftSidebarDisplayMode?: LeftSidebarDisplayMode
+  leftSidebarNavigationMode?: LeftSidebarNavigationMode
   leftSidebarHome?: LeftSidebarHomeSettings
   vipLevelIcons?: VipLevelIcons
 }
 
-export function SiteSettingsProvider({ children, markdownEmojiMap, markdownImageUploadEnabled = true, leftSidebarDisplayMode = "DEFAULT", leftSidebarHome, vipLevelIcons }: SiteSettingsProviderProps) {
+export function SiteSettingsProvider({ children, markdownEmojiMap, markdownImageUploadEnabled = true, leftSidebarDisplayMode = "DEFAULT", leftSidebarNavigationMode = "DEFAULT", leftSidebarHome, vipLevelIcons }: SiteSettingsProviderProps) {
   const value = useMemo<SiteSettingsContextValue>(() => ({
     markdownEmojiMap: markdownEmojiMap && markdownEmojiMap.length > 0 ? markdownEmojiMap : DEFAULT_MARKDOWN_EMOJI_ITEMS,
     markdownImageUploadEnabled,
     leftSidebarDisplayMode,
+    leftSidebarNavigationMode,
     leftSidebarHome: leftSidebarHome ?? defaultSiteSettingsContextValue.leftSidebarHome,
     vipLevelIcons: normalizeVipLevelIcons(vipLevelIcons),
-  }), [leftSidebarDisplayMode, leftSidebarHome, markdownEmojiMap, markdownImageUploadEnabled, vipLevelIcons])
+  }), [leftSidebarDisplayMode, leftSidebarHome, leftSidebarNavigationMode, markdownEmojiMap, markdownImageUploadEnabled, vipLevelIcons])
 
   return <SiteSettingsContext.Provider value={value}>{children}</SiteSettingsContext.Provider>
 }

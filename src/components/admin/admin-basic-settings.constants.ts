@@ -57,6 +57,11 @@ export const PROFILE_LEFT_SIDEBAR_DISPLAY_MODE_OPTIONS = [
   { value: "DOCKED_OPEN", label: "吸附左侧并默认打开" },
 ] as const
 
+export const PROFILE_LEFT_SIDEBAR_NAVIGATION_MODE_OPTIONS = [
+  { value: "DEFAULT", label: "默认模式" },
+  { value: "TREE", label: "树状展示" },
+] as const
+
 export const INTERNAL_SETTING_TABS: Record<
   AdminBasicSettingsMode,
   Array<{ key: string; label: string }>

@@ -116,6 +116,10 @@ export default async function BoardPage(props: PageProps<"/boards/[slug]">) {
 
     minPostVipLevel: board.minPostVipLevel ?? 0,
     minReplyVipLevel: board.minReplyVipLevel ?? 0,
+    postRequiredVerificationTypeIds: [],
+    postRequiredBadgeIds: [],
+    replyRequiredVerificationTypeIds: [],
+    replyRequiredBadgeIds: [],
     requirePostReview: board.requirePostReview ?? false,
     requireCommentReview: board.requireCommentReview ?? false,
     showInHomeFeed: true,

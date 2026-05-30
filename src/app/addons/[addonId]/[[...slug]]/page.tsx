@@ -166,11 +166,13 @@ export default async function AddonPublicPage({ params, searchParams }: AddonPag
               <SiteSettingsProvider
                 leftSidebarHome={settings?.leftSidebarHome}
                 leftSidebarDisplayMode={settings?.leftSidebarDisplayMode ?? "DEFAULT"}
+                leftSidebarNavigationMode={settings?.leftSidebarNavigationMode ?? "DEFAULT"}
               >
                 <SidebarNavigation
                   zones={zones}
                   boards={boards}
                   displayMode={settings?.leftSidebarDisplayMode ?? "DEFAULT"}
+                  navigationMode={settings?.leftSidebarNavigationMode ?? "DEFAULT"}
                 />
               </SiteSettingsProvider>
             ) : null}

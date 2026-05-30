@@ -54,6 +54,18 @@ function parseNullableBoolean(value: unknown): boolean | null | undefined {
   return undefined
 }
 
+function parseStringList(value: unknown) {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  return Array.from(new Set(
+    value
+      .map((item) => typeof item === "string" ? item.trim() : "")
+      .filter(Boolean),
+  ))
+}
+
 interface MutableRecord {
   [key: string]: unknown
 }
@@ -157,6 +169,12 @@ function buildBoardAdvancedPayload(body: Record<string, unknown>, currentConfig?
     minViewVipLevel: parseNullableNumber(body.minViewVipLevel),
     minPostVipLevel: parseNullableNumber(body.minPostVipLevel),
     minReplyVipLevel: parseNullableNumber(body.minReplyVipLevel),
+    postIdentityGateInherit: parseNullableBoolean(body.postIdentityGateInherit) ?? undefined,
+    replyIdentityGateInherit: parseNullableBoolean(body.replyIdentityGateInherit) ?? undefined,
+    postRequiredVerificationTypeIds: parseStringList(body.postRequiredVerificationTypeIds),
+    postRequiredBadgeIds: parseStringList(body.postRequiredBadgeIds),
+    replyRequiredVerificationTypeIds: parseStringList(body.replyRequiredVerificationTypeIds),
+    replyRequiredBadgeIds: parseStringList(body.replyRequiredBadgeIds),
     requirePostReview: body.requirePostReview === undefined ? undefined : parseBoolean(body.requirePostReview),
     requireCommentReview: body.requireCommentReview === undefined ? undefined : parseBoolean(body.requireCommentReview),
     showInHomeFeed: parseNullableBoolean(body.showInHomeFeed),
@@ -223,6 +241,10 @@ function buildZonePayload(
     minViewVipLevel: parseNullableNumber(body.minViewVipLevel) ?? 0,
     minPostVipLevel: parseNullableNumber(body.minPostVipLevel) ?? 0,
     minReplyVipLevel: parseNullableNumber(body.minReplyVipLevel) ?? 0,
+    postRequiredVerificationTypeIds: parseStringList(body.postRequiredVerificationTypeIds) ?? [],
+    postRequiredBadgeIds: parseStringList(body.postRequiredBadgeIds) ?? [],
+    replyRequiredVerificationTypeIds: parseStringList(body.replyRequiredVerificationTypeIds) ?? [],
+    replyRequiredBadgeIds: parseStringList(body.replyRequiredBadgeIds) ?? [],
     postListDisplayMode: normalizeNullablePostListDisplayMode(body.postListDisplayMode) ?? null,
     postListLoadMode: normalizeNullablePostListLoadMode(body.postListLoadMode) ?? null,
   }

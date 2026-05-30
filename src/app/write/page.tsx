@@ -18,6 +18,7 @@ import { parsePostRewardPoolConfigFromContent } from "@/lib/post-red-packets"
 import { getEditablePostBySlug } from "@/lib/posts"
 import { normalizeLotteryRedemptionCodes } from "@/lib/lottery-prizes"
 import { DEFAULT_ALLOWED_POST_TYPES } from "@/lib/post-types"
+import { isPostStillEditable, formatPostEditWindowLabel } from "@/lib/post-edit-window"
 import { readSearchParam } from "@/lib/search-params"
 import { getSiteSettings } from "@/lib/site-settings"
 import { getZones, type SiteZoneItem } from "@/lib/zones"
@@ -49,10 +50,6 @@ function mapBoardOption(board: SiteBoardItem): BoardOptionItem {
     minPostLevel: board.minPostLevel ?? 0,
     minPostVipLevel: board.minPostVipLevel ?? 0,
   }
-}
-
-function isPostStillEditable(createdAt: Date | string, editableMinutes: number) {
-  return new Date(createdAt).getTime() + Math.max(0, editableMinutes) * 60 * 1000 > Date.now()
 }
 
 export async function generateMetadata(props: PageProps<"/write">): Promise<Metadata> {
@@ -176,7 +173,7 @@ export default async function WritePage(props: PageProps<"/write">) {
                 ) : !canEditThisPost ? (
                   <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">你无权编辑这篇帖子。</div>
                 ) : !isStillEditable ? (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">该帖子已超过 {settings.postEditableMinutes} 分钟编辑窗口，请回到详情页使用附言追加功能。</div>
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">该帖子已超过可编辑窗口（{formatPostEditWindowLabel(settings.postEditableMinutes)}），请回到详情页使用附言追加功能。</div>
                 ) : (
                   <CreatePostForm
                     boardOptions={boardOptions}

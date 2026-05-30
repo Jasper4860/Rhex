@@ -36,6 +36,7 @@ export interface AdminUserListItem {
   role: string
   status: string
   statusExpiresAt: string | null
+  statusReason: string | null
   email: string | null
   phone: string | null
   points: number
@@ -164,6 +165,7 @@ export interface AdminUserDetailResult {
   role: string
   status: string
   statusExpiresAt: string | null
+  statusReason: string | null
   email: string | null
   phone: string | null
   points: number

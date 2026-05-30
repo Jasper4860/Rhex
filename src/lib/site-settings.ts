@@ -21,7 +21,7 @@ import { parseMarkdownEmojiMapJson } from "@/lib/markdown-emoji"
 import { normalizeCommentLoadMode } from "@/lib/comment-load-mode"
 import { normalizePostListLoadMode } from "@/lib/post-list-load-mode"
 import { normalizePostListDisplayMode } from "@/lib/post-list-display"
-import { resolveAnonymousPostSettings, resolveAttachmentFeatureSettings, resolveAuthProviderSettings, resolveAvatarChangePointCostSettings, resolveBoardApplicationSettings, resolveBoardTreasurySettings, resolveCheckInMakeUpPriceSettings, resolveCheckInRewardSettings, resolveCheckInStreakSettings, resolveCommentAccessSettings, resolveEmailBusinessSwitchSettings, resolveFooterCopyrightSettings, resolveHomeFeedPostListLoadSettings, resolveHomeHotFeedSettings, resolveHomeSidebarAnnouncementSettings, resolveImageWatermarkSettings, resolveInteractionGateSettings, resolveIntroductionChangePointCostSettings, resolveInviteCodePurchasePriceSettings, resolveLeftSidebarDisplaySettings, resolveLeftSidebarHomeSettings, resolveMarkdownImageUploadSettings, resolveMentionRecommendationSettings, resolveMessageMediaSettings, resolveNicknameChangePointCostSettings, resolvePostContentLengthSettings, resolvePostJackpotSettings, resolvePostPageSizeSettings, resolvePostRedPacketSettings, resolvePostSlugGenerationSettings, resolveRegisterEmailWhitelistSettings, resolveRegisterInviteCodeHelpSettings, resolveRegisterNicknameLengthSettings, resolveRegisterPasswordPolicySettings, resolveRegistrationEmailTemplateSettings, resolveRegistrationRewardSettings, resolveSiteBrandingSettings, resolveSiteChatSettings, resolveSiteSecuritySettings, resolveSmsProviderSettings, resolveThemeCustomizationSettingsFromAppState, resolveUploadObjectStorageSettings, resolveUserProfileDisplaySettings, resolveUsernameSensitiveWordSettings, resolveVipLevelIconSettings, resolveVipNameColorSettings } from "@/lib/site-settings-app-state"
+import { resolveAnonymousPostSettings, resolveAttachmentFeatureSettings, resolveAuthProviderSettings, resolveAvatarChangePointCostSettings, resolveBoardApplicationSettings, resolveBoardTreasurySettings, resolveCheckInMakeUpPriceSettings, resolveCheckInRewardSettings, resolveCheckInStreakSettings, resolveCommentAccessSettings, resolveEmailBusinessSwitchSettings, resolveFooterCopyrightSettings, resolveHomeFeedPostListLoadSettings, resolveHomeHotFeedSettings, resolveHomeSidebarAnnouncementSettings, resolveImageWatermarkSettings, resolveInteractionGateSettings, resolveIntroductionChangePointCostSettings, resolveInviteCodePurchasePriceSettings, resolveLeftSidebarDisplaySettings, resolveLeftSidebarHomeSettings, resolveLeftSidebarNavigationSettings, resolveMarkdownImageUploadSettings, resolveMentionRecommendationSettings, resolveMessageMediaSettings, resolveNicknameChangePointCostSettings, resolvePostContentLengthSettings, resolvePostJackpotSettings, resolvePostPageSizeSettings, resolvePostRedPacketSettings, resolvePostSlugGenerationSettings, resolveRegisterEmailWhitelistSettings, resolveRegisterInviteCodeHelpSettings, resolveRegisterNicknameLengthSettings, resolveRegisterPasswordPolicySettings, resolveRegistrationEmailTemplateSettings, resolveRegistrationRewardSettings, resolveSiteBrandingSettings, resolveSiteChatSettings, resolveSiteSecuritySettings, resolveSmsProviderSettings, resolveThemeCustomizationSettingsFromAppState, resolveUploadObjectStorageSettings, resolveUserProfileDisplaySettings, resolveUsernameSensitiveWordSettings, resolveVipLevelIconSettings, resolveVipNameColorSettings } from "@/lib/site-settings-app-state"
 import { resolveAuthPageShowcaseSettings } from "@/lib/site-settings-app-state"
 import { resolveAuthProviderSensitiveConfig, resolveCaptchaSensitiveConfig, resolveSmsSensitiveConfig, resolveUploadStorageSensitiveConfig } from "@/lib/site-settings-sensitive-state"
 import { resolveSiteSearchSettings } from "@/lib/site-search-settings"
@@ -31,6 +31,7 @@ import { resolveTaskDrivenCheckInRewardRanges } from "@/lib/task-check-in-displa
 import { type SiteTippingGiftItem } from "@/lib/tipping-gifts"
 import { normalizeUploadProvider } from "@/lib/upload-provider"
 import { DEFAULT_GOD_COMMENT_AUTO_LIKE_THRESHOLD } from "@/lib/god-comment-settings"
+import { normalizePostEditableMinutes } from "@/lib/post-edit-window"
 import type { ServerSiteSettingsData, SiteSettingsData } from "@/lib/site-settings.types"
 import { normalizeHeaderAppIconName, parseSiteHeaderAppLinks, resolveTopHeaderAppLinks } from "./site-header-app-links"
 import { DEFAULT_MESSAGE_PROMPT_AUDIO_PATH } from "@/lib/message-prompt-audio"
@@ -43,6 +44,7 @@ export type { VipNameColors } from "@/lib/vip-name-colors"
 export type { InteractionGateAction, InteractionGateCondition, InteractionGateRule, InteractionGateSettings } from "@/lib/site-settings-app-state"
 export type { MentionRecommendationSettings } from "@/lib/site-settings-app-state"
 export type { LeftSidebarDisplayMode } from "@/lib/site-settings-app-state"
+export type { LeftSidebarNavigationMode } from "@/lib/site-settings-app-state"
 export type { LeftSidebarHomeSettings } from "@/lib/site-settings-app-state"
 export type { PostSlugGenerationMode } from "@/lib/site-settings-app-state"
 export type { RegistrationEmailTemplateSettings } from "@/lib/site-settings-app-state"
@@ -123,6 +125,9 @@ function normalizeLegacyServerSiteSettings(data: ServerSiteSettingsData): Server
       ? Math.max(0, Math.floor(data.checkInMakeUpOldestDayLimit))
       : defaults.checkInMakeUpOldestDayLimit,
     commentLoadMode: normalizeCommentLoadMode(data.commentLoadMode, defaults.commentLoadMode),
+    leftSidebarNavigationMode: data.leftSidebarNavigationMode === "TREE"
+      ? "TREE"
+      : defaults.leftSidebarNavigationMode,
     godCommentAutoLikeThreshold: typeof data.godCommentAutoLikeThreshold === "number" && Number.isFinite(data.godCommentAutoLikeThreshold)
       ? Math.max(1, Math.floor(data.godCommentAutoLikeThreshold))
       : defaults.godCommentAutoLikeThreshold,
@@ -216,6 +221,10 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     enabledFallback: true,
   })
   const leftSidebarDisplaySettings = resolveLeftSidebarDisplaySettings({
+    appStateJson: record.appStateJson,
+    modeFallback: "DEFAULT",
+  })
+  const leftSidebarNavigationSettings = resolveLeftSidebarNavigationSettings({
     appStateJson: record.appStateJson,
     modeFallback: "DEFAULT",
   })
@@ -440,6 +449,7 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     homeSidebarAnnouncementsEnabled: homeSidebarAnnouncementSettings.enabled,
     userProfileIpLocationEnabled: userProfileDisplaySettings.ipLocationEnabled,
     leftSidebarDisplayMode: leftSidebarDisplaySettings.mode,
+    leftSidebarNavigationMode: leftSidebarNavigationSettings.mode,
     leftSidebarHome: leftSidebarHomeSettings,
     postSlugGenerationMode: postSlugGenerationSettings.mode,
     footerCopyrightText: footerCopyrightSettings.text,
@@ -510,7 +520,7 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     avatarChangeVip2PointCost: avatarChangePointCosts.vip2,
     avatarChangeVip3PointCost: avatarChangePointCosts.vip3,
     siteChatEnabled: siteChatSettings.enabled,
-    postEditableMinutes: normalizePositiveInteger(record.postEditableMinutes, 10),
+    postEditableMinutes: normalizePostEditableMinutes(record.postEditableMinutes, 10),
     commentEditableMinutes: normalizePositiveInteger(record.commentEditableMinutes, 5),
     godCommentAutoLikeThreshold: normalizePositiveInteger(record.godCommentAutoLikeThreshold, DEFAULT_GOD_COMMENT_AUTO_LIKE_THRESHOLD),
     guestCanViewComments: commentAccessSettings.guestCanView,

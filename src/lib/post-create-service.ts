@@ -36,6 +36,7 @@ import { applyPointDelta, prepareScopedPointDelta } from "@/lib/point-center"
 import { normalizePostAttachmentInputs, syncPostAttachments } from "@/lib/post-attachments"
 import { processInternalPostCardEmbeds } from "@/lib/post-card-embed.server"
 import { buildPostContentDocument, getAllPostContentText, serializePostContentDocument } from "@/lib/post-content"
+import { resolvePostEditableUntil } from "@/lib/post-edit-window"
 import { createPostRedPacketAfterPostCreated, normalizePostRedPacketConfig } from "@/lib/post-red-packets"
 import type { StoredPostRewardPoolConfig } from "@/lib/post-reward-pool-config"
 import { normalizeManualTags, syncPostTaxonomy } from "@/lib/post-editor"
@@ -352,6 +353,7 @@ export async function createPostFlow(body: unknown, options: CreatePostFlowOptio
     try {
       post = await runPostCreateTransaction(async (tx) => {
         const lotteryData = normalizedLottery?.data
+        const createdAt = new Date()
         const postCreateData: Prisma.PostUncheckedCreateInput = {
           title: titleSafety.sanitizedText,
           slug,
@@ -375,8 +377,10 @@ export async function createPostFlow(body: unknown, options: CreatePostFlowOptio
           lotteryStartsAt: postType === "LOTTERY" ? (lotteryData?.startsAt ?? new Date()) : null,
           lotteryEndsAt: postType === "LOTTERY" ? (lotteryData?.endsAt ?? null) : null,
           lotteryParticipantGoal: postType === "LOTTERY" ? (lotteryData?.participantGoal ?? null) : null,
-          editableUntil: new Date(Date.now() + Math.max(0, settings.postEditableMinutes) * 60 * 1000),
-          publishedAt: shouldPending ? null : new Date(),
+          createdAt,
+          activityAt: createdAt,
+          editableUntil: resolvePostEditableUntil(createdAt, settings.postEditableMinutes),
+          publishedAt: shouldPending ? null : createdAt,
           reviewNote: shouldPending ? "当前节点开启发帖审核，帖子已进入审核" : null,
           pollOptions: postType === "POLL" ? { create: pollOptions.map((option, index) => ({ content: option, sortOrder: index })) } : undefined,
           lotteryPrizes: postType === "LOTTERY" ? { create: buildLotteryPrizeCreateInputs(lotteryData?.prizes ?? [], settings) } : undefined,

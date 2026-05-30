@@ -18,6 +18,7 @@ export const userProfileSelect = {
   gender: true,
   status: true,
   statusExpiresAt: true,
+  statusReason: true,
   level: true,
   points: true,
   vipLevel: true,

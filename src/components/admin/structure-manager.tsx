@@ -79,6 +79,8 @@ export function StructureManager({
   permissions,
   canReviewBoardApplications,
   pendingBoardApplicationCount,
+  verificationTypes,
+  badges,
   initialFilters,
 }: StructureManagerProps) {
   const [modal, setModal] = useState<ModalMode>(null)
@@ -365,7 +367,7 @@ export function StructureManager({
         </Card>
       </div>
 
-      <StructureModal modal={modal} zones={zones} isSiteAdmin={permissions.canCreateBoard} onClose={() => setModal(null)} />
+      <StructureModal modal={modal} zones={zones} isSiteAdmin={permissions.canCreateBoard} verificationTypes={verificationTypes} badges={badges} onClose={() => setModal(null)} />
     </div>
   )
 }
@@ -538,29 +540,37 @@ function StructureModal({
   modal,
   zones,
   isSiteAdmin,
+  verificationTypes,
+  badges,
   onClose,
 }: {
   modal: ModalMode
   zones: ZoneItem[]
   isSiteAdmin: boolean
+  verificationTypes: StructureManagerProps["verificationTypes"]
+  badges: StructureManagerProps["badges"]
   onClose: () => void
 }) {
   if (!modal) {
     return null
   }
 
-  return <StructureModalForm key={getStructureModalKey(modal)} modal={modal} zones={zones} isSiteAdmin={isSiteAdmin} onClose={onClose} />
+  return <StructureModalForm key={getStructureModalKey(modal)} modal={modal} zones={zones} isSiteAdmin={isSiteAdmin} verificationTypes={verificationTypes} badges={badges} onClose={onClose} />
 }
 
 function StructureModalForm({
   modal,
   zones,
   isSiteAdmin,
+  verificationTypes,
+  badges,
   onClose,
 }: {
   modal: Exclude<ModalMode, null>
   zones: ZoneItem[]
   isSiteAdmin: boolean
+  verificationTypes: StructureManagerProps["verificationTypes"]
+  badges: StructureManagerProps["badges"]
   onClose: () => void
 }) {
   const router = useRouter()
@@ -681,6 +691,12 @@ function StructureModalForm({
       minViewVipLevel: form.minViewVipLevel === "" ? undefined : Number(form.minViewVipLevel),
       minPostVipLevel: form.minPostVipLevel === "" ? undefined : Number(form.minPostVipLevel),
       minReplyVipLevel: form.minReplyVipLevel === "" ? undefined : Number(form.minReplyVipLevel),
+      postIdentityGateInherit: isBoard ? form.postIdentityGateMode === "inherit" : false,
+      replyIdentityGateInherit: isBoard ? form.replyIdentityGateMode === "inherit" : false,
+      postRequiredVerificationTypeIds: form.postRequiredVerificationTypeIds,
+      postRequiredBadgeIds: form.postRequiredBadgeIds,
+      replyRequiredVerificationTypeIds: form.replyRequiredVerificationTypeIds,
+      replyRequiredBadgeIds: form.replyRequiredBadgeIds,
       requirePostReview: form.requirePostReview,
       requireCommentReview: form.requireCommentReview,
       showInHomeFeed: form.showInHomeFeed,
@@ -745,7 +761,7 @@ function StructureModalForm({
 
         {activeTab === "policy" ? <StructurePolicyTab modal={modal} zones={zones} form={form} isBoard={isBoard} isModeratorBoardEdit={isModeratorBoardEdit} isSiteAdmin={isSiteAdmin} onModeratorChanged={() => router.refresh()} updateField={updateField} togglePostType={togglePostType} updateSidebarLink={updateSidebarLink} addSidebarLink={addSidebarLink} removeSidebarLink={removeSidebarLink} /> : null}
 
-        {activeTab === "access" ? <StructureAccessTab modal={modal} zones={zones} form={form} isBoard={isBoard} isModeratorBoardEdit={isModeratorBoardEdit} isSiteAdmin={isSiteAdmin} onModeratorChanged={() => router.refresh()} updateField={updateField} togglePostType={togglePostType} updateSidebarLink={updateSidebarLink} addSidebarLink={addSidebarLink} removeSidebarLink={removeSidebarLink} /> : null}
+        {activeTab === "access" ? <StructureAccessTab modal={modal} zones={zones} form={form} isBoard={isBoard} isModeratorBoardEdit={isModeratorBoardEdit} isSiteAdmin={isSiteAdmin} onModeratorChanged={() => router.refresh()} updateField={updateField} togglePostType={togglePostType} updateSidebarLink={updateSidebarLink} addSidebarLink={addSidebarLink} removeSidebarLink={removeSidebarLink} verificationTypes={verificationTypes} badges={badges} /> : null}
 
         {activeTab === "moderators" ? <StructureModeratorsTab modal={modal} zones={zones} form={form} isBoard={isBoard} isModeratorBoardEdit={isModeratorBoardEdit} isSiteAdmin={isSiteAdmin} onModeratorChanged={() => router.refresh()} updateField={updateField} togglePostType={togglePostType} updateSidebarLink={updateSidebarLink} addSidebarLink={addSidebarLink} removeSidebarLink={removeSidebarLink} /> : null}
 
@@ -799,6 +815,12 @@ function getInitialStructureFormState(modal: Exclude<ModalMode, null>, zones: Zo
       minViewVipLevel: "0",
       minPostVipLevel: "0",
       minReplyVipLevel: "0",
+      postIdentityGateMode: "custom",
+      replyIdentityGateMode: "custom",
+      postRequiredVerificationTypeIds: [],
+      postRequiredBadgeIds: [],
+      replyRequiredVerificationTypeIds: [],
+      replyRequiredBadgeIds: [],
       requirePostReview: false,
       requireCommentReview: false,
       showInHomeFeed: "true",
@@ -839,6 +861,12 @@ function getInitialStructureFormState(modal: Exclude<ModalMode, null>, zones: Zo
       minViewVipLevel: "",
       minPostVipLevel: "",
       minReplyVipLevel: "",
+      postIdentityGateMode: "inherit",
+      replyIdentityGateMode: "inherit",
+      postRequiredVerificationTypeIds: [],
+      postRequiredBadgeIds: [],
+      replyRequiredVerificationTypeIds: [],
+      replyRequiredBadgeIds: [],
       requirePostReview: false,
       requireCommentReview: false,
       showInHomeFeed: "",
@@ -879,6 +907,12 @@ function getInitialStructureFormState(modal: Exclude<ModalMode, null>, zones: Zo
       minViewVipLevel: String(modal.item.minViewVipLevel),
       minPostVipLevel: String(modal.item.minPostVipLevel),
       minReplyVipLevel: String(modal.item.minReplyVipLevel),
+      postIdentityGateMode: "custom",
+      replyIdentityGateMode: "custom",
+      postRequiredVerificationTypeIds: modal.item.postRequiredVerificationTypeIds,
+      postRequiredBadgeIds: modal.item.postRequiredBadgeIds,
+      replyRequiredVerificationTypeIds: modal.item.replyRequiredVerificationTypeIds,
+      replyRequiredBadgeIds: modal.item.replyRequiredBadgeIds,
       requirePostReview: modal.item.requirePostReview,
       requireCommentReview: modal.item.requireCommentReview,
       showInHomeFeed: String(modal.item.showInHomeFeed),
@@ -918,6 +952,12 @@ function getInitialStructureFormState(modal: Exclude<ModalMode, null>, zones: Zo
     minViewVipLevel: modal.item.minViewVipLevel == null ? "" : String(modal.item.minViewVipLevel),
     minPostVipLevel: modal.item.minPostVipLevel == null ? "" : String(modal.item.minPostVipLevel),
     minReplyVipLevel: modal.item.minReplyVipLevel == null ? "" : String(modal.item.minReplyVipLevel),
+    postIdentityGateMode: modal.item.postIdentityGateInherit ? "inherit" : "custom",
+    replyIdentityGateMode: modal.item.replyIdentityGateInherit ? "inherit" : "custom",
+    postRequiredVerificationTypeIds: modal.item.postRequiredVerificationTypeIds,
+    postRequiredBadgeIds: modal.item.postRequiredBadgeIds,
+    replyRequiredVerificationTypeIds: modal.item.replyRequiredVerificationTypeIds,
+    replyRequiredBadgeIds: modal.item.replyRequiredBadgeIds,
     requirePostReview: Boolean(modal.item.requirePostReview),
     requireCommentReview: Boolean(modal.item.requireCommentReview),
     showInHomeFeed: modal.item.showInHomeFeed == null ? "" : String(modal.item.showInHomeFeed),

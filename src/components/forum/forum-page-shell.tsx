@@ -31,6 +31,7 @@ interface ForumPageShellZoneItem {
 
 interface ForumPageShellBoardItem {
   id: string
+  zoneId?: string | null
   slug: string
   name: string
   icon: string
@@ -132,7 +133,7 @@ export function ForumPageShell({
   leftSidebarDisplayModeOverride,
   sidebarStickyTopClass,
 }: ForumPageShellProps) {
-  const { leftSidebarDisplayMode } = useSiteSettingsContext()
+  const { leftSidebarDisplayMode, leftSidebarNavigationMode } = useSiteSettingsContext()
   const resolvedLeftSidebarDisplayMode = leftSidebarDisplayModeOverride ?? leftSidebarDisplayMode
   const sidebarCollapsed = useSyncExternalStore(subscribeSidebarNavigationPreference, readSidebarNavigationCollapsedSnapshot, () => false)
   const shouldUseMobileRightSidebar = useIsMobile(FORUM_MOBILE_SIDEBAR_BREAKPOINT)
@@ -163,6 +164,7 @@ export function ForumPageShell({
           activeZoneSlug={activeZoneSlug}
           activeBoardSlug={activeBoardSlug}
           displayMode={resolvedLeftSidebarDisplayMode}
+          navigationMode={leftSidebarNavigationMode}
           collapsed={sidebarCollapsed}
           onToggle={handleToggleSidebar}
           stickyTopClass={sidebarStickyTopClass}

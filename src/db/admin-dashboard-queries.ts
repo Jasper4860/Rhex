@@ -260,7 +260,7 @@ export async function getAdminStructureRawData(options?: {
 }) {
   const { start: todayStart } = getBusinessDayRange()
 
-  const [zones, boards, todayBoardPostStats] = await Promise.all([
+  const [zones, boards, todayBoardPostStats, verificationTypes, badges] = await Promise.all([
     prisma.zone.findMany({
       where: options?.zoneWhere,
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
@@ -293,6 +293,10 @@ export async function getAdminStructureRawData(options?: {
         minViewVipLevel: true,
         minPostVipLevel: true,
         minReplyVipLevel: true,
+        postRequiredVerificationTypeIds: true,
+        postRequiredBadgeIds: true,
+        replyRequiredVerificationTypeIds: true,
+        replyRequiredBadgeIds: true,
         postListDisplayMode: true,
         postListLoadMode: true,
         moderatorScopes: {
@@ -351,6 +355,12 @@ export async function getAdminStructureRawData(options?: {
         minViewVipLevel: true,
         minPostVipLevel: true,
         minReplyVipLevel: true,
+        postIdentityGateInherit: true,
+        replyIdentityGateInherit: true,
+        postRequiredVerificationTypeIds: true,
+        postRequiredBadgeIds: true,
+        replyRequiredVerificationTypeIds: true,
+        replyRequiredBadgeIds: true,
         postListDisplayMode: true,
         postListLoadMode: true,
         moderatorScopes: {
@@ -379,6 +389,10 @@ export async function getAdminStructureRawData(options?: {
             allowUserReply: true,
             allowPostAuthorOfflineComment: true,
             allowUserOfflineOwnComment: true,
+            postRequiredVerificationTypeIds: true,
+            postRequiredBadgeIds: true,
+            replyRequiredVerificationTypeIds: true,
+            replyRequiredBadgeIds: true,
             postListDisplayMode: true,
             postListLoadMode: true,
             moderatorScopes: {
@@ -413,11 +427,31 @@ export async function getAdminStructureRawData(options?: {
         boardId: true,
       },
     }),
+    prisma.verificationType.findMany({
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        status: true,
+      },
+    }),
+    prisma.badge.findMany({
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        status: true,
+      },
+    }),
   ])
 
   return {
     zones,
     boards,
     todayBoardPostStats,
+    verificationTypes,
+    badges,
   }
 }

@@ -29,6 +29,7 @@ import {
 import { normalizeHeatColors, normalizeHeatThresholds, normalizeTippingAmounts } from "@/lib/shared/normalizers"
 import { parseNonNegativeSafeInteger } from "@/lib/shared/safe-integer"
 import { getDefaultTippingGiftItemsFromAmounts, normalizeTippingGiftItems } from "@/lib/tipping-gifts"
+import { normalizePostEditableMinutes } from "@/lib/post-edit-window"
 
 export async function updateInteractionSiteSettingsSection(existing: SiteSettingsRecord, body: JsonObject, section: string) {
   if (section === "site-interaction") {
@@ -48,7 +49,7 @@ export async function updateInteractionSiteSettingsSection(existing: SiteSetting
     )
     const commentLoadMode = normalizeCommentLoadMode(body.commentLoadMode, existingCommentAccessSettings.loadMode)
     const mentionDefaultUsernames = normalizeMentionRecommendationUsernames(body.mentionDefaultUsernames)
-    const postEditableMinutes = Math.max(0, readOptionalNumberField(body, "postEditableMinutes") ?? existing.postEditableMinutes)
+    const postEditableMinutes = normalizePostEditableMinutes(readOptionalNumberField(body, "postEditableMinutes"), existing.postEditableMinutes)
     const commentEditableMinutes = Math.max(0, readOptionalNumberField(body, "commentEditableMinutes") ?? existing.commentEditableMinutes)
     const godCommentAutoLikeThreshold = Math.max(1, readOptionalNumberField(body, "godCommentAutoLikeThreshold") ?? existing.godCommentAutoLikeThreshold)
     const existingAnonymousPostSettings = resolveAnonymousPostSettings({

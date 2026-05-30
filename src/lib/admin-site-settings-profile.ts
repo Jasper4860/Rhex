@@ -8,11 +8,12 @@ import { finalizeSiteSettingsUpdate, type SiteSettingsRecord } from "@/lib/admin
 import { normalizeMarkdownEmojiItems, serializeMarkdownEmojiItems } from "@/lib/markdown-emoji"
 import { normalizePostListLoadMode } from "@/lib/post-list-load-mode"
 import { normalizePostListDisplayMode } from "@/lib/post-list-display"
-import { mergeFooterCopyrightSettings, mergeHomeFeedPostListLoadSettings, mergeHomeSidebarAnnouncementSettings, mergeLeftSidebarDisplaySettings, mergeLeftSidebarHomeSettings, mergePostPageSizeSettings, mergePostSlugGenerationSettings, mergeSiteBrandingSettings, mergeThemeCustomizationSettings, mergeUserProfileDisplaySettings, normalizeLeftSidebarDisplayMode, normalizeLeftSidebarHomeSettings, normalizePostSlugGenerationMode, resolveFooterCopyrightSettings, resolveHomeFeedPostListLoadSettings, resolveHomeSidebarAnnouncementSettings, resolveLeftSidebarDisplaySettings, resolveLeftSidebarHomeSettings, resolvePostPageSizeSettings, resolvePostSlugGenerationSettings, resolveSiteBrandingSettings, resolveThemeCustomizationSettingsFromAppState, resolveUserProfileDisplaySettings } from "@/lib/site-settings-app-state"
+import { mergeFooterCopyrightSettings, mergeHomeFeedPostListLoadSettings, mergeHomeSidebarAnnouncementSettings, mergeLeftSidebarDisplaySettings, mergeLeftSidebarHomeSettings, mergeLeftSidebarNavigationSettings, mergePostPageSizeSettings, mergePostSlugGenerationSettings, mergeSiteBrandingSettings, mergeThemeCustomizationSettings, mergeUserProfileDisplaySettings, normalizeLeftSidebarDisplayMode, normalizeLeftSidebarHomeSettings, normalizeLeftSidebarNavigationMode, normalizePostSlugGenerationMode, resolveFooterCopyrightSettings, resolveHomeFeedPostListLoadSettings, resolveHomeSidebarAnnouncementSettings, resolveLeftSidebarDisplaySettings, resolveLeftSidebarHomeSettings, resolveLeftSidebarNavigationSettings, resolvePostPageSizeSettings, resolvePostSlugGenerationSettings, resolveSiteBrandingSettings, resolveThemeCustomizationSettingsFromAppState, resolveUserProfileDisplaySettings } from "@/lib/site-settings-app-state"
 import { mergeTopHeaderAppLinks, normalizeHeaderAppIconName, normalizeSiteHeaderAppLinks } from "@/lib/site-header-app-links"
 import { mergeSiteSearchSettings, resolveSiteSearchSettings } from "@/lib/site-search-settings"
 import { normalizeFooterLinks } from "@/lib/shared/config-parsers"
 import { resolveThemeCustomizationSettings } from "@/lib/theme"
+import { normalizePostEditableMinutes } from "@/lib/post-edit-window"
 
 export async function updateProfileSiteSettingsSection(existing: SiteSettingsRecord, body: JsonObject, section: string) {
   if (section === "site-profile") {
@@ -52,6 +53,11 @@ export async function updateProfileSiteSettingsSection(existing: SiteSettingsRec
       modeFallback: "DEFAULT",
     })
     const leftSidebarDisplayMode = normalizeLeftSidebarDisplayMode(body.leftSidebarDisplayMode, existingLeftSidebarDisplaySettings.mode)
+    const existingLeftSidebarNavigationSettings = resolveLeftSidebarNavigationSettings({
+      appStateJson: existing.appStateJson,
+      modeFallback: "DEFAULT",
+    })
+    const leftSidebarNavigationMode = normalizeLeftSidebarNavigationMode(body.leftSidebarNavigationMode, existingLeftSidebarNavigationSettings.mode)
     const existingLeftSidebarHomeSettings = resolveLeftSidebarHomeSettings({
       appStateJson: existing.appStateJson,
     })
@@ -63,7 +69,7 @@ export async function updateProfileSiteSettingsSection(existing: SiteSettingsRec
       loadModeFallback: normalizePostListLoadMode(undefined),
     })
     const homeFeedPostListLoadMode = normalizePostListLoadMode(body.homeFeedPostListLoadMode, existingHomeFeedPostListLoadSettings.loadMode)
-    const postEditableMinutes = Math.max(0, readOptionalNumberField(body, "postEditableMinutes") ?? 10)
+    const postEditableMinutes = normalizePostEditableMinutes(readOptionalNumberField(body, "postEditableMinutes"), 10)
     const commentEditableMinutes = Math.max(0, readOptionalNumberField(body, "commentEditableMinutes") ?? 5)
     const existingSearchSettings = resolveSiteSearchSettings(existing.appStateJson)
     const searchEnabled = body.searchEnabled === undefined ? existingSearchSettings.enabled : Boolean(body.searchEnabled)
@@ -130,7 +136,11 @@ export async function updateProfileSiteSettingsSection(existing: SiteSettingsRec
       mode: leftSidebarDisplayMode,
     })
 
-    const appStateWithLeftSidebarHome = mergeLeftSidebarHomeSettings(appStateWithLeftSidebarDisplay, leftSidebarHomeSettings)
+    const appStateWithLeftSidebarNavigation = mergeLeftSidebarNavigationSettings(appStateWithLeftSidebarDisplay, {
+      mode: leftSidebarNavigationMode,
+    })
+
+    const appStateWithLeftSidebarHome = mergeLeftSidebarHomeSettings(appStateWithLeftSidebarNavigation, leftSidebarHomeSettings)
 
     const appStateWithPostSlugGeneration = mergePostSlugGenerationSettings(appStateWithLeftSidebarHome, {
       mode: postSlugGenerationMode,

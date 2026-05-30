@@ -26,7 +26,9 @@ import { UserProfileRadarPanel } from "@/components/user/user-profile-radar-pane
 import { UserStatusBadge } from "@/components/user/user-status-badge"
 import { UserVerificationBadge } from "@/components/user/user-verification-badge"
 import { VipLevelIcon } from "@/components/vip/vip-level-icon"
-import { formatNumber, serializeDate } from "@/lib/formatters"
+import { AdminPostActionButton } from "@/components/admin/admin-post-action-button"
+import { AdminUserStatusModal } from "@/components/admin/admin-user-status-modal"
+import { formatDateTime, formatNumber, serializeDate } from "@/lib/formatters"
 import { canViewUserProfileVisibility } from "@/lib/user-profile-settings"
 import { buildUserProfileRadarData } from "@/lib/user-profile-radar"
 import { VipDisplayName } from "@/components/vip/vip-display-name"
@@ -44,6 +46,7 @@ import { readSearchParam } from "@/lib/search-params"
 import { getUserActiveBoardsByRecentReplies, getUserProfile, getUserPostsPage, getUserRecentRepliesPage } from "@/lib/users"
 import { getVipLevel, isVipActive } from "@/lib/vip-status"
 import { getZones } from "@/lib/zones"
+import { resolveUserStatusReason } from "@/lib/user-status-reason"
 
 const identityTagClassNames = {
   vip: "rounded-full bg-violet-100 px-3 py-1 text-xs font-medium text-violet-700 dark:bg-violet-400/15 dark:text-violet-200",
@@ -283,7 +286,50 @@ export default async function UserPage(props: PageProps<"/users/[username]">) {
   const canSendMessage = Boolean(settings.messageEnabled && currentUser && currentUser.username !== user.username && !profileAccess.relation.isBlocked)
   const isRestrictedUser = user.status === "BANNED" || user.status === "MUTED"
   const restrictionLabel = user.status === "BANNED" ? "封禁中" : user.status === "MUTED" ? "禁言中" : null
-  const restrictionDescription = user.status === "BANNED" ? "该用户当前因封禁处于受限状态" : user.status === "MUTED" ? "该用户当前处于禁言状态" : null
+  const restrictionReason = resolveUserStatusReason(user.status, user.statusReason)
+  const restrictionExpiresText = isRestrictedUser ? (user.statusExpiresAt ? formatDateTime(user.statusExpiresAt) : "永久") : ""
+  const restrictionDescription = user.status === "BANNED"
+    ? `该用户当前因封禁处于受限状态。原因：${restrictionReason} 解除时间：${restrictionExpiresText}。`
+    : user.status === "MUTED"
+      ? `该用户当前处于禁言状态。原因：${restrictionReason} 解除时间：${restrictionExpiresText}。`
+      : null
+  const canManageProfileStatus = Boolean(currentUser && currentUser.role === "ADMIN" && currentUser.id !== user.id && user.role !== "ADMIN")
+  const profileRestrictionNotice = restrictionDescription || canManageProfileStatus
+    ? (
+      <div className="flex flex-col gap-3">
+        {restrictionDescription ? <p className="rounded-[18px] border border-border/70 bg-secondary/60 px-3 py-2 text-xs leading-6 text-muted-foreground">{restrictionDescription}</p> : null}
+        {canManageProfileStatus ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {user.status === "BANNED" || user.status === "MUTED" ? (
+              <AdminPostActionButton
+                action="user.activate"
+                targetId={String(user.id)}
+                label={user.status === "BANNED" ? "解除封禁" : "解除禁言"}
+                className="h-7 rounded-full px-2.5 text-xs"
+                variant="outline"
+              />
+            ) : null}
+            {user.status !== "MUTED" ? (
+              <AdminUserStatusModal
+                userId={user.id}
+                username={user.username}
+                action="mute"
+                triggerClassName="h-7 rounded-full px-2.5 text-xs"
+              />
+            ) : null}
+            {user.status !== "BANNED" ? (
+              <AdminUserStatusModal
+                userId={user.id}
+                username={user.username}
+                action="ban"
+                triggerClassName="h-7 rounded-full bg-red-600 px-2.5 text-xs text-white hover:bg-red-500"
+              />
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    )
+    : null
   const roleBadge = getProfileRoleBadgeConfig(user.role)
   const joinedAtText = serializeDate(user.createdAt) ?? user.createdAt
   const levelMetaText = user.levelName ? `Lv.${user.level} ${user.levelName}` : `Lv.${user.level}`
@@ -454,7 +500,7 @@ export default async function UserPage(props: PageProps<"/users/[username]">) {
                     activeLabel: "已拉黑",
                     inactiveLabel: "拉黑",
                   } : null}
-                  restrictionNotice={restrictionDescription ? <p className="rounded-[18px] border border-border/70 bg-secondary/60 px-3 py-2 text-xs leading-6 text-muted-foreground">{restrictionDescription}</p> : null}
+                  restrictionNotice={profileRestrictionNotice}
                     />
                   </AddonSurfaceRenderer>
                   <AddonSlotRenderer slot="user.profile.after" props={userSlotProps} />

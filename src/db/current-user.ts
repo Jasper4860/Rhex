@@ -22,6 +22,24 @@ export const currentUserRecordSelect = {
   phoneVerifiedAt: true,
   lastPostAt: true,
   lastCommentAt: true,
+  userBadges: {
+    where: {
+      badge: {
+        status: true,
+      },
+    },
+    select: {
+      badgeId: true,
+    },
+  },
+  verificationApplications: {
+    where: {
+      status: "APPROVED",
+    },
+    select: {
+      typeId: true,
+    },
+  },
 } satisfies Prisma.UserSelect
 
 export type CurrentUserRecord = Prisma.UserGetPayload<{ select: typeof currentUserRecordSelect }>

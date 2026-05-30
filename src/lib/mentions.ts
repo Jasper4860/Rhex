@@ -8,7 +8,7 @@ import {
 } from "@/lib/mention-token"
 
 const MENTION_BOUNDARY_CJK = "\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\p{Script=Hangul}"
-const MENTION_PATTERN = new RegExp(`(^|[^\\S\\r\\n]|[\\p{P}\\p{S}]|[${MENTION_BOUNDARY_CJK}])@([^\\s@]{1,20})`, "gu")
+const MENTION_PATTERN = new RegExp(`(^|\\s|[\\p{P}\\p{S}]|[${MENTION_BOUNDARY_CJK}])@([^\\s@]{1,20})`, "gu")
 export {
   createUserLinkToken,
   isUserLinkToken,

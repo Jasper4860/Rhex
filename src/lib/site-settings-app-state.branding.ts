@@ -4,6 +4,7 @@ import { resolveThemeCustomizationSettings } from "@/lib/theme"
 import {
   isRecord,
   normalizeLeftSidebarDisplayMode,
+  normalizeLeftSidebarNavigationMode,
   normalizeNonNegativeInteger,
   normalizePostSlugGenerationMode,
   readSiteSettingsState,
@@ -17,6 +18,8 @@ import type {
   LeftSidebarDisplayMode,
   LeftSidebarDisplaySettings,
   LeftSidebarHomeSettings,
+  LeftSidebarNavigationMode,
+  LeftSidebarNavigationSettings,
   PostPageSizeSettings,
   PostSlugGenerationMode,
   PostSlugGenerationSettings,
@@ -235,6 +238,34 @@ export function mergeLeftSidebarDisplaySettings(
     ...siteSettingsState,
     leftSidebarDisplay: {
       mode: normalizeLeftSidebarDisplayMode(input.mode),
+    },
+  })
+}
+
+export function resolveLeftSidebarNavigationSettings(options: {
+  appStateJson?: string | null
+  modeFallback?: LeftSidebarNavigationMode
+} = {}): LeftSidebarNavigationSettings {
+  const siteSettingsState = readSiteSettingsState(options.appStateJson)
+  const leftSidebarNavigation = isRecord(siteSettingsState.leftSidebarNavigation)
+    ? siteSettingsState.leftSidebarNavigation
+    : {}
+
+  return {
+    mode: normalizeLeftSidebarNavigationMode(leftSidebarNavigation.mode, options.modeFallback),
+  }
+}
+
+export function mergeLeftSidebarNavigationSettings(
+  appStateJson: string | null | undefined,
+  input: LeftSidebarNavigationSettings,
+) {
+  const siteSettingsState = readSiteSettingsState(appStateJson)
+
+  return writeSiteSettingsState(appStateJson, {
+    ...siteSettingsState,
+    leftSidebarNavigation: {
+      mode: normalizeLeftSidebarNavigationMode(input.mode),
     },
   })
 }

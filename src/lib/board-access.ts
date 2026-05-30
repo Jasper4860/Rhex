@@ -33,8 +33,25 @@ export async function getBoardAccessContextByPostId(postId: string) {
   }
 }
 
-export function checkBoardPermission(user: { points: number; level: number; role?: "USER" | "MODERATOR" | "ADMIN" | null; vipLevel?: number; vipExpiresAt?: Date | null } | null, settings: ReturnType<typeof resolveBoardSettings>, action: "view" | "post" | "reply") {
-  return canUserAccess(user ? { ...user, role: user.role ?? "USER", vipLevel: user.vipLevel ?? 0, vipExpiresAt: user.vipExpiresAt ?? null } : null, settings, action)
+type BoardAccessUser = {
+  points: number
+  level: number
+  role?: "USER" | "MODERATOR" | "ADMIN" | null
+  vipLevel?: number | null
+  vipExpiresAt?: Date | null
+  userBadges?: Array<{ badgeId: string }> | null
+  verificationApplications?: Array<{ typeId: string }> | null
+}
+
+export function checkBoardPermission(user: BoardAccessUser | null, settings: ReturnType<typeof resolveBoardSettings>, action: "view" | "post" | "reply") {
+  return canUserAccess(user ? {
+    ...user,
+    role: user.role ?? "USER",
+    vipLevel: user.vipLevel ?? 0,
+    vipExpiresAt: user.vipExpiresAt ?? null,
+    grantedBadgeIds: user.userBadges?.map((item) => item.badgeId) ?? [],
+    approvedVerificationTypeIds: user.verificationApplications?.map((item) => item.typeId) ?? [],
+  } : null, settings, action)
 }
 
 

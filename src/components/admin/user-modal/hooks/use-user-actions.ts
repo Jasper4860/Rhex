@@ -3,7 +3,9 @@
 import { useEffect, useState, useTransition } from "react"
 
 import type { AdminUserDetailResult, AdminUserEditableProfile, AdminUserListItem } from "@/lib/admin-user-management"
+import { buildUserStatusExpirationDraft } from "@/lib/user-status-expiration-presets"
 import { normalizeConfigurableVipLevel } from "@/lib/vip-status"
+import { resolveUserStatusReason } from "@/lib/user-status-reason"
 
 import { buildFallbackProfile, parseResponse, toEditableScopes } from "@/components/admin/user-modal/hooks/utils"
 import type {
@@ -97,6 +99,12 @@ export function useUserActions({
         ...current,
         zoneScopes: toEditableScopes(sourceUser.moderatedZoneScopes, "zoneId"),
         boardScopes: toEditableScopes(sourceUser.moderatedBoardScopes, "boardId"),
+      }))
+      setAccountState((current) => ({
+        ...current,
+        statusMessage: current.statusMessage || (sourceUser.status === "MUTED" || sourceUser.status === "BANNED"
+          ? resolveUserStatusReason(sourceUser.status, sourceUser.statusReason)
+          : ""),
       }))
       setOperationsState((current) => ({
         ...current,
@@ -344,6 +352,16 @@ export function useUserActions({
     })
   }
 
+  function setStatusExpirationPreset(days: number | null) {
+    setAccountState((current) => {
+      if (!days) {
+        return { ...current, statusExpiresAtDraft: "" }
+      }
+
+      return { ...current, statusExpiresAtDraft: buildUserStatusExpirationDraft(days) }
+    })
+  }
+
   function saveVip() {
     setOperationsState((current) => ({ ...current, vipFeedback: "" }))
     startTransition(async () => {
@@ -563,6 +581,7 @@ export function useUserActions({
         setAccountState((current) => ({ ...current, statusExpiresAtDraft: value }))
       },
       runStatusAction,
+      setStatusExpirationPreset,
       setNewPassword: (value: string) => {
         setAccountState((current) => ({ ...current, newPassword: value }))
       },

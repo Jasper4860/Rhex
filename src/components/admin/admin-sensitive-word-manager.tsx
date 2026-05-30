@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Ban, Shield, ShieldAlert, ShieldCheck } from "lucide-react"
+import { Ban, Shield, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { AdminSummaryStrip } from "@/components/admin/admin-summary-strip"
@@ -92,6 +92,7 @@ const text = {
   batchEnable: "批量启用",
   batchDisable: "批量停用",
   batchDelete: "批量删除",
+  clearAll: "一键清空",
   clearSelection: "取消选择",
   selectCurrentPage: "选择当前页规则",
   word: "敏感词",
@@ -109,6 +110,8 @@ const text = {
   deleteConfirmSuffix: "吗？删除后将立即失效。",
   batchDeleteTitle: "批量删除敏感词规则",
   batchDeleteConfirm: "确认删除已选中的",
+  clearAllTitle: "清空敏感词库",
+  clearAllConfirm: "确认清空全部敏感词规则吗？删除后所有敏感词拦截和替换规则将立即失效。",
   pagePrefix: "第",
   pageMiddle: "/",
   pageSuffix: "页",
@@ -272,6 +275,31 @@ export function AdminSensitiveWordManager({ data }: AdminSensitiveWordManagerPro
     }
   }
 
+  async function clearAllRules() {
+    const confirmed = await showConfirm({
+      title: text.clearAllTitle,
+      description: text.clearAllConfirm,
+      confirmText: text.clearAll,
+      variant: "danger",
+    })
+
+    if (!confirmed) {
+      return
+    }
+
+    setSaving(true)
+    const response = await fetch("/api/admin/sensitive-words", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clearAll: true }),
+    })
+    setSaving(false)
+    if (response.ok) {
+      setSelectedIds([])
+      router.refresh()
+    }
+  }
+
   function buildPageHref(page: number) {
     const search = new URLSearchParams({
       tab: "security",
@@ -376,6 +404,10 @@ export function AdminSensitiveWordManager({ data }: AdminSensitiveWordManagerPro
               </Button>
               <Button type="button" size="sm" className="rounded-full bg-red-600 px-3 text-xs text-white hover:bg-red-500" disabled={selectedCount === 0 || saving} onClick={batchRemoveRules}>
                 {text.batchDelete}
+              </Button>
+              <Button type="button" variant="destructive" size="sm" className="rounded-full px-3 text-xs" disabled={saving || data.pagination.total === 0} onClick={clearAllRules}>
+                <Trash2 data-icon="inline-start" />
+                {text.clearAll}
               </Button>
               {selectedCount > 0 ? (
                 <Button type="button" variant="ghost" size="sm" className="rounded-full px-3 text-xs" disabled={saving} onClick={() => setSelectedIds([])}>

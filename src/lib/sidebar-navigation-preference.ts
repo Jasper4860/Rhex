@@ -70,7 +70,7 @@ export function getSidebarNavigationInitScript() {
         : ${JSON.stringify(SIDEBAR_COLLAPSED_STORAGE_KEY)};
       var stored = window.localStorage.getItem(storageKey);
       var collapsed = stored === null
-        ? mode === "DOCKED" || mode === "HIDDEN"
+      ? mode === "DOCKED" || mode === "HIDDEN"
         : stored === "1";
       document.documentElement.dataset.sidebarCollapsed = collapsed ? "true" : "false";
     } catch (_error) {

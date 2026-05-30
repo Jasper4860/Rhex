@@ -22,6 +22,7 @@ export type CommentAdminAction = {
   key: string
   label: string
   targetId: string
+  username?: string
   tone?: "danger"
   disabled?: boolean
   payload?: Record<string, unknown>
@@ -237,23 +238,23 @@ export function buildCommentAdminActions({ entry, isAdmin, adminRole, canPinComm
   if (entry.status === "HIDDEN") {
     actions.push({ key: "comment.show", label: "上线评论", targetId: entry.id })
     actions.push({ key: "comment.delete", label: "删除评论", tone: "danger", targetId: entry.id })
-    if (entry.authorStatus === "BANNED" && adminRole === "ADMIN") actions.push({ key: "user.activate", label: "解除封禁", targetId: String(entry.authorId), payload: { commentId: entry.id } })
-    if (entry.authorStatus === "MUTED" && canRestoreEntryAuthor) actions.push({ key: "user.activate", label: "解除禁言", targetId: String(entry.authorId), payload: { commentId: entry.id } })
+    if (entry.authorStatus === "BANNED" && adminRole === "ADMIN") actions.push({ key: "user.activate", label: "解除封禁", targetId: String(entry.authorId), username: entry.authorUsername, payload: { commentId: entry.id } })
+    if (entry.authorStatus === "MUTED" && canRestoreEntryAuthor) actions.push({ key: "user.activate", label: "解除禁言", targetId: String(entry.authorId), username: entry.authorUsername, payload: { commentId: entry.id } })
     return actions
   }
   actions.push({ key: "comment.hide", label: "下线评论", tone: "danger", targetId: entry.id })
   actions.push({ key: "comment.delete", label: "删除评论", tone: "danger", targetId: entry.id })
   if (entry.authorStatus === "BANNED") {
-    if (adminRole === "ADMIN") actions.push({ key: "user.activate", label: "解除封禁", targetId: String(entry.authorId), payload: { commentId: entry.id } })
+    if (adminRole === "ADMIN") actions.push({ key: "user.activate", label: "解除封禁", targetId: String(entry.authorId), username: entry.authorUsername, payload: { commentId: entry.id } })
     return actions
   }
   if (entry.authorStatus === "MUTED") {
-    if (canRestoreEntryAuthor) actions.push({ key: "user.activate", label: "解除禁言", targetId: String(entry.authorId), payload: { commentId: entry.id } })
-    if (adminRole === "ADMIN" && canRestrictEntryAuthor) actions.push({ key: "user.ban", label: "封禁用户", tone: "danger", targetId: String(entry.authorId), payload: { commentId: entry.id } })
+    if (canRestoreEntryAuthor) actions.push({ key: "user.activate", label: "解除禁言", targetId: String(entry.authorId), username: entry.authorUsername, payload: { commentId: entry.id } })
+    if (adminRole === "ADMIN" && canRestrictEntryAuthor) actions.push({ key: "user.ban", label: "封禁用户", tone: "danger", targetId: String(entry.authorId), username: entry.authorUsername, payload: { commentId: entry.id } })
     return actions
   }
-  if (canRestrictEntryAuthor) actions.push({ key: "user.mute", label: "禁言用户", targetId: String(entry.authorId), payload: { commentId: entry.id } })
-  if (adminRole === "ADMIN" && canRestrictEntryAuthor) actions.push({ key: "user.ban", label: "封禁用户", tone: "danger", targetId: String(entry.authorId), payload: { commentId: entry.id } })
+  if (canRestrictEntryAuthor) actions.push({ key: "user.mute", label: "禁言用户", targetId: String(entry.authorId), username: entry.authorUsername, payload: { commentId: entry.id } })
+  if (adminRole === "ADMIN" && canRestrictEntryAuthor) actions.push({ key: "user.ban", label: "封禁用户", tone: "danger", targetId: String(entry.authorId), username: entry.authorUsername, payload: { commentId: entry.id } })
   return actions
 }
 

@@ -67,7 +67,29 @@ const commentUserSelect = {
 
 
 export function findCommentAuthorByUserId(userId: number) {
-  return prisma.user.findUnique({ where: { id: userId } })
+  return prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      userBadges: {
+        where: {
+          badge: {
+            status: true,
+          },
+        },
+        select: {
+          badgeId: true,
+        },
+      },
+      verificationApplications: {
+        where: {
+          status: "APPROVED",
+        },
+        select: {
+          typeId: true,
+        },
+      },
+    },
+  })
 }
 
 export function findCommentParentById(parentId: string) {

@@ -12,6 +12,18 @@ export interface StructureManagerProps {
   }
   canReviewBoardApplications: boolean
   pendingBoardApplicationCount: number
+  verificationTypes: Array<{
+    id: string
+    name: string
+    slug: string
+    status: boolean
+  }>
+  badges: Array<{
+    id: string
+    name: string
+    code: string
+    status: boolean
+  }>
   initialFilters: {
     keyword: string
     zoneId: string
@@ -112,6 +124,12 @@ export interface StructureFormState {
   minViewVipLevel: string
   minPostVipLevel: string
   minReplyVipLevel: string
+  postIdentityGateMode: "inherit" | "custom"
+  replyIdentityGateMode: "inherit" | "custom"
+  postRequiredVerificationTypeIds: string[]
+  postRequiredBadgeIds: string[]
+  replyRequiredVerificationTypeIds: string[]
+  replyRequiredBadgeIds: string[]
   requirePostReview: boolean
   requireCommentReview: boolean
   showInHomeFeed: string

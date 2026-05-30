@@ -42,6 +42,7 @@ import { enforceSensitiveText } from "@/lib/content-safety"
 import { parseBusinessDateTime } from "@/lib/formatters"
 import { ensureCanModerateUser, isScopedModerator, isSiteAdmin } from "@/lib/moderator-permissions"
 import { getServerSiteSettings } from "@/lib/site-settings"
+import { getDefaultUserStatusReason } from "@/lib/user-status-reason"
 import { findUsernameSensitiveWord } from "@/lib/username-sensitive-words"
 import { mergeUserProfileSettings } from "@/lib/user-profile-settings"
 import { revalidateUserSurfaceCache } from "@/lib/user-surface"
@@ -117,10 +118,28 @@ function readStatusExpiration(context: AdminActionContext): StatusExpirationInpu
   }
 }
 
-function buildStatusActionMessage(actionText: string, expiration: StatusExpirationInput | null) {
-  return expiration
-    ? `${actionText}，将在 ${expiration.displayText} 解禁`
-    : `${actionText}`
+function readStatusReason(context: AdminActionContext, fallback: string) {
+  const reason = context.message.trim()
+  return reason || fallback
+}
+
+function buildStatusActionDetail(context: AdminActionContext, actionText: string, fallbackReason: string) {
+  const expiration = readStatusExpiration(context)
+  const reason = readStatusReason(context, fallbackReason)
+  const expirationText = expiration
+    ? `将在 ${expiration.displayText} 自动解除`
+    : "永久"
+
+  return `${actionText}：${reason}（${expirationText}）`
+}
+
+function setStatusActionDetail(context: AdminActionContext, actionText: string, fallbackReason: string, expiration: StatusExpirationInput | null) {
+  const reason = readStatusReason(context, fallbackReason)
+  const expirationText = expiration
+    ? `将在 ${expiration.displayText} 自动解除`
+    : "永久"
+
+  context.detailOverride = `${actionText}：${reason}（${expirationText}）`
 }
 
 function buildAdminPointAdjustReason(message: string) {
@@ -151,18 +170,19 @@ function buildAdminPointAdjustNotification(params: {
 }
 
 export const adminUserActionHandlers: Record<string, AdminActionDefinition> = {
-  "user.mute": defineAdminAction({ targetType: "USER", buildDetail: (context) => buildStatusActionMessage("管理员禁言用户", readStatusExpiration(context)) }, async (context) => {
+  "user.mute": defineAdminAction({ targetType: "USER", buildDetail: (context) => buildStatusActionDetail(context, "管理员禁言用户", getDefaultUserStatusReason(UserStatus.MUTED)) }, async (context) => {
     const userId = normalizePositiveUserId(context.targetId)
     if (!userId) apiError(400, "用户标识不合法")
     const user = requireUserStatusRecord(await findUserStatus(userId))
     ensureCanApplyRestrictiveStatus(user, UserStatus.MUTED)
     const statusExpiration = readStatusExpiration(context)
+    setStatusActionDetail(context, "管理员禁言用户", getDefaultUserStatusReason(UserStatus.MUTED), statusExpiration)
     await ensureCanModerateUser(context.actor, {
       targetUserId: userId,
       postId: readAdminActionString(context.body, "postId") || undefined,
       commentId: readAdminActionString(context.body, "commentId") || undefined,
     })
-    await updateUserStatus(userId, UserStatus.MUTED, statusExpiration?.expiresAt ?? null)
+    await updateUserStatus(userId, UserStatus.MUTED, statusExpiration?.expiresAt ?? null, readStatusReason(context, getDefaultUserStatusReason(UserStatus.MUTED)))
 
     await writeAdminActionLog(context, adminUserActionHandlers["user.mute"].metadata)
     return { message: "用户已禁言" }
@@ -184,14 +204,15 @@ export const adminUserActionHandlers: Record<string, AdminActionDefinition> = {
     await writeAdminActionLog(context, adminUserActionHandlers["user.activate"].metadata)
     return { message: "用户状态已恢复" }
   }),
-  "user.ban": defineAdminAction({ targetType: "USER", buildDetail: (context) => buildStatusActionMessage("管理员拉黑用户", readStatusExpiration(context)) }, async (context) => {
+  "user.ban": defineAdminAction({ targetType: "USER", buildDetail: (context) => buildStatusActionDetail(context, "管理员拉黑用户", getDefaultUserStatusReason(UserStatus.BANNED)) }, async (context) => {
     if (!isSiteAdmin(context.actor)) apiError(403, "仅管理员可封禁用户")
     const userId = normalizePositiveUserId(context.targetId)
     if (!userId) apiError(400, "用户标识不合法")
     const user = requireUserStatusRecord(await findUserStatus(userId))
     ensureCanApplyRestrictiveStatus(user, UserStatus.BANNED)
     const statusExpiration = readStatusExpiration(context)
-    await updateUserStatus(userId, UserStatus.BANNED, statusExpiration?.expiresAt ?? null)
+    setStatusActionDetail(context, "管理员拉黑用户", getDefaultUserStatusReason(UserStatus.BANNED), statusExpiration)
+    await updateUserStatus(userId, UserStatus.BANNED, statusExpiration?.expiresAt ?? null, readStatusReason(context, getDefaultUserStatusReason(UserStatus.BANNED)))
 
     await writeAdminActionLog(context, adminUserActionHandlers["user.ban"].metadata)
     return { message: "用户已拉黑" }

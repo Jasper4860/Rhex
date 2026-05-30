@@ -91,6 +91,23 @@ export function normalizeLeftSidebarDisplayMode(
   }
 }
 
+export type LeftSidebarNavigationMode = "DEFAULT" | "TREE"
+
+export function normalizeLeftSidebarNavigationMode(
+  value: unknown,
+  fallback: LeftSidebarNavigationMode = "DEFAULT",
+): LeftSidebarNavigationMode {
+  const normalized = typeof value === "string" ? value.trim().toUpperCase().replace(/-/g, "_") : ""
+
+  switch (normalized) {
+    case "DEFAULT":
+    case "TREE":
+      return normalized
+    default:
+      return fallback
+  }
+}
+
 export type ImageWatermarkPosition = "TOP_LEFT" | "TOP_RIGHT" | "BOTTOM_LEFT" | "BOTTOM_RIGHT" | "CENTER"
 
 export function normalizeImageWatermarkPosition(
@@ -161,6 +178,10 @@ export interface HomeSidebarAnnouncementSettings {
 
 export interface LeftSidebarDisplaySettings {
   mode: LeftSidebarDisplayMode
+}
+
+export interface LeftSidebarNavigationSettings {
+  mode: LeftSidebarNavigationMode
 }
 
 export interface LeftSidebarHomeSettings {

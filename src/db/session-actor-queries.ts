@@ -14,6 +14,24 @@ export const sessionActorSelect = {
   vipLevel: true,
   vipExpiresAt: true,
   sessionInvalidBefore: true,
+  userBadges: {
+    where: {
+      badge: {
+        status: true,
+      },
+    },
+    select: {
+      badgeId: true,
+    },
+  },
+  verificationApplications: {
+    where: {
+      status: "APPROVED",
+    },
+    select: {
+      typeId: true,
+    },
+  },
 } satisfies Prisma.UserSelect
 
 export type SessionActor = Prisma.UserGetPayload<{ select: typeof sessionActorSelect }>

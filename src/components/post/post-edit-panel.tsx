@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
 import { Textarea } from "@/components/ui/textarea"
+import { formatPostEditWindowLabel, isPermanentPostEditWindow, isPostStillEditable } from "@/lib/post-edit-window"
 
 interface PostEditPanelProps {
   postId: string
@@ -56,19 +57,9 @@ export function PostEditPanel({
     }
   }, [])
 
-  const editDeadline = useMemo(() => {
-    if (!createdAt) {
-      return null
-    }
-
-    const parsedCreatedAt = new Date(createdAt).getTime()
-    if (!Number.isFinite(parsedCreatedAt) || parsedCreatedAt <= 0) {
-      return null
-    }
-
-    return parsedCreatedAt + editWindowMinutes * 60 * 1000
-  }, [createdAt, editWindowMinutes])
-  const canEditOriginal = useMemo(() => (editDeadline ? editDeadline > currentTime : false), [currentTime, editDeadline])
+  const canEditOriginal = useMemo(() => (
+    createdAt ? isPostStillEditable(createdAt, editWindowMinutes, currentTime) : false
+  ), [createdAt, currentTime, editWindowMinutes])
   const nextAppendAt = useMemo(() => {
 
     if (!lastAppendedAt) {
@@ -154,7 +145,7 @@ export function PostEditPanel({
             <h3 className="text-base font-semibold">作者操作</h3>
             <p className="text-sm text-muted-foreground">
               {canEditOriginal
-                ? `发帖后 ${editWindowMinutes} 分钟内可跳转到编辑页修改标题和正文。`
+                ? `${isPermanentPostEditWindow(editWindowMinutes) ? "当前允许随时" : `发帖后 ${formatPostEditWindowLabel(editWindowMinutes)}内可`}跳转到编辑页修改标题和正文。`
                 : `原帖正文已锁定，可通过弹窗追加附言。`}
             </p>
             <p className="text-xs text-muted-foreground">

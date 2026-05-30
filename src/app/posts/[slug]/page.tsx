@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { MessageCircle } from "lucide-react"
 import { cookies } from "next/headers"
 import Script from "next/script"
@@ -29,7 +30,9 @@ import { SiteHeader } from "@/components/site-header"
 
 import { getAiAgentUserId } from "@/lib/ai-agent"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/rbutton"
 import { getCurrentUser } from "@/lib/auth"
+import { buildLoginHrefWithRedirect } from "@/lib/auth-redirect"
 import { PinScope } from "@/db/types"
 import { checkBoardPermission, getBoardAccessContextByPostId } from "@/lib/board-access"
 import { getBoards } from "@/lib/boards"
@@ -199,6 +202,8 @@ export default async function PostPage(props: PageProps<"/posts/[slug]">) {
   }
 
   const postPageSearchParams = buildUrlSearchParams(searchParams)
+  const postPageQueryString = postPageSearchParams.toString()
+  const postAuthRedirectTarget = `${canonicalPath}${postPageQueryString ? `?${postPageQueryString}` : ""}`
 
   const userReplyCountPromise = canViewRestrictedPost ? getUserReplyCountByPost(basePost.id, currentUser?.id) : Promise.resolve(0)
   const canViewComments = Boolean(currentUser) || settings.guestCanViewComments
@@ -694,9 +699,29 @@ export default async function PostPage(props: PageProps<"/posts/[slug]">) {
                     ) : displayPost.status !== "NORMAL" ? (
                       <p className="text-sm text-muted-foreground">帖子当前不开放公开回复。</p>
                     ) : !currentUser && !canViewComments ? (
-                      <p className="text-sm text-muted-foreground">当前站点已关闭游客查看评论，登录后可查看评论并参与回复讨论。</p>
+                      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-secondary/30 px-4 py-3">
+                        <p className="text-sm text-muted-foreground">当前站点已关闭游客查看评论，登录后可查看评论并参与回复讨论。</p>
+                        <div className="flex items-center gap-2">
+                          <Link href={buildLoginHrefWithRedirect(postAuthRedirectTarget)}>
+                            <Button type="button" size="sm">登录</Button>
+                          </Link>
+                          <Link href={`/register?redirect=${encodeURIComponent(postAuthRedirectTarget)}`}>
+                            <Button type="button" size="sm" variant="outline">注册</Button>
+                          </Link>
+                        </div>
+                      </div>
                     ) : !currentUser ? (
-                      <p className="text-sm text-muted-foreground">登录后可参与回复讨论。</p>
+                      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-secondary/30 px-4 py-3">
+                        <p className="text-sm text-muted-foreground">登录后可参与回复讨论。</p>
+                        <div className="flex items-center gap-2">
+                          <Link href={buildLoginHrefWithRedirect(postAuthRedirectTarget)}>
+                            <Button type="button" size="sm">登录</Button>
+                          </Link>
+                          <Link href={`/register?redirect=${encodeURIComponent(postAuthRedirectTarget)}`}>
+                            <Button type="button" size="sm" variant="outline">注册</Button>
+                          </Link>
+                        </div>
+                      </div>
                     ) : null}
                     {canViewComments && commentResult.total === 0 ? (
                       <p className="text-sm text-muted-foreground">当前还没有回复，欢迎成为第一个参与讨论的人。</p>
