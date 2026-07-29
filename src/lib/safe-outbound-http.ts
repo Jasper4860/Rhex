@@ -172,7 +172,16 @@ export async function safeOutboundFetch(input: string | URL, init: SafeOutboundF
       path: `${target.url.pathname}${target.url.search}`,
       method: init.method ?? "GET",
       headers: headersToNodeHeaders(init.headers),
-      lookup: (_hostname, _options, callback) => callback(null, target.address, target.family),
+      lookup: (_hostname, options, callback) => {
+        // Node 20 may request all addresses when auto family selection is enabled.
+        // Return the pinned address in the shape expected by that callback mode.
+        if (options?.all) {
+          callback(null, [{ address: target.address, family: target.family }])
+          return
+        }
+
+        callback(null, target.address, target.family)
+      },
       servername: target.url.hostname,
     }, (response) => {
       if (settled) {

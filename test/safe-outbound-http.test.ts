@@ -1,4 +1,6 @@
 import assert from "node:assert/strict"
+import { EventEmitter } from "node:events"
+import https from "node:https"
 import test from "node:test"
 
 import { isPublicOutboundIp, resolveSafeOutboundTarget, safeOutboundFetch } from "../src/lib/safe-outbound-http"
@@ -20,4 +22,29 @@ test("safe outbound resolver rejects local URL targets before attempting a reque
   await assert.rejects(() => resolveSafeOutboundTarget("http://127.0.0.1:3000"), /禁止访问|内网|保留/)
   await assert.rejects(() => resolveSafeOutboundTarget("http://[::1]:3000"), /禁止访问|内网|保留/)
   await assert.rejects(() => safeOutboundFetch("http://localhost:3000"), /禁止访问|内网|保留/)
+})
+
+test("safe outbound fetch supports Node 20 all-address lookup callbacks", async (t) => {
+  const expectedError = new Error("stop after pinned lookup assertion")
+  let lookupCalled = false
+
+  t.mock.method(https, "request", ((options: https.RequestOptions) => {
+    assert.equal(typeof options.lookup, "function")
+    options.lookup?.("1.1.1.1", { all: true }, (error, addresses) => {
+      assert.equal(error, null)
+      assert.deepEqual(addresses, [{ address: "1.1.1.1", family: 4 }])
+      lookupCalled = true
+    })
+
+    const request = new EventEmitter() as EventEmitter & {
+      destroy: (error?: Error) => void
+      end: () => void
+    }
+    request.destroy = (error) => request.emit("error", error)
+    request.end = () => request.emit("error", expectedError)
+    return request
+  }) as typeof https.request)
+
+  await assert.rejects(() => safeOutboundFetch("https://1.1.1.1"), expectedError)
+  assert.equal(lookupCalled, true)
 })
