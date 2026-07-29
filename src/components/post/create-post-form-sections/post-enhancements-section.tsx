@@ -32,6 +32,10 @@ import {
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { formatCompactPointValue } from "@/lib/formatters"
+import {
+  clampFloatingPanelPosition,
+  type FloatingPanelPosition,
+} from "@/lib/floating-panel-position"
 import { getPostRewardPoolModeLabel } from "@/lib/post-reward-pool-config"
 
 const DESKTOP_PANEL_STORAGE_KEY = "post-enhancements-panel-position"
@@ -40,9 +44,30 @@ const DESKTOP_PANEL_WIDTH = 202
 const DESKTOP_PANEL_MARGIN = 12
 const DESKTOP_PANEL_DEFAULT_TOP = 112
 
-interface DesktopPanelPosition {
-  left: number
-  top: number
+type DesktopPanelPosition = FloatingPanelPosition
+
+function getDesktopPanelMinimumTop() {
+  if (typeof window === "undefined") {
+    return DESKTOP_PANEL_MARGIN
+  }
+
+  const header = Array.from(document.querySelectorAll<HTMLElement>("header")).find((element) => {
+    const style = window.getComputedStyle(element)
+    const rect = element.getBoundingClientRect()
+    return (style.position === "fixed" || style.position === "sticky")
+      && rect.top <= DESKTOP_PANEL_MARGIN
+      && rect.bottom > 0
+      && rect.width >= window.innerWidth / 2
+  })
+
+  if (!header) {
+    return DESKTOP_PANEL_MARGIN
+  }
+
+  return Math.max(
+    DESKTOP_PANEL_MARGIN,
+    Math.ceil(header.getBoundingClientRect().bottom) + DESKTOP_PANEL_MARGIN,
+  )
 }
 
 function DesktopActionCard({
@@ -408,13 +433,14 @@ export function PostEnhancementsSection({
 
     const panelWidth = desktopPanelRef.current?.offsetWidth ?? DESKTOP_PANEL_WIDTH
     const panelHeight = desktopPanelRef.current?.offsetHeight ?? 420
-    const maxLeft = Math.max(DESKTOP_PANEL_MARGIN, window.innerWidth - panelWidth - DESKTOP_PANEL_MARGIN)
-    const maxTop = Math.max(DESKTOP_PANEL_MARGIN, window.innerHeight - panelHeight - DESKTOP_PANEL_MARGIN)
-
-    return {
-      left: Math.min(Math.max(DESKTOP_PANEL_MARGIN, position.left), maxLeft),
-      top: Math.min(Math.max(DESKTOP_PANEL_MARGIN, position.top), maxTop),
-    }
+    return clampFloatingPanelPosition(position, {
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      panelWidth,
+      panelHeight,
+      margin: DESKTOP_PANEL_MARGIN,
+      minimumTop: getDesktopPanelMinimumTop(),
+    })
   }
   const desktopPanelPosition = desktopPanelPositionOverride
     ?? (persistedDesktopPanelPreferences.position
