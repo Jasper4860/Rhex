@@ -564,7 +564,6 @@ export default async function PostPage(props: PageProps<"/posts/[slug]">) {
               <div className="space-y-0">
                   <PostBodyCopyMenu
                     post={{ id: displayPost.id, slug: displayPost.slug }}
-                    postLinkDisplayMode={settings.postLinkDisplayMode}
                     canReport={Boolean(currentUser && currentUser.id !== displayPostWithAiIndicator.authorId)}
                     reportTargetId={displayPostWithAiIndicator.id}
                     reportLabel={displayPostWithAiIndicator.title}
