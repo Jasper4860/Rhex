@@ -92,7 +92,7 @@ function revalidatePostDetailTag(tag: string) {
       return
     }
 
-    throw error
+    console.warn("[cache] post detail revalidation skipped", error)
   }
 }
 

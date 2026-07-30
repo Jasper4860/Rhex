@@ -26,7 +26,7 @@ function revalidateTaxonomyTag(tag: string, profile: "max" | { expire: 0 }) {
       return
     }
 
-    throw error
+    console.warn("[cache] taxonomy revalidation skipped", error)
   }
 }
 

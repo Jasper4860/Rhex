@@ -149,6 +149,10 @@ export function revalidateUserSurfaceCache(userId?: number | null) {
       return
     }
 
-    throw error
+    // Cache invalidation is best effort. The database mutation that triggered
+    // it has already committed, so a cache adapter failure must not turn a
+    // successful user action into a false 500 response. The short TTL above
+    // still guarantees eventual freshness.
+    console.warn("[cache] user surface revalidation skipped", error)
   }
 }
