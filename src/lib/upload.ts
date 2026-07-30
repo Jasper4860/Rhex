@@ -19,6 +19,7 @@ import {
 } from "@/lib/addon-upload-providers"
 import type { AddonUploadActor } from "@/addons-host/upload-types"
 import { resolveWatermarkLogoBuffer } from "@/lib/watermark-logo.server"
+import { resolveS3UploadBody } from "@/lib/s3-upload-body"
 
 export interface SavedUploadFile {
   fileName: string
@@ -441,10 +442,12 @@ async function saveToOss(
   const objectKey = resolveS3ObjectKey(folder, fileName)
   const client = createS3Client(settings)
 
+  const uploadBody = await resolveS3UploadBody(file, preparedFile.buffer)
+
   await client.send(new PutObjectCommand({
     Bucket: settings.uploadOssBucket ?? undefined,
     Key: objectKey,
-    Body: preparedFile.buffer ?? createNodeReadableFromFile(file),
+    Body: uploadBody,
     ContentType: preparedFile.detectedMime,
     ContentLength: preparedFile.fileSize,
     CacheControl: "public, max-age=31536000, immutable",
