@@ -36,7 +36,7 @@ ENV NEXT_DEPLOYMENT_ID=${NEXT_DEPLOYMENT_ID}
 
 RUN mkdir -p addons
 
-COPY package.json pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY prisma ./prisma
 
 RUN if [ -n "${PNPM_REGISTRY}" ]; then pnpm config set registry "${PNPM_REGISTRY}"; fi \
@@ -53,7 +53,7 @@ RUN pnpm run prisma:generate \
 
 FROM base AS production-dependencies
 
-COPY package.json pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 
 # setup:prod and worker execute these binaries directly at runtime.
 RUN pnpm install --prod --frozen-lockfile \
