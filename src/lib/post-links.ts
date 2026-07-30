@@ -29,6 +29,13 @@ export function getPostPath(post: { id: string; slug: string }, options?: PostLi
   return `/posts/${encodeURIComponent(getPostRouteSegment(post, mode))}`
 }
 
+export function getPostShortPath(post: { slug: string }) {
+  const slug = post.slug.trim()
+  const shortSegment = slug.split("-").at(-1)?.trim() || slug
+
+  return `/posts/${encodeURIComponent(shortSegment)}`
+}
+
 
 
 export function getPostCommentPath(

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/toast"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { formatCompactNumber, formatNumber } from "@/lib/formatters"
-import { getPostPath } from "@/lib/post-links"
+import { getPostShortPath } from "@/lib/post-links"
 import { cn } from "@/lib/utils"
 
 interface PostBodyCopyMenuProps {
@@ -28,7 +28,7 @@ interface PostBodyCopyMenuProps {
 export function PostBodyCopyMenu({ post, canReport = false, reportTargetId, reportLabel = "当前帖子", initialFollowed, viewCount, children }: PostBodyCopyMenuProps) {
   const [isHovered, setIsHovered] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const copyPath = getPostPath(post, { mode: "ID" })
+  const copyPath = getPostShortPath(post)
   const copyLink = (() => {
     if (typeof window === "undefined") {
       return copyPath
