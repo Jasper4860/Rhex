@@ -464,6 +464,30 @@ function CommentThreadContent({ threadId, comments, flatComments = [], postId, p
       setHighlightedCommentId((current) => current === highlightedCommentId ? null : current)
     }, COMMENT_HIGHLIGHT_CLEAR_DELAY_MS)
 
+    const cancelAnchorScrollOnUserIntent = (event: Event) => {
+      if (event.type === "keydown") {
+        const key = (event as KeyboardEvent).key
+        if (!(key === "ArrowUp" || key === "ArrowDown" || key === "PageUp" || key === "PageDown" || key === "Home" || key === "End" || key === " ")) {
+          return
+        }
+      }
+
+      cancelled = true
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId)
+        rafId = null
+      }
+      if (retryTimeoutId !== null) {
+        window.clearTimeout(retryTimeoutId)
+        retryTimeoutId = null
+      }
+      setHighlightedCommentId((current) => current === highlightedCommentId ? null : current)
+    }
+
+    window.addEventListener("wheel", cancelAnchorScrollOnUserIntent, { passive: true })
+    window.addEventListener("touchstart", cancelAnchorScrollOnUserIntent, { passive: true })
+    window.addEventListener("keydown", cancelAnchorScrollOnUserIntent)
+
     return () => {
       cancelled = true
       if (rafId !== null) {
@@ -473,6 +497,9 @@ function CommentThreadContent({ threadId, comments, flatComments = [], postId, p
         window.clearTimeout(retryTimeoutId)
       }
       window.clearTimeout(timeoutId)
+      window.removeEventListener("wheel", cancelAnchorScrollOnUserIntent)
+      window.removeEventListener("touchstart", cancelAnchorScrollOnUserIntent)
+      window.removeEventListener("keydown", cancelAnchorScrollOnUserIntent)
     }
   }, [clearCommentHighlightSearchParam, ensureHighlightedCommentVisible, highlightedCommentId])
 

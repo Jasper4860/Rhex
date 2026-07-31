@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, type PointerEvent, type ReactNode } from "react"
+import { useState, type PointerEvent, type ReactNode } from "react"
 import { Copy, Ellipsis, Eye, Flag } from "lucide-react"
 
 import { FollowToggleButton } from "@/components/follow-toggle-button"
@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/toast"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { formatCompactNumber, formatNumber } from "@/lib/formatters"
-import { getPostPath } from "@/lib/post-links"
-import type { PostLinkDisplayMode } from "@/lib/site-settings"
+import { getPostShortPath } from "@/lib/post-links"
 import { cn } from "@/lib/utils"
 
 interface PostBodyCopyMenuProps {
@@ -18,7 +17,6 @@ interface PostBodyCopyMenuProps {
     id: string
     slug: string
   }
-  postLinkDisplayMode?: PostLinkDisplayMode
   canReport?: boolean
   reportTargetId?: string
   reportLabel?: string
@@ -27,20 +25,17 @@ interface PostBodyCopyMenuProps {
   children: ReactNode
 }
 
-export function PostBodyCopyMenu({ post, postLinkDisplayMode = "SLUG", canReport = false, reportTargetId, reportLabel = "当前帖子", initialFollowed, viewCount, children }: PostBodyCopyMenuProps) {
+export function PostBodyCopyMenu({ post, canReport = false, reportTargetId, reportLabel = "当前帖子", initialFollowed, viewCount, children }: PostBodyCopyMenuProps) {
   const [isHovered, setIsHovered] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const copyPath = useMemo(
-    () => getPostPath(post, { mode: postLinkDisplayMode }),
-    [post, postLinkDisplayMode],
-  )
-  const copyLink = useMemo(() => {
+  const copyPath = getPostShortPath(post)
+  const copyLink = (() => {
     if (typeof window === "undefined") {
       return copyPath
     }
 
     return `${window.location.origin}${copyPath}`
-  }, [copyPath])
+  })()
 
   async function handleCopyLink() {
     if (await copyTextToClipboard(copyLink)) {
