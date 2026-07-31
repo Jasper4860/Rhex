@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { ThumbsUp } from "lucide-react"
 
 import { toast } from "@/components/ui/toast"
@@ -12,6 +13,7 @@ interface CommentLikeButtonProps {
 }
 
 export function CommentLikeButton({ commentId, initialCount, initialLiked = false }: CommentLikeButtonProps) {
+  const router = useRouter()
   const [count, setCount] = useState(initialCount)
   const [liked, setLiked] = useState(initialLiked)
   const [isPending, startTransition] = useTransition()
@@ -39,6 +41,7 @@ export function CommentLikeButton({ commentId, initialCount, initialLiked = fals
             const nextLiked = Boolean(result.data?.liked)
             setLiked(nextLiked)
             setCount((current) => current + (nextLiked ? 1 : -1))
+            router.refresh()
             toast.success(result.message ?? (nextLiked ? "点赞成功" : "已取消点赞"), nextLiked ? "点赞成功" : "取消点赞成功")
           })
         }}

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useMemo, useState, useTransition } from "react"
 
 import { LevelIcon } from "@/components/level-icon"
@@ -58,6 +59,7 @@ interface BadgeCenterProps {
 const MAX_DISPLAYED_BADGES = 3
 
 export function BadgeCenter({ badges, isLoggedIn, pointName = "积分" }: BadgeCenterProps) {
+  const router = useRouter()
   const [items, setItems] = useState(badges)
   const [activeCategory, setActiveCategory] = useState<string>("全部")
   const [feedback, setFeedback] = useState("")
@@ -104,6 +106,9 @@ export function BadgeCenter({ badges, isLoggedIn, pointName = "积分" }: BadgeC
             canDisplay: true,
           },
         } : item)))
+        // A fetch does not invalidate the browser App Router cache. Refresh
+        // after the local update so related surfaces see the same write.
+        router.refresh()
       }
     })
   }
@@ -159,6 +164,7 @@ export function BadgeCenter({ badges, isLoggedIn, pointName = "积分" }: BadgeC
           },
         }
       }))
+      router.refresh()
     })
   }
 

@@ -22,7 +22,7 @@ function revalidateContentListTag(tag: string, profile: ContentListRevalidatePro
       return
     }
 
-    throw error
+    console.warn("[cache] content list revalidation skipped", error)
   }
 }
 

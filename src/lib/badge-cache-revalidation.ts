@@ -32,7 +32,7 @@ function safeRevalidatePath(path: string, type?: "page" | "layout") {
       return
     }
 
-    throw error
+    console.warn("[cache] path revalidation skipped", error)
   }
 }
 
@@ -44,7 +44,7 @@ function safeExpireTag(tag: string) {
       return
     }
 
-    throw error
+    console.warn("[cache] tag revalidation skipped", error)
   }
 }
 
