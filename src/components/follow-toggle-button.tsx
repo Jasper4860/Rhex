@@ -1,6 +1,7 @@
 "use client"
 
 import { Heart } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useState, useTransition, type ComponentProps } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -38,6 +39,7 @@ function FollowToggleButtonContent({
   variant,
   size,
 }: FollowToggleButtonProps) {
+  const router = useRouter()
   const [followed, setFollowed] = useState(initialFollowed)
   const [isPending, startTransition] = useTransition()
   const label = followed ? activeLabel : inactiveLabel
@@ -78,6 +80,9 @@ function FollowToggleButtonContent({
           const changed = Boolean(result.data?.changed)
           setFollowed(resolvedFollowed)
           onFollowStateChange?.({ followed: resolvedFollowed, changed })
+          if (changed) {
+            router.refresh()
+          }
           toast.success(result.message ?? (resolvedFollowed ? "关注成功" : "已取消关注"))
         })
       }}

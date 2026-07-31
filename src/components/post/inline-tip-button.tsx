@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import { Gift } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useMemo, useState, useTransition } from "react"
 
 import { LevelIcon } from "@/components/level-icon"
@@ -79,6 +80,7 @@ export function InlineTipButton({
   totalPoints = 0,
   className,
 }: InlineTipButtonProps) {
+  const router = useRouter()
   const normalizedAmounts = useMemo(() => allowedAmounts.filter((amount) => Number.isInteger(amount) && amount > 0), [allowedAmounts])
   const normalizedGifts = useMemo(() => gifts.filter((gift) => gift.id && gift.price > 0), [gifts])
   const [open, setOpen] = useState(false)
@@ -162,6 +164,7 @@ export function InlineTipButton({
         if (result.data) {
           syncSummary(result.data)
         }
+        router.refresh()
 
         const successMessage = result.message ?? (targetGift ? `已送出 ${targetGift.name}` : `已成功打赏 ${formatCompactPointValue(targetAmount)} ${pointName}`)
         setMessage(successMessage)

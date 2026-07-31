@@ -1,6 +1,7 @@
 "use client"
 
 import { Bookmark, Flag, ThumbsUp } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
 import { PostAuthorInlineCard } from "@/components/post/post-author-inline-card"
@@ -63,6 +64,7 @@ const engagementToggleClassName = "h-auto min-w-0 rounded-full p-0 text-muted-fo
 
 export function PostEngagementBar({ postId, postSlug, author, likeCount, favoriteCount = 0, initialLiked = false, initialFavored = false, canReport = false, reportLabel = "当前帖子", redPacket, tipping }: PostEngagementBarProps) {
 
+  const router = useRouter()
   const [likes, setLikes] = useState(likeCount)
   const [favorites, setFavorites] = useState(favoriteCount)
   const [liked, setLiked] = useState(initialLiked)
@@ -93,6 +95,7 @@ export function PostEngagementBar({ postId, postSlug, author, likeCount, favorit
           const nextLiked = Boolean(result.data?.liked)
           setLiked(nextLiked)
           setLikes((current) => current + (nextLiked ? 1 : -1))
+          router.refresh()
           toast.success(
             result.message ?? (nextLiked ? "点赞成功" : "已取消点赞"),
             nextLiked ? "点赞成功" : "取消点赞成功",
@@ -103,6 +106,7 @@ export function PostEngagementBar({ postId, postSlug, author, likeCount, favorit
         const nextFavored = Boolean(result.data?.favored)
         setFavored(nextFavored)
         setFavorites((current) => current + (nextFavored ? 1 : -1))
+        router.refresh()
         toast.success(
           result.message ?? (nextFavored ? "收藏成功" : "已取消收藏"),
           nextFavored ? "收藏成功" : "取消收藏成功",

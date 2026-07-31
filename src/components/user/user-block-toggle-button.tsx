@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { UserX } from "lucide-react"
 
 import { showConfirm } from "@/components/ui/alert-dialog"
@@ -30,6 +31,7 @@ export function UserBlockToggleButton({
   reloadOnChange = false,
   onBlockStateChange,
 }: UserBlockToggleButtonProps) {
+  const router = useRouter()
   const [blockedState, setBlockedState] = useState(() => ({
     targetUserId,
     initialBlocked,
@@ -87,11 +89,11 @@ export function UserBlockToggleButton({
         value: resolvedBlocked,
       })
       onBlockStateChange?.({ blocked: resolvedBlocked, changed })
+      if (changed || reloadOnChange) {
+        router.refresh()
+      }
       toast.success(result.message ?? (resolvedBlocked ? "已拉黑该用户" : "已取消拉黑"))
 
-      if (reloadOnChange && changed) {
-        window.location.reload()
-      }
     } catch {
       toast.error("拉黑操作失败")
     } finally {

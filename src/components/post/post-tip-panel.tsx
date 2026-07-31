@@ -2,6 +2,7 @@
 
 import { ChevronDown, ChevronUp, Gift, Zap } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react"
 import { createPortal } from "react-dom"
 
@@ -136,6 +137,7 @@ export function PostTipPanel({
   totalPoints,
   topSupporters,
 }: PostTipPanelProps) {
+  const router = useRouter()
   const animationTimersRef = useRef<number[]>([])
   const seededRecentEventIdsRef = useRef(new Set<string>())
   const laneCursorRef = useRef(0)
@@ -386,6 +388,7 @@ export function PostTipPanel({
         if (result.data) {
           syncSummary(result.data)
         }
+        router.refresh()
 
         const successMessage = result.message ?? (targetGift ? `已送出 ${targetGift.name}` : `已成功打赏 ${formatCompactPointValue(targetAmount)} ${pointName}`)
         setMessage(successMessage)
