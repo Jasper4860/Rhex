@@ -12,8 +12,6 @@ import type { PostRewardPoolMode } from "@/lib/post-reward-pool-config"
 
 import { MessageCircle, Paperclip } from "lucide-react"
 
-
-
 import { UserAvatar } from "@/components/user/user-avatar"
 import { UserProfilePreviewCardTrigger } from "@/components/user/user-profile-preview-card-trigger"
 import { UserStatusBadge } from "@/components/user/user-status-badge"
@@ -39,8 +37,6 @@ interface ForumPostListItemProps {
     minViewLevel?: number
     minViewVipLevel?: number
     isFeatured: boolean
-
-
     boardName: string
     boardSlug?: string
     boardIcon?: string
@@ -139,7 +135,12 @@ export function ForumPostListItem({
         <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1 sm:gap-1.5">
             <PostListLink href={postPath} visitedPath={postPath} dimWhenRead className="min-w-0">
-              <h2 className={getPostTitleClassName({ isFeatured: item.isFeatured, pinScope: item.pinScope, compact: true })}>
+              <h2
+                className={cn(
+                  getPostTitleClassName({ isFeatured: item.isFeatured, pinScope: item.pinScope, compact: true }),
+                  "text-[0.933rem] font-semibold leading-[1.45] sm:text-base",
+                )}
+              >
                 {item.title}
               </h2>
             </PostListLink>
@@ -165,15 +166,12 @@ export function ForumPostListItem({
           {showPinBadge ? <PostPinBadge scope={item.pinScope} label={item.pinLabel} compact /> : null}
           {item.isFeatured ? <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200 sm:px-2 sm:text-[11px]">精华</span> : null}
           <PostListLink href={`${postPath}#comments`} title={`${formatNumber(item.commentCount)} 回复`} className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-normal tabular-nums transition-colors hover:opacity-90 sm:px-2 sm:text-[11px]" style={{ backgroundColor: `${item.commentAccentColor}14`, color: item.commentAccentColor }}>
-
-
-
             <MessageCircle className="h-3 w-3" />
             {formatCompactNumber(item.commentCount)}
           </PostListLink>
         </div>
 
-        <div className={cn("mt-1.5 flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground sm:gap-1.5 sm:text-[11px]", isRestrictedAuthor && "grayscale")}>
+        <div className={cn("mt-1.5 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground sm:gap-1.5 sm:text-xs", isRestrictedAuthor && "grayscale")}>
           {showBoard && item.boardSlug ? (
             <>
               <Link href={`/boards/${item.boardSlug}`} className="flex items-center gap-1 font-semibold hover:underline">
