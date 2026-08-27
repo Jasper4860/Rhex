@@ -3,15 +3,7 @@ import { Suspense } from "react"
 
 import { generateRootMetadata, RootRuntimeProviders } from "@/app/root-runtime-providers"
 
-
-
-
-
 import "./globals.css"
-import { Geist } from "next/font/google";
-import { cn } from "@/lib/utils";
-
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const dynamic = "force-dynamic"
 
@@ -35,15 +27,12 @@ export async function generateMetadata(): Promise<Metadata> {
   return generateRootMetadata()
 }
 
-
-
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-
     <html
       lang="zh-CN"
       suppressHydrationWarning
-      className={cn("font-sans", geist.variable)}
+      className="font-sans"
       data-root-init="pending"
     >
       <head>
@@ -55,12 +44,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <Suspense fallback={null}>
           <RootRuntimeProviders>{children}</RootRuntimeProviders>
         </Suspense>
-
-
-
-
       </body>
-
     </html>
   )
 }
