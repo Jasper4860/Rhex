@@ -5,7 +5,7 @@ x-app-environment: &app-environment
   REDIS_DB: ${REDIS_DB:-}
 
 x-app-service: &app-service
-  image: ghcr.io/lovedevpanda/rhex:latest
+  image: ${RHEX_IMAGE:-ghcr.io/jasper4860/rhex:latest}
   pull_policy: always
   init: true
   env_file:
