@@ -2,6 +2,10 @@
 
 # Rhex
 
+**Jasper4860 维护版 / Fork**
+
+基于上游 [lovedevpanda/Rhex](https://github.com/lovedevpanda/Rhex) 持续同步维护，并加入经过实际使用验证的 UI、部署与功能优化。
+
 **基于 Next.js 16 + React 19 + Prisma + PostgreSQL 的现代社区系统**
 
 适合搭建兴趣社区、知识社区、会员论坛、品牌用户社区和内部讨论平台。
@@ -16,6 +20,18 @@
 </div>
 
 ---
+
+## 关于本 Fork
+
+本仓库由 `Jasper4860` 基于 Rhex 上游项目维护。
+
+- 上游项目：`lovedevpanda/Rhex`
+- 当前仓库：`Jasper4860/Rhex`
+- Docker 镜像：`ghcr.io/jasper4860/rhex:latest`
+- 通用改进会尽量整理为独立提交，方便后续向上游提交 Pull Request
+- 私有部署配置、个人镜像地址等仅保留在本 Fork，不作为上游功能改动提交
+
+> 本 Fork 保留 Rhex 原项目的 MIT License、原作者信息、社区支持与贡献者说明。
 
 ## 项目简介
 
@@ -178,12 +194,12 @@ REDIS_DB="2"
 
 ## Docker Compose 部署
 
-前置条件：Docker Engine / Docker Desktop、Docker Compose Plugin。直接拉镜像运行，不需要本地 `docker build`。
+前置条件：Docker Engine / Docker Desktop、Docker Compose Plugin。默认直接拉取本 Fork 的预构建镜像 `ghcr.io/jasper4860/rhex:latest`，不需要在服务器本地执行 `docker build`。
 
 ### 首次安装
 
 ```bash
-git clone https://github.com/lovedevpanda/Rhex.git
+git clone https://github.com/Jasper4860/Rhex.git
 cd Rhex
 cp .env.example .env
 ```
@@ -196,9 +212,18 @@ docker compose up -d
 
 完成后访问 `http://localhost:3000`。
 
+如需临时切换回上游官方镜像，可在 `.env` 中覆盖：
+
+```env
+RHEX_IMAGE="ghcr.io/lovedevpanda/rhex:latest"
+```
+
 ### 升级
 
+推荐先同步本 Fork 的最新 Compose 配置，再拉取镜像：
+
 ```bash
+git pull
 docker compose pull
 docker compose up -d --remove-orphans
 ```
@@ -218,7 +243,7 @@ tar -czf backups/rhex-files-$(date +%Y%m%d-%H%M%S).tar.gz uploads addons .env do
 ### 首次启动
 
 ```bash
-git clone https://github.com/lovedevpanda/Rhex.git
+git clone https://github.com/Jasper4860/Rhex.git
 cd Rhex
 pnpm install
 cp .env.example .env
